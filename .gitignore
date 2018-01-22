@@ -1,3 +1,33 @@
+# Directories #
+lib
+bin
+doc
+build
+enc_temp_folder
+
+# Temporary
+*~
+*.tlog
+
+# Build
+*.exp
+*.ncb
+*.suo
+*.user
+*.pdb
+*.sdf
+*.opensdf
+*.opendb
+*.layout
+*.cbTemp
+*.depend
+*.log
+*.ilk
+*.idb
+*.db
+.vs
+
+
 # Prerequisites
 *.d
 
