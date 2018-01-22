@@ -30,9 +30,13 @@ using namespace Yaml;
 int main()
 {
 	std::string data =
+		"foo  :\n"
+		" -   bar   :  super\n";
+
+	/*std::string data =
 		" val : 100\n"
 		" \n"
-		"   \n";
+		"   \n";*/
 
 
 	Node root;
@@ -41,7 +45,7 @@ int main()
 	{
 		reader.Parse(root, data);
 	}
-	catch (const Exception & e)
+	catch (const Exception e)
 	{
 		std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
 		std::cin.get();

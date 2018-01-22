@@ -10,7 +10,8 @@ Under development and currently not working.
 
 ## Known limitations
 ##### Reader/deserializer
-- Quotation marks are seen as any character. Keys like "foo:"key: will not work. Reader will deserialize it as "foo".
+- Quotation marks are not properly working in keys or scalar values.
+- Flow sequences("[]")/maps("{}") are not available.
 
 
 ## Documentation

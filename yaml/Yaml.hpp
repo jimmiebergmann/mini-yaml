@@ -34,6 +34,7 @@ https://www.codeproject.com/Articles/28720/YAML-Parser-in-C
 #include <exception>
 #include <string>
 #include <iostream>
+#include <sstream>
 
 /**
 * @breif Namespace wrapping mini-yaml classes.
@@ -213,12 +214,6 @@ namespace Yaml
 		Reader();
 
 		/**
-		* @breif Destructor.
-		*
-		*/
-		~Reader();
-
-		/**
 		* @breif Constructing reader class and deserializing.
 		*
 		* @see Parse
@@ -242,17 +237,13 @@ namespace Yaml
 		*
 		* @throw InternalException	An internal error occured.
 		* @throw ParsingException	Invalid input YAML data.
-		* @throw OperationException	If filename is invalid or invalid buffer pointer.
+		* @throw OperationException	If filename or buffer pointer is invalid.
 		*
 		*/
 		void Parse(Node & root, const char * filename);
 		void Parse(Node & root, std::iostream & stream);
 		void Parse(Node & root, const std::string & string);
 		void Parse(Node & root, const char * buffer, const size_t size);
-
-	private:
-
-		void * m_pImp; ///< Implementation of reader class.
 
 	};
 

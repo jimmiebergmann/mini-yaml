@@ -28,12 +28,26 @@
 #include <fstream>
 #include <sstream>
 #include <list>
+#include <cstdio>
+#include <stdarg.h>
+
 
 // Implementation access definitions.
 // ...
 
+// Exception message definitions.
+static const std::string g_ErrorKeyMissing = "Missing key.";
+static const std::string g_ErrorTabInOffset = "Tab found in offset.";
+static const std::string g_ErrorUnableToParse = "Unable to parse.";
+
+
 namespace Yaml
 {
+	class ReaderLine;
+
+	// Global function definitions. Implemented at end of this source file.
+	static std::string ExceptionMessage(const std::string & message, ReaderLine & line);
+	static std::string ExceptionMessage(const std::string & message, ReaderLine & line, const size_t errorPos);
 
 	// Exception implementations
 	Exception::Exception(const std::string & message, const eType type) :
@@ -78,20 +92,90 @@ namespace Yaml
 	}
 
 
-	// Reader implementation
+	// Reader implementations
+	/**
+	* @breif Line information structure.
+	*
+	*/
+	class ReaderLine
+	{
+
+	public:
+
+		/**
+		* @breif Default constructor.
+		*
+		*/
+		ReaderLine() :
+			Data(""),
+			No(0),
+			Offset(0),
+			Type(Node::None),
+			m_Flags(0)
+		{
+		}
+
+		/**
+		* @breif Constructor.
+		*
+		*/
+		ReaderLine(const std::string & data, size_t no, size_t offset) :
+			Data(data),
+			No(no),
+			Offset(offset),
+			Type(Node::None),
+			m_Flags(0)
+		{
+		}
+
+		enum eFlag
+		{
+			LiteralTextFlag,
+			FoldedTextFlag,
+			NewLineFlag
+		};
+
+		void SetFlag(const eFlag flag)
+		{
+			m_Flags |= m_FlagBits[static_cast<size_t>(flag)];
+		}
+
+		bool GetFlag(const eFlag flag) const
+		{
+			return m_Flags & m_FlagBits[static_cast<size_t>(flag)];
+		}
+
+		std::string		Data;	///< Data of line.
+		size_t			No;		///< Line number.
+		size_t			Offset;	///< Offset to first character in data.
+		Node::eType		Type;	///< Type of line.
+
+	private:
+
+		static const unsigned char m_FlagBits[3];
+
+		/**
+		* @breif Flags of line
+		*		 Bits:
+		*			0:  
+		*
+		*/
+		unsigned char	m_Flags; ///< Flags of line.
+	};
+
+	const unsigned char ReaderLine::m_FlagBits[3] = { 0x01, 0x02, 0x04 };
+
 	class ReaderImp
 	{
 
 	public:
 
 		/**
-		* @breif Constructor.
+		* @breif Default constructor.
 		*
 		*/
-		ReaderImp(Node & root, std::iostream & stream)
+		ReaderImp()
 		{
-			ReadLines(stream);
-			PostProcessLines();
 		}
 
 		/**
@@ -104,6 +188,17 @@ namespace Yaml
 		}
 
 		/**
+		* @breif Run full parsing procedure.
+		*
+		*/
+		void Parse(Node & root, std::iostream & stream)
+		{
+			ReadLines(stream);
+			PostProcessLines();
+			Print();
+		}
+
+		/**
 		* @breif Read all lines.
 		*		 Ignoring:
 		*			- Empty lines.
@@ -111,7 +206,7 @@ namespace Yaml
 		*			- Document start/end.
 		*
 		*/
-		bool ReadLines(std::iostream & stream)
+		void ReadLines(std::iostream & stream)
 		{
 			std::string line = "";
 			size_t		lineNo = 0;
@@ -158,12 +253,12 @@ namespace Yaml
 					continue;
 				}
 
-				m_Lines.push_back(new Line(line, lineNo, 0));
+				m_Lines.push_back(new ReaderLine(line, lineNo, 0));
 			}
 
 			for (auto it = m_Lines.begin(); it != m_Lines.end();)
 			{
-				Line * pLine = *it;
+				ReaderLine * pLine = *it;
 
 				// Find first/last of tabs and spaces.
 				const size_t firstTabPos	= pLine->Data.find_first_of('\t');
@@ -181,7 +276,7 @@ namespace Yaml
 				// Do not allow tabs in offset.
 				if (firstTabPos < startOffset)
 				{
-					throw ParsingException("Tab found in offset. Line " + std::to_string(lineNo) + " column " + std::to_string(firstTabPos + 1) + "." );
+					throw ParsingException(ExceptionMessage(g_ErrorTabInOffset, *pLine, firstTabPos));
 				}
 
 				// Remove starting/ending spaces
@@ -202,20 +297,87 @@ namespace Yaml
 		{
 			for (auto it = m_Lines.begin(); it != m_Lines.end();)
 			{
-				if (PostProcessSequenceToken(it) == true)
+				ReaderLine * pLine = *it;
+				if (PostProcessSequence(it) == true)
 				{
+					pLine->Type = Node::SequenceType;
+					++it;
+					continue;
+				}
+
+				if (PostProcessMapping(it) == true)
+				{
+					pLine->Type = Node::MappingType;
 					++it;
 					continue;
 				}
 
 				if (PostProcessScalar(it) == true)
 				{
+					pLine->Type = Node::ScalarType;
 					++it;
 					continue;
 				}
 
-				// No processing done on this line, move on.
-				++it;
+				throw ParsingException(ExceptionMessage(g_ErrorUnableToParse, *pLine));
+			}
+		}
+
+		void Print()
+		{
+			for (auto it = m_Lines.begin(); it != m_Lines.end(); it++)
+			{
+
+				ReaderLine * pLine = *it;
+
+				// Print type
+				if (pLine->Type == Node::SequenceType)
+				{
+					std::cout << "seq ";
+				}
+				else if (pLine->Type == Node::MappingType)
+				{
+					std::cout << "map ";
+				}
+				else if (pLine->Type == Node::ScalarType)
+				{
+					std::cout << "sca ";
+				}
+				else
+				{
+					std::cout << "    ";
+				}
+
+				// Print flags
+				if (pLine->GetFlag(ReaderLine::FoldedTextFlag))
+				{
+					std::cout << "f";
+				}
+				else
+				{
+					std::cout << " ";
+				}
+				if (pLine->GetFlag(ReaderLine::LiteralTextFlag))
+				{
+					std::cout << "l";
+				}
+				else
+				{
+					std::cout << " ";
+				}
+				if (pLine->GetFlag(ReaderLine::NewLineFlag))
+				{
+					std::cout << "n";
+				}
+				else
+				{
+					std::cout << " ";
+				}
+
+				std::cout << "| ";
+				std::cout << std::string(pLine->Offset, ' ');
+				std::cout << pLine->Data << std::endl;
+
 			}
 		}
 
@@ -234,55 +396,26 @@ namespace Yaml
 
 	private:
 
-
 		/**
-		* @breif Line information structure.
+		* @breif Copy constructor.
 		*
 		*/
-		class Line
+		ReaderImp(const ReaderImp & copy)
 		{
 
-		public:
-
-			/**
-			* @breif Default constructor.
-			*
-			*/
-			Line() :
-				Data(""),
-				No(0),
-				Offset(0)
-			{
-			}
-
-			/**
-			* @breif Constructor.
-			*
-			*/
-			Line(const std::string & data, size_t no, size_t offset) :
-				Data(data),
-				No(no),
-				Offset(offset)
-			{
-			}
-
-
-			std::string		Data;	///< Data of line.
-			size_t			No;		///< Line number.
-			size_t			Offset;	///< Offset to first character in data.
-		};
+		}
 
 
 		/**
 		* @breif Run post-processing and check for sequence.
 		*		 Split line into two lines if sequence token is not on it's own line.
 		*		 
-		* @return true if line is sequence start, else false.
+		* @return true if line is sequence, else false.
 		*
 		*/
-		bool PostProcessSequenceToken(std::list<Line *>::iterator & it)
+		bool PostProcessSequence(std::list<ReaderLine *>::iterator & it)
 		{
-			Line * pLine = *it;
+			ReaderLine * pLine = *it;
 
 			// Sequence split
 			if (pLine->Data[0] != '-')
@@ -296,6 +429,10 @@ namespace Yaml
 			}
 
 			const size_t splitPos = pLine->Data.find_first_not_of(" \t", 1);
+			if (splitPos == 1)
+			{
+				return false;
+			}
 			if (splitPos == std::string::npos)
 			{
 				return true;
@@ -303,68 +440,94 @@ namespace Yaml
 
 			// Create new line and insert
 			std::string newLine = pLine->Data.substr(splitPos);
-			it = m_Lines.insert(++it, new Line(newLine, pLine->No, pLine->Offset + splitPos));
+			it = m_Lines.insert(++it, new ReaderLine(newLine, pLine->No, pLine->Offset + splitPos));
+			--it;
 			pLine->Data = "-";
 
 			return true;
 		}
 
 		/**
-		* @breif Run post-processing and check for scalar.
-		*		 Split line into two lines if scalar value is not on it's own line.
+		* @breif Run post-processing and check for mapping.
+		*		 Split line into two lines if mapping value is not on it's own line.
 		*
-		* @return true if line is scalar start, else false.
+		* @return true if line is mapping, else false.
 		*
 		*/
-		bool PostProcessScalar(std::list<Line *>::iterator & it)
+		bool PostProcessMapping(std::list<ReaderLine *>::iterator & it)
 		{
-			Line * pLine = *it;
-			const size_t tokenPos = pLine->Data.find_first_of(":");
-
+			ReaderLine * pLine = *it;
+			size_t tokenPos = pLine->Data.find_first_of(":");
+			size_t expectedTokenPos = tokenPos;
 			if (tokenPos == std::string::npos)
 			{
 				return false;
 			}
-			if (tokenPos == pLine->Data.size())
+
+			bool missingKey = false;
+			if (tokenPos == 0)
 			{
-				return true;
+				missingKey = true;
+			}
+			else
+			{
+				expectedTokenPos = pLine->Data.find_last_not_of(" \t", tokenPos - 1);
+				if (expectedTokenPos == std::string::npos)
+				{
+					missingKey = true;
+				}
+				expectedTokenPos++;
+			}
+			if (missingKey)
+			{
+				throw ParsingException(ExceptionMessage(g_ErrorKeyMissing, *pLine));
 			}
 
-			const size_t splitStart = pLine->Data.find_first_not_of(" \t", tokenPos + 1);
-			if (splitStart == std::string::npos)
+			size_t eraseSize = 0;
+			if (tokenPos != expectedTokenPos)
+			{
+				eraseSize = tokenPos - expectedTokenPos;
+				pLine->Data.erase(expectedTokenPos, eraseSize);
+				tokenPos -= eraseSize;
+			}
+			
+			if (tokenPos + 1 == pLine->Data.size())
 			{
 				return true;
 			}
 
 			// Create new line and insert
+			const size_t splitStart = pLine->Data.find_first_not_of(" \t", tokenPos + 1);
 			std::string newLine = pLine->Data.substr(splitStart);
-			it = m_Lines.insert(++it, new Line(newLine, pLine->No, pLine->Offset + splitStart));
-			
+			it = m_Lines.insert(++it, new ReaderLine(newLine, pLine->No, pLine->Offset + splitStart + eraseSize));
+			--it;
+
 			// Resize old line.
 			pLine->Data.resize(tokenPos + 1);
-
 
 			return true;
 		}
 
-		std::list<Line *>	m_Lines;	///< List of lines.
+		/**
+		* @breif Run post-processing and check for scalar.
+		*		 Checking for multi-line scalars.
+		*
+		* @return true if line is scalar, else false.
+		*
+		*/
+		bool PostProcessScalar(std::list<ReaderLine *>::iterator & it)
+		{
+			return true;
+		}
+
+		std::list<ReaderLine *>	m_Lines;	///< List of lines.
 
 	};
 
 	// Reader class
-	Reader::Reader() :
-		m_pImp(nullptr)
+	Reader::Reader()
 	{
 	}
-
-	Reader::~Reader()
-	{
-		if (m_pImp != nullptr)
-		{
-			delete m_pImp;
-		}
-	}
-
 
 	Reader::Reader(Node & root, const char * filename) :
 		Reader()
@@ -411,23 +574,18 @@ namespace Yaml
 
 	void Reader::Parse(Node & root, std::iostream & stream)
 	{
-		if (m_pImp != nullptr)
-		{
-			delete m_pImp;
-			m_pImp = nullptr;
-		}
+		ReaderImp * pImp = nullptr;
 
 		try
 		{
-			m_pImp = new ReaderImp(root, stream);
-			delete m_pImp;
-			m_pImp = nullptr;
+			pImp = new ReaderImp;
+			pImp->Parse(root, stream);
+			delete pImp;
 		}
 		catch (const Exception & e)
 		{
-			delete m_pImp;
-			m_pImp = nullptr;
-			throw e;
+			delete pImp;
+			throw;
 		}
 	}
 
@@ -441,6 +599,19 @@ namespace Yaml
 	{
 		std::stringstream ss(std::string(buffer, size));
 		Parse(root, ss);
+	}
+
+
+
+	// Static function implementations
+	std::string ExceptionMessage(const std::string & message, ReaderLine & line)
+	{
+		return message + std::string(" Line ") + std::to_string(line.No) + std::string(": ") + line.Data;
+	}
+
+	std::string ExceptionMessage(const std::string & message, ReaderLine & line, const size_t errorPos)
+	{
+		return message + std::string(" Line ") + std::to_string(line.No) + std::string(" column ") + std::to_string(errorPos + 1) + std::string(": ") + line.Data;
 	}
 
 }
