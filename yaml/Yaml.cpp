@@ -36,9 +36,13 @@
 // ...
 
 // Exception message definitions.
-static const std::string g_ErrorKeyMissing = "Missing key.";
-static const std::string g_ErrorTabInOffset = "Tab found in offset.";
-static const std::string g_ErrorUnableToParse = "Unable to parse.";
+
+static const std::string g_ErrorInvalidCharacter		= "Invalid character found.";
+static const std::string g_ErrorKeyMissing				= "Missing key.";
+static const std::string g_ErrorTabInOffset				= "Tab found in offset.";
+static const std::string g_ErrorBlockSequenceNotAllowed = "Block sequence entries are not allowed in this context.";
+static const std::string g_ErrorUnableToParse			= "Unable to parse.";
+static const std::string g_ErrorUnexpectedDocumentEnd	= "Unexpected document end.";
 
 
 namespace Yaml
@@ -48,6 +52,7 @@ namespace Yaml
 	// Global function definitions. Implemented at end of this source file.
 	static std::string ExceptionMessage(const std::string & message, ReaderLine & line);
 	static std::string ExceptionMessage(const std::string & message, ReaderLine & line, const size_t errorPos);
+	static std::string ExceptionMessage(const std::string & message, const size_t errorLine, const size_t errorPos);
 
 	// Exception implementations
 	Exception::Exception(const std::string & message, const eType type) :
@@ -111,7 +116,8 @@ namespace Yaml
 			No(0),
 			Offset(0),
 			Type(Node::None),
-			m_Flags(0)
+			Flags(0),
+			NextLine(nullptr)
 		{
 		}
 
@@ -124,46 +130,65 @@ namespace Yaml
 			No(no),
 			Offset(offset),
 			Type(Node::None),
-			m_Flags(0)
+			Flags(0),
+			NextLine(nullptr)
 		{
 		}
 
 		enum eFlag
 		{
-			LiteralTextFlag,
-			FoldedTextFlag,
-			NewLineFlag
+			LiteralScalarFlag,		///< Litteral scalar type, defined as "|".
+			FoldedScalarFlag,		///< Folded scalar type, defined as "<".
+			ScalarNewlineFlag,		///< Scalar ends with a newline.
 		};
 
+		/**
+		* @breif Set flag.
+		*
+		*/
 		void SetFlag(const eFlag flag)
 		{
-			m_Flags |= m_FlagBits[static_cast<size_t>(flag)];
+			Flags |= m_FlagMask[static_cast<size_t>(flag)];
 		}
 
+		/**
+		* @breif Get flag value.
+		*
+		*/
 		bool GetFlag(const eFlag flag) const
 		{
-			return m_Flags & m_FlagBits[static_cast<size_t>(flag)];
+			return Flags & m_FlagMask[static_cast<size_t>(flag)];
 		}
 
-		std::string		Data;	///< Data of line.
-		size_t			No;		///< Line number.
-		size_t			Offset;	///< Offset to first character in data.
-		Node::eType		Type;	///< Type of line.
+		/**
+		* @breif Copy and replace scalar flags from another ReaderLine.
+		*
+		*/
+		void CopyScalarFlags(ReaderLine * from)
+		{
+			if (from == nullptr)
+			{
+				return;
+			}
+
+			unsigned char newFlags = from->Flags & (m_FlagMask[0] | m_FlagMask[1] | m_FlagMask[2]);
+			Flags |= newFlags;
+		}
+
+		std::string		Data;		///< Data of line.
+		size_t			No;			///< Line number.
+		size_t			Offset;		///< Offset to first character in data.
+		Node::eType		Type;		///< Type of line.
+		unsigned char	Flags;		///< Flags of line.
+		ReaderLine *	NextLine;	///< Pointer to next line.
 
 	private:
 
-		static const unsigned char m_FlagBits[3];
-
-		/**
-		* @breif Flags of line
-		*		 Bits:
-		*			0:  
-		*
-		*/
-		unsigned char	m_Flags; ///< Flags of line.
+		static const unsigned char m_FlagMask[3];
+		
 	};
 
-	const unsigned char ReaderLine::m_FlagBits[3] = { 0x01, 0x02, 0x04 };
+	const unsigned char ReaderLine::m_FlagMask[3] = { 0x01, 0x02, 0x04 };
 
 	class ReaderImp
 	{
@@ -253,6 +278,14 @@ namespace Yaml
 					continue;
 				}
 
+				for (size_t i = 0; i < line.size(); i++)
+				{
+					if (line[i] != '\t' && (line[i] < 32 || line[i] > 125))
+					{
+						throw ParsingException(ExceptionMessage(g_ErrorInvalidCharacter, lineNo, i + 1));
+					}
+				}
+
 				m_Lines.push_back(new ReaderLine(line, lineNo, 0));
 			}
 
@@ -285,7 +318,7 @@ namespace Yaml
 
 				// Move to next line.
 				++it;
-			}
+			}			
 		}
 
 		/**
@@ -298,28 +331,43 @@ namespace Yaml
 			for (auto it = m_Lines.begin(); it != m_Lines.end();)
 			{
 				ReaderLine * pLine = *it;
+
+				// Sequence.
 				if (PostProcessSequence(it) == true)
 				{
-					pLine->Type = Node::SequenceType;
-					++it;
 					continue;
 				}
 
+				// Mapping.
 				if (PostProcessMapping(it) == true)
 				{
-					pLine->Type = Node::MappingType;
-					++it;
 					continue;
 				}
 
-				if (PostProcessScalar(it) == true)
+				// Scalar.
+				PostProcessScalar(it, (*it)->Offset);
+			}
+
+			if (m_Lines.size())
+			{
+				if (m_Lines.back()->Type != Node::ScalarType)
 				{
-					pLine->Type = Node::ScalarType;
-					++it;
-					continue;
+					throw ParsingException(ExceptionMessage(g_ErrorUnexpectedDocumentEnd, *m_Lines.back()));
 				}
 
-				throw ParsingException(ExceptionMessage(g_ErrorUnableToParse, *pLine));
+				if (m_Lines.size() > 1)
+				{
+					auto prevEnd = m_Lines.end();
+					--prevEnd;
+
+					for (auto it = m_Lines.begin(); it != prevEnd; it++)
+					{
+						auto nextIt = it;
+						++nextIt;
+
+						(*it)->NextLine = *nextIt;
+					}
+				}
 			}
 		}
 
@@ -349,34 +397,67 @@ namespace Yaml
 				}
 
 				// Print flags
-				if (pLine->GetFlag(ReaderLine::FoldedTextFlag))
+				if (pLine->GetFlag(ReaderLine::FoldedScalarFlag))
 				{
 					std::cout << "f";
 				}
 				else
 				{
-					std::cout << " ";
+					std::cout << "-";
 				}
-				if (pLine->GetFlag(ReaderLine::LiteralTextFlag))
+				if (pLine->GetFlag(ReaderLine::LiteralScalarFlag))
 				{
 					std::cout << "l";
 				}
 				else
 				{
-					std::cout << " ";
+					std::cout << "-";
 				}
-				if (pLine->GetFlag(ReaderLine::NewLineFlag))
+				if (pLine->GetFlag(ReaderLine::ScalarNewlineFlag))
 				{
 					std::cout << "n";
 				}
 				else
 				{
-					std::cout << " ";
+					std::cout << "-";
 				}
+				if (pLine->NextLine == nullptr)
+				{
+					std::cout << "e";
+				}
+				else
+				{
+					std::cout << "-";
+				}
+
 
 				std::cout << "| ";
 				std::cout << std::string(pLine->Offset, ' ');
-				std::cout << pLine->Data << std::endl;
+
+				if (pLine->Type == Node::ScalarType)
+				{
+					std::string scalarValue = pLine->Data;
+					for (size_t i = 0; (i = scalarValue.find("\n", i)) != std::string::npos;)
+					{
+						scalarValue.replace(i, 1, "\\n");
+						i += 2;
+					}
+					std::cout << scalarValue << std::endl;
+				}
+				else if (pLine->Type == Node::MappingType)
+				{
+					std::cout << pLine->Data + ":" << std::endl;
+				}
+				else if (pLine->Type == Node::SequenceType)
+				{
+					std::cout << "-" << std::endl;
+				}
+				else
+				{
+					std::cout << "> UNKOWN TYPE <" << std::endl;
+				}
+
+				
 
 			}
 		}
@@ -418,92 +499,109 @@ namespace Yaml
 			ReaderLine * pLine = *it;
 
 			// Sequence split
-			if (pLine->Data[0] != '-')
+			if (IsSequenceStart(pLine->Data) == false)
 			{
 				return false;
 			}
 
-			if (pLine->Data.size() == 1)
-			{
-				return true;
-			}
+			pLine->Type = Node::SequenceType;
 
-			const size_t splitPos = pLine->Data.find_first_not_of(" \t", 1);
-			if (splitPos == 1)
+			const size_t valueStart = pLine->Data.find_first_not_of(" \t", 1);
+			if (valueStart == std::string::npos)
 			{
-				return false;
-			}
-			if (splitPos == std::string::npos)
-			{
+				++it;
 				return true;
 			}
 
 			// Create new line and insert
-			std::string newLine = pLine->Data.substr(splitPos);
-			it = m_Lines.insert(++it, new ReaderLine(newLine, pLine->No, pLine->Offset + splitPos));
-			--it;
-			pLine->Data = "-";
+			std::string newLine = pLine->Data.substr(valueStart);
+			it = m_Lines.insert(++it, new ReaderLine(newLine, pLine->No, valueStart));
+			pLine->Data = "";
 
-			return true;
+			return false;
 		}
 
 		/**
 		* @breif Run post-processing and check for mapping.
 		*		 Split line into two lines if mapping value is not on it's own line.
 		*
-		* @return true if line is mapping, else false.
+		* @return true if line is mapping, else move on to scalar parsing.
 		*
 		*/
 		bool PostProcessMapping(std::list<ReaderLine *>::iterator & it)
 		{
 			ReaderLine * pLine = *it;
+
+			// Find map token.
 			size_t tokenPos = pLine->Data.find_first_of(":");
-			size_t expectedTokenPos = tokenPos;
 			if (tokenPos == std::string::npos)
 			{
 				return false;
 			}
 
-			bool missingKey = false;
-			if (tokenPos == 0)
-			{
-				missingKey = true;
-			}
-			else
-			{
-				expectedTokenPos = pLine->Data.find_last_not_of(" \t", tokenPos - 1);
-				if (expectedTokenPos == std::string::npos)
-				{
-					missingKey = true;
-				}
-				expectedTokenPos++;
-			}
-			if (missingKey)
+			pLine->Type = Node::MappingType;
+
+			// Get key
+			std::string key = pLine->Data.substr(0, tokenPos);
+			const size_t keyEnd = key.find_last_not_of(" \t");
+			if (keyEnd == std::string::npos)
 			{
 				throw ParsingException(ExceptionMessage(g_ErrorKeyMissing, *pLine));
 			}
+			key.resize(keyEnd + 1);
 
-			size_t eraseSize = 0;
-			if (tokenPos != expectedTokenPos)
+			// Get value
+			std::string value = "";
+			size_t valueStart = std::string::npos;
+			if (tokenPos + 1 != pLine->Data.size())
 			{
-				eraseSize = tokenPos - expectedTokenPos;
-				pLine->Data.erase(expectedTokenPos, eraseSize);
-				tokenPos -= eraseSize;
+				valueStart = pLine->Data.find_first_not_of(" \t", tokenPos + 1);
+				if (valueStart != std::string::npos)
+				{
+					value = pLine->Data.substr(valueStart);
+				}
 			}
-			
-			if (tokenPos + 1 == pLine->Data.size())
+
+			// Set line data as key
+			pLine->Data = key;
+
+			// Move to next line
+			++it;
+
+			// Add new line with value
+			if (value.size())
 			{
-				return true;
+				if (IsSequenceStart(value) == true)
+				{
+					throw ParsingException(ExceptionMessage(g_ErrorBlockSequenceNotAllowed, *pLine, valueStart));
+				}
+
+				if (value == "|")
+				{
+					pLine->SetFlag(ReaderLine::LiteralScalarFlag);
+					pLine->SetFlag(ReaderLine::ScalarNewlineFlag);
+				}
+				else if (value == ">")
+				{
+					pLine->SetFlag(ReaderLine::FoldedScalarFlag);
+					pLine->SetFlag(ReaderLine::ScalarNewlineFlag);
+				}
+				else if (value == "|-")
+				{
+					pLine->SetFlag(ReaderLine::LiteralScalarFlag);
+				}
+				else if (value == ">-")
+				{
+					pLine->SetFlag(ReaderLine::FoldedScalarFlag);
+				}
+				else
+				{
+					it = m_Lines.insert(it, new ReaderLine(value, pLine->No, valueStart));
+					return false;
+				}
+
+				return false;
 			}
-
-			// Create new line and insert
-			const size_t splitStart = pLine->Data.find_first_not_of(" \t", tokenPos + 1);
-			std::string newLine = pLine->Data.substr(splitStart);
-			it = m_Lines.insert(++it, new ReaderLine(newLine, pLine->No, pLine->Offset + splitStart + eraseSize));
-			--it;
-
-			// Resize old line.
-			pLine->Data.resize(tokenPos + 1);
 
 			return true;
 		}
@@ -512,11 +610,67 @@ namespace Yaml
 		* @breif Run post-processing and check for scalar.
 		*		 Checking for multi-line scalars.
 		*
-		* @return true if line is scalar, else false.
+		* @return true if scalar search should continue, else false.
 		*
 		*/
-		bool PostProcessScalar(std::list<ReaderLine *>::iterator & it)
+		void PostProcessScalar(std::list<ReaderLine *>::iterator & it, const size_t firstOffset)
 		{
+			ReaderLine * pLine = *it;
+			pLine->Type = Node::ScalarType;
+
+			// Copy scalar flags.
+			if (it != m_Lines.begin())
+			{
+				// Get flags from previous line.
+				std::list<ReaderLine *>::iterator prevIt = it;
+				--prevIt;
+				ReaderLine * pPrevLine = *prevIt;
+				pLine->CopyScalarFlags(pPrevLine);
+			}
+
+			// Check if next line should be merged.
+			if (pLine->GetFlag(ReaderLine::FoldedScalarFlag) || pLine->GetFlag(ReaderLine::LiteralScalarFlag))
+			{
+				++it;
+
+				while (1)
+				{
+					if (it == m_Lines.end())
+					{
+						return;
+					}
+
+					ReaderLine * pNextLine = *it;
+					if (pNextLine->Offset < firstOffset)
+					{
+						return;
+					}
+
+					pLine->Data += "\n";
+					pLine->Data += std::string(pNextLine->Offset - firstOffset, ' ');
+					pLine->Data += pNextLine->Data;
+					it = m_Lines.erase(it);
+				}
+			}
+
+			++it;
+		}
+
+		bool IsSequenceStart(const std::string & data) const
+		{
+			if (data.size() == 0 || data[0] != '-')
+			{
+				return false;
+			}
+
+			if (data.size() >= 2)
+			{
+				if (data[1] != ' ')
+				{
+					return false;
+				}
+			}
+
 			return true;
 		}
 
@@ -582,7 +736,7 @@ namespace Yaml
 			pImp->Parse(root, stream);
 			delete pImp;
 		}
-		catch (const Exception & e)
+		catch (const Exception e)
 		{
 			delete pImp;
 			throw;
@@ -612,6 +766,11 @@ namespace Yaml
 	std::string ExceptionMessage(const std::string & message, ReaderLine & line, const size_t errorPos)
 	{
 		return message + std::string(" Line ") + std::to_string(line.No) + std::string(" column ") + std::to_string(errorPos + 1) + std::string(": ") + line.Data;
+	}
+
+	std::string ExceptionMessage(const std::string & message, const size_t errorLine, const size_t errorPos)
+	{
+		return message + std::string(" Line ") + std::to_string(errorLine) + std::string(" column ") + std::to_string(errorPos);
 	}
 
 }

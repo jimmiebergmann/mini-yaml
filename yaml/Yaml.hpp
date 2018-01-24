@@ -229,7 +229,7 @@ namespace Yaml
 		*		 Population given root node with deserialized data.
 		*
 		* @param root		Root node to populate.
-		* @param filename	Path to input file.
+		* @param filename	Path of input file.
 		* @param stream		Input stream.
 		* @param string		String of input data.
 		* @param buffer		Char array of input data.

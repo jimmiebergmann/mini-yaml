@@ -29,10 +29,69 @@ using namespace Yaml;
 
 int main()
 {
-	std::string data =
-		"foo  :\n"
-		" -   bar   :  super\n";
+	/*std::string data =
+		"data1 : \t | \t \n"
+		"  Hello1\n"
+		"   world1.\n"
+		"data2 : \t > \t \n"
+		"  Hello2\n"
+		"   world2.\n"
+		"data3 : \t |- \t \n"
+		"  Hello3\n"
+		"   world3.\n"
+		"data4 : \t >- \t \n"
+		"  Hello4\n"
+		"   world4.\n"
+		"data5: |\n"
+		"   hello: world5\n"
+		"    foo: bar5.\n"
+		"val_3: test\n";
+		*/
 
+	/*std::string data =
+		"val_2: |\n"
+		"   hello: world\n"
+		"    foo: bar.\n"
+		"val_3: test\n";
+	*/
+	
+	
+	std::string data =
+		"data1 : \t | \t \n"
+		"  Hello1\n"
+		"   world1.\n"
+		"data2 : \t > \t \n"
+		"  Hello2\n"
+		"   world2.\n"
+		"data3: \t |- \t \n"
+		"  Hello3\n"
+		"   world3.\n"
+		"data4 : \t >- \t \n"
+		"  Hello4\n"
+		"   world4.\n"
+		"data5: |\n"
+		"   hello: world5\n"
+		"    foo: bar5.\n"
+		"val_3: test\n"
+		"foo  :\n"
+		"   -   bar   :  super1\n"
+		"   -   bar1   :  super2\n"
+		"   -   bar2  \t :  \n"
+		"        bar3   :  super3\n"
+		"        bar4   :  |\n"
+		"          1\n"
+		"          2\n"
+		"          3\n"
+		"foo1  :\n"
+		"  foo2  :\n"
+		"   foo3  :\n"
+		"   foo4  : 123\n"
+		"map1:\n"
+		"   map2:\n"
+		"    map3: 123\n"
+		"map1:\n"
+		"  map2  :  123\n";
+	
 	/*std::string data =
 		" val : 100\n"
 		" \n"
