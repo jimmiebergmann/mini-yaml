@@ -90,7 +90,10 @@ int main()
 		"   map2:\n"
 		"    map3: 123\n"
 		"map1:\n"
-		"  map2  :  123\n";
+		"  map2  : -123\n"
+		"  map3  :\n"
+		"  map4  :\n"
+		"  map5  : 123\n";
 	
 	/*std::string data =
 		" val : 100\n"
@@ -110,7 +113,5 @@ int main()
 		std::cin.get();
 	}
 	
-
-
 	return 0;
 }

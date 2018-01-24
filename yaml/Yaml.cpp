@@ -41,7 +41,7 @@ static const std::string g_ErrorInvalidCharacter		= "Invalid character found.";
 static const std::string g_ErrorKeyMissing				= "Missing key.";
 static const std::string g_ErrorTabInOffset				= "Tab found in offset.";
 static const std::string g_ErrorBlockSequenceNotAllowed = "Block sequence entries are not allowed in this context.";
-static const std::string g_ErrorUnableToParse			= "Unable to parse.";
+//static const std::string g_ErrorUnableToParse			= "Unable to parse.";
 static const std::string g_ErrorUnexpectedDocumentEnd	= "Unexpected document end.";
 
 
@@ -348,6 +348,7 @@ namespace Yaml
 				PostProcessScalar(it, (*it)->Offset);
 			}
 
+			// Set next line of all lines.
 			if (m_Lines.size())
 			{
 				if (m_Lines.back()->Type != Node::ScalarType)
@@ -456,9 +457,6 @@ namespace Yaml
 				{
 					std::cout << "> UNKOWN TYPE <" << std::endl;
 				}
-
-				
-
 			}
 		}
 
@@ -485,7 +483,6 @@ namespace Yaml
 		{
 
 		}
-
 
 		/**
 		* @breif Run post-processing and check for sequence.
@@ -562,6 +559,12 @@ namespace Yaml
 				}
 			}
 
+			// Make sure the value is not a sequence start.
+			if (IsSequenceStart(value) == true)
+			{
+				throw ParsingException(ExceptionMessage(g_ErrorBlockSequenceNotAllowed, *pLine, valueStart));
+			}
+
 			// Set line data as key
 			pLine->Data = key;
 
@@ -571,11 +574,6 @@ namespace Yaml
 			// Add new line with value
 			if (value.size())
 			{
-				if (IsSequenceStart(value) == true)
-				{
-					throw ParsingException(ExceptionMessage(g_ErrorBlockSequenceNotAllowed, *pLine, valueStart));
-				}
-
 				if (value == "|")
 				{
 					pLine->SetFlag(ReaderLine::LiteralScalarFlag);
@@ -601,6 +599,23 @@ namespace Yaml
 				}
 
 				return false;
+			}
+			else
+			{
+				// Add empty scalar value if next offset is the same or lower than this one.
+				if (it != m_Lines.end())
+				{
+					std::list<ReaderLine *>::iterator nextIt = it;
+					++nextIt;
+
+					if(nextIt == m_Lines.end() || (*nextIt)->Offset <= pLine->Offset)
+					{
+						it = m_Lines.insert(it, new ReaderLine("", pLine->No, tokenPos + 1));
+						(*it)->Type = Node::ScalarType;
+						++it;
+						return true;
+					}
+				}
 			}
 
 			return true;
@@ -628,11 +643,12 @@ namespace Yaml
 				pLine->CopyScalarFlags(pPrevLine);
 			}
 
+			// Move to next line
+			++it;
+
 			// Check if next line should be merged.
 			if (pLine->GetFlag(ReaderLine::FoldedScalarFlag) || pLine->GetFlag(ReaderLine::LiteralScalarFlag))
 			{
-				++it;
-
 				while (1)
 				{
 					if (it == m_Lines.end())
@@ -651,9 +667,7 @@ namespace Yaml
 					pLine->Data += pNextLine->Data;
 					it = m_Lines.erase(it);
 				}
-			}
-
-			++it;
+			}	
 		}
 
 		bool IsSequenceStart(const std::string & data) const
@@ -663,12 +677,9 @@ namespace Yaml
 				return false;
 			}
 
-			if (data.size() >= 2)
+			if (data.size() >= 2 && data[1] != ' ')
 			{
-				if (data[1] != ' ')
-				{
-					return false;
-				}
+				return false;
 			}
 
 			return true;
