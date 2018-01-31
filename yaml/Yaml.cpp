@@ -345,7 +345,7 @@ namespace Yaml
 				}
 
 				// Scalar.
-				PostProcessScalar(it, (*it)->Offset);
+				PostProcessScalar(it);
 			}
 
 			// Set next line of all lines.
@@ -603,18 +603,12 @@ namespace Yaml
 			else
 			{
 				// Add empty scalar value if next offset is the same or lower than this one.
-				if (it != m_Lines.end())
+				if (it != m_Lines.end() && (*it)->Offset <= pLine->Offset)
 				{
-					std::list<ReaderLine *>::iterator nextIt = it;
-					++nextIt;
-
-					if(nextIt == m_Lines.end() || (*nextIt)->Offset <= pLine->Offset)
-					{
-						it = m_Lines.insert(it, new ReaderLine("", pLine->No, tokenPos + 1));
-						(*it)->Type = Node::ScalarType;
-						++it;
-						return true;
-					}
+					it = m_Lines.insert(it, new ReaderLine("", pLine->No, tokenPos + 1));
+					(*it)->Type = Node::ScalarType;
+					++it;
+					return true;
 				}
 			}
 
@@ -628,7 +622,7 @@ namespace Yaml
 		* @return true if scalar search should continue, else false.
 		*
 		*/
-		void PostProcessScalar(std::list<ReaderLine *>::iterator & it, const size_t firstOffset)
+		void PostProcessScalar(std::list<ReaderLine *>::iterator & it)
 		{
 			ReaderLine * pLine = *it;
 			pLine->Type = Node::ScalarType;
@@ -651,19 +645,18 @@ namespace Yaml
 			{
 				while (1)
 				{
-					if (it == m_Lines.end())
+					if (it == m_Lines.end() || (*it)->Offset < pLine->Offset)
 					{
+						if (pLine->GetFlag(ReaderLine::ScalarNewlineFlag) == true)
+						{
+							pLine->Data += "\n"
+						}
 						return;
 					}
 
 					ReaderLine * pNextLine = *it;
-					if (pNextLine->Offset < firstOffset)
-					{
-						return;
-					}
-
 					pLine->Data += "\n";
-					pLine->Data += std::string(pNextLine->Offset - firstOffset, ' ');
+					pLine->Data += std::string(pNextLine->Offset - pLine->Offset, ' ');
 					pLine->Data += pNextLine->Data;
 					it = m_Lines.erase(it);
 				}
