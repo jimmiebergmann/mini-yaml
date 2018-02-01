@@ -54,8 +54,8 @@ int main()
 		"    foo: bar.\n"
 		"val_3: test\n";
 	*/
-	
-	
+
+
 	std::string data =
 		"data1 : \t | \t \n"
 		"  Hello1\n"
@@ -94,7 +94,7 @@ int main()
 		"  map3  :\n"
 		"  map4  :\n"
 		"  map5  : 123\n";
-	
+
 	/*std::string data =
 		" val : 100\n"
 		" \n"
@@ -112,6 +112,9 @@ int main()
 		std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
 		std::cin.get();
 	}
-	
+
+	root.As<int>();
+	root.As<std::string>();
+
 	return 0;
 }

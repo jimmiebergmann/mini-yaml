@@ -47,7 +47,7 @@ namespace Yaml
 	* @breif Exception class.
 	*
 	*/
-	class Exception : public std::exception
+	class Exception : public std::runtime_error
 	{
 
 	public:
@@ -160,9 +160,10 @@ namespace Yaml
 	/**
 	* @breif Node class.
 	*		 Types of nodes:
-	*			- Scalar
 	*			- Sequence
-	*			- Mapping
+	*			- Map
+    *           - Scalar
+	*
 	*
 	*/
 	class Node
@@ -177,24 +178,91 @@ namespace Yaml
 		enum eType
 		{
 			None,
-			ScalarType,
 			SequenceType,
-			MappingType
+			MapType,
+			ScalarType
 		};
 
 		/**
 		* @breif Default constructor.
-		*		 Type = None.
 		*
 		*/
 		Node();
 
+		/**
+		* @breif Destructor.
+		*
+		*/
+		~Node();
+
+        /**
+		* @breif Functions for checking type of node.
+		*
+		*/
+		eType GetType() const;
+		bool IsSequence() const;
+		bool IsMap() const;
+		bool IsScalar() const;
+
+        /**
+		* @breif Completely clear node.
+		*
+		*/
+		void Clear();
+
+        /**
+		* @breif Get node as given template type.
+		*
+		*/
+		template<typename T>
+		T As() const
+		{
+		    const std::string & data = AsString();
+
+		    /*if(std::is_same<T, std::string>::value)
+            {
+                return static_cast<T>(data);
+            }*/
+
+            T type;
+            std::stringstream ss(data);
+            ss >> type;
+            return type;
+		}
+
+		/**
+		* @breif Get size of node.
+		*        Scalar types will always return 1.
+		*
+		*/
+		size_t Size() const;
+
+		// Sequence operators
+		Node & operator []  (const size_t index);
+
+		// Map operators
+		Node & operator []  (const std::string & key);
+
+		// Scalar operators
+		Node & operator =   (const std::string & value);
+
 	private:
+
+        /**
+		* @breif Copy constructor.
+		*
+		*/
+        Node(const Node & node);
+
+        /**
+		* @breif Get as string. If type is scalar, else empty.
+		*
+		*/
+		const std::string & AsString() const;
 
 		void * m_pImp; ///< Implementation of node class.
 
 	};
-
 
 	/**
 	* @breif Reader class.
