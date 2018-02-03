@@ -1110,6 +1110,7 @@ namespace Yaml
 				// Move to next line.
 				++it;
 			}
+
 		}
 
 		/**
@@ -1609,6 +1610,8 @@ namespace Yaml
 					pLine->Data += "\n";
 					pLine->Data += std::string(pNextLine->Offset - pLine->Offset, ' ');
 					pLine->Data += pNextLine->Data;
+
+					delete *it;
 					it = m_Lines.erase(it);
 				}
 			}

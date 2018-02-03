@@ -71,7 +71,7 @@ void Example1()
     catch (const Exception e)
     {
         std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
-        std::cin.get();
+        return;
     }
 
     std::cout << root["data1"].As<std::string>() << std::endl;
@@ -79,8 +79,8 @@ void Example1()
     std::cout << root["data3"].As<std::string>() << std::endl;
     std::cout << root["data4"].As<std::string>() << std::endl;
     std::cout << root["data5"].As<std::string>() << std::endl;
-    std::cout << root["data6"].As<int>() << std::endl;
-    std::cout << root["data7"].As<float>() << std::endl;
+    std::cout << root["data6"].As<int>(0) << std::endl;
+    std::cout << root["data7"].As<float>(0.0f) << std::endl;
 }
 
 void Example2()
@@ -102,12 +102,12 @@ void Example2()
     catch (const Exception e)
     {
         std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
-        std::cin.get();
+        return;
     }
 
     std::cout << root[0].As<std::string>() << std::endl;
-    std::cout << root[1].As<int>() << std::endl;
-    std::cout << root[2].As<float>() << std::endl;
+    std::cout << root[1].As<int>(0) << std::endl;
+    std::cout << root[2].As<float>(0.0f) << std::endl;
 }
 
 void Example3()
@@ -131,16 +131,16 @@ void Example3()
     catch (const Exception e)
     {
         std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
-        std::cin.get();
+        return;
     }
 
-    std::cout << root["data1"].As<int>() << std::endl;
+    std::cout << root["data1"].As<int>(0) << std::endl;
     std::cout << root["data2"].As<std::string>() << std::endl;
-    std::cout << root["data3"][0]["key1"].As<int>() << std::endl;
+    std::cout << root["data3"][0]["key1"].As<int>(0) << std::endl;
     std::cout << root["data3"][0]["key2"].As<std::string>() << std::endl;
     std::cout << root["data3"][1].As<std::string>() << std::endl;
-    std::cout << root["data3"][2].As<int>() << std::endl;
-    std::cout << root["data3"][3].As<float>() << std::endl;
+    std::cout << root["data3"][2].As<int>(0) << std::endl;
+    std::cout << root["data3"][3].As<float>(0.0f) << std::endl;
 }
 
 void Example4()
@@ -153,7 +153,7 @@ void Example4()
     catch (const Exception e)
     {
         std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
-        std::cin.get();
+        return;
     }
 
     try
@@ -171,8 +171,8 @@ void Example4()
         }
 
         std::cout << "Server:" << std::endl;
-        std::cout << "  max connections: " << server["max_connections"].As<int>() << std::endl;
-        std::cout << "  com port       : " << server["com_port"].As<unsigned short>() << std::endl;
+        std::cout << "  max connections: " << server["max_connections"].As<int>(0) << std::endl;
+        std::cout << "  com port       : " << server["com_port"].As<unsigned short>(0) << std::endl;
 
         std::cout << "Services:" << std::endl;
         //for(size_t i = 0; i < services.Size(); i++)
@@ -191,7 +191,7 @@ void Example4()
             std::cout << "  name:            " << service["name"].As<std::string>() << std::endl;
             std::cout << "  protocol:        " << service["protocol"].As<std::string>() << std::endl;
             std::cout << "  host:            " << service["host"].As<std::string>() << std::endl;
-            std::cout << "  port:            " << service["port"].As<unsigned short>() << std::endl;
+            std::cout << "  port:            " << service["port"].As<unsigned short>(0) << std::endl;
             std::cout << "  balancing:       " << service["balancing"].As<std::string>("No balancing value.") << std::endl;
             std::cout << "  max_connections: " << service["max_connections"].As<int>(99999) << std::endl;
             std::cout << "  session:         " << service["session"].As<std::string>("No session value.") << std::endl;
@@ -213,7 +213,7 @@ void Example4()
                 std::cout << "    name:      " << node["name"].As<std::string>() << std::endl;
                 std::cout << "    protocol:  " << node["protocol"].As<std::string>() << std::endl;
                 std::cout << "    host:      " << node["host"].As<std::string>() << std::endl;
-                std::cout << "    port:      " << node["port"].As<unsigned short>() << std::endl;
+                std::cout << "    port:      " << node["port"].As<unsigned short>(0) << std::endl;
                 std::cout << std::endl;
             }
 
@@ -224,7 +224,7 @@ void Example4()
     catch (const Exception e)
     {
         std::cout << "Example exception " << e.Type() << ": " << e.what() << std::endl;
-        std::cin.get();
+        return;
     }
 
 
