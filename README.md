@@ -1,7 +1,7 @@
 # mini-yaml
 Single header YAML 1.0 C++11 serializer/deserializer.
 
-## Quick example
+## Quickstart
 #### file.txt
 ```
 key: foo bar
@@ -29,21 +29,15 @@ hello world
 ```
 
 ## Usage
-Put [/yaml](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml) in your project directory and simply #include <yaml.hpp>.
+Put [/yaml](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml) in your project directory and simply #include "yaml.hpp".
 See [examples/FirstExample.cpp](https://github.com/jimmiebergmann/mini-yaml/blob/master/examples/FirstExample.cpp) for additional examples.
 
-## Features
-##### Reader/deserializer
-- Tabs are not allowed in line offsets, parsing exception will be thrown if detected.
-- Parse multiple documents("---" / "...") by calling Parse function multiple times.
-
-## Known limitations
-##### Parser/deserializer
-- Colons inside quotation marks of keys will not work properly.
-Example: "key:": value
-- Flow sequences("[]")/maps("{}") are not supported.
-- Explicit typing(!!type) is not supported.
-- Tags are not supported.
-- Comments are not supported.
-##### Writer/serializer
-- Multi-line scalars are not supported.
+## Todo
+- Add build and test automation.
+- Serialize multi-line scalars.
+- Properly serialize quotation marks.
+- Parse/serialize comments.
+- Ignore explicit typing(!!type) in parsing.
+- Allow customization of serialization. Tab size, sequence item newline, etc..
+- Parse tags.
+- Parse flow sequences/maps.
