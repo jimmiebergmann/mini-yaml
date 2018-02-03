@@ -64,10 +64,9 @@ void Example1()
 		"data7: 123.6\n";
 
     Node root;
-    Reader reader;
     try
     {
-        reader.Parse(root, data);
+        Parse(root, data);
     }
     catch (const Exception e)
     {
@@ -92,10 +91,9 @@ void Example2()
 		" - 123.4\n";
 
     Node root;
-    Reader reader;
     try
     {
-        reader.Parse(root, data);
+        Parse(root, data);
         if(root.IsSequence() == false)
         {
             throw InternalException("Test: Root is not a sequence.");
@@ -126,10 +124,9 @@ void Example3()
 		"   - 123.4\n";
 
     Node root;
-    Reader reader;
     try
     {
-        reader.Parse(root, data);
+        Parse(root, data);
     }
     catch (const Exception e)
     {
@@ -149,10 +146,9 @@ void Example3()
 void Example4()
 {
     Node root;
-    Reader reader;
     try
     {
-        reader.Parse(root, "../examples/data1.txt");
+        Parse(root, "../examples/data1.txt");
     }
     catch (const Exception e)
     {
@@ -179,10 +175,17 @@ void Example4()
         std::cout << "  com port       : " << server["com_port"].As<unsigned short>() << std::endl;
 
         std::cout << "Services:" << std::endl;
-        for(size_t i = 0; i < services.Size(); i++)
+        //for(size_t i = 0; i < services.Size(); i++)
+        size_t countS = 0;
+        for(auto itS = services.Begin(); itS != services.End(); itS++)
         {
-            std::cout << " Service " << i << std::endl;
-            Node & service = services[i];
+            std::cout << " Service " << countS++ << std::endl;
+            Node & service = (*itS).second;
+
+           /* for(auto itSS = service.Begin(); itSS != service.End(); itSS++)
+            {
+                std::cout << "  " << (*itSS).first << ":  " << (*itSS).second.As<std::string>() << std::endl;
+            }*/
 
             std::cout << "  enabled:         " << service["enabled"].As<bool>(false) << std::endl;
             std::cout << "  name:            " << service["name"].As<std::string>() << std::endl;
@@ -200,10 +203,12 @@ void Example4()
             }
 
             std::cout << "  Nodes:" << std::endl;
-            for(size_t i = 0; i < nodes.Size(); i++)
+            //for(size_t i = 0; i < nodes.Size(); i++)
+            size_t countN = 0;
+            for(auto itN = nodes.Begin(); itN != nodes.End(); itN++)
             {
-                std::cout << "   Node " << i << std::endl;
-                Node & node = nodes[i];
+                std::cout << "   Node " << countN++ << std::endl;
+                Node & node = (*itN).second;//nodes[i];
 
                 std::cout << "    name:      " << node["name"].As<std::string>() << std::endl;
                 std::cout << "    protocol:  " << node["protocol"].As<std::string>() << std::endl;
@@ -221,6 +226,18 @@ void Example4()
         std::cout << "Example exception " << e.Type() << ": " << e.what() << std::endl;
         std::cin.get();
     }
+
+
+    try
+    {
+        Serialize(root, "../bin/out.txt");
+    }
+    catch (const Exception e)
+    {
+        std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
+        std::cin.get();
+    }
+
 }
 
 

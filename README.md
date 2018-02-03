@@ -13,7 +13,7 @@ list:
 #### .cpp
 ```cpp
 Node root;
-Reader reader(root, data);
+Reader reader(root, "file.txt");
 
 cout << root["key"].As<string>() << endl;
 cout << root["list"][0].As<string>() << endl;
@@ -38,8 +38,7 @@ See [examples/FirstExample.cpp](https://github.com/jimmiebergmann/mini-yaml/blob
 - Parse multiple documents("---" / "...") by calling Parse function multiple times.
 
 ## Known limitations
-- Unicode is not supported.
-##### Reader/deserializer
+##### Parser/deserializer
 - Colons inside quotation marks of keys will not work properly.
 Example: "key:": value
 - Flow sequences("[]")/maps("{}") are not supported.
@@ -47,4 +46,4 @@ Example: "key:": value
 - Tags are not supported.
 - Comments are not supported.
 ##### Writer/serializer
-- Not yet available.
+- Multi-line scalars are not supported.

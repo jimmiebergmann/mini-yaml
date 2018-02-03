@@ -28,41 +28,41 @@
 #include <fstream>
 #include <sstream>
 #include <list>
-#include <map>
 #include <cstdio>
 #include <stdarg.h>
 
 
 // Implementation access definitions.
 #define NODE_IMP static_cast<NodeImp*>(m_pImp)
+#define NODE_IMP_EXT(node) static_cast<NodeImp*>(node.m_pImp)
 #define TYPE_IMP static_cast<NodeImp*>(m_pImp)->m_pImp
 
-// Exception message definitions.
 
-static const std::string g_ErrorInvalidCharacter		= "Invalid character found.";
-static const std::string g_ErrorKeyMissing				= "Missing key.";
-static const std::string g_ErrorTabInOffset				= "Tab found in offset.";
-static const std::string g_ErrorBlockSequenceNotAllowed = "Block sequence entries are not allowed in this context.";
-static const std::string g_ErrorUnexpectedDocumentEnd	= "Unexpected document end.";
-static const std::string g_ErrorDiffEntryNotAllowed	    = "Different entry is not allowed in this context.";
-static const std::string g_ErrorIncorrectOffset	        = "Incorrect offset.";
-static const std::string g_ErrorSequenceError	        = "Error in sequence node.";
-
-static const std::string g_EmptyString = "";
-static Yaml::Node        g_NoneNode;
-
-
-//static const std::string g_ErrorUnableToParse			= "Unable to parse.";
+#define IT_IMP static_cast<IteratorImp*>(m_pImp)
 
 
 namespace Yaml
 {
 	class ReaderLine;
 
+	// Exception message definitions.
+    static const std::string g_ErrorInvalidCharacter		= "Invalid character found.";
+    static const std::string g_ErrorKeyMissing				= "Missing key.";
+    static const std::string g_ErrorTabInOffset				= "Tab found in offset.";
+    static const std::string g_ErrorBlockSequenceNotAllowed = "Block sequence entries are not allowed in this context.";
+    static const std::string g_ErrorUnexpectedDocumentEnd	= "Unexpected document end.";
+    static const std::string g_ErrorDiffEntryNotAllowed	    = "Different entry is not allowed in this context.";
+    static const std::string g_ErrorIncorrectOffset	        = "Incorrect offset.";
+    static const std::string g_ErrorSequenceError	        = "Error in sequence node.";
+    static const std::string g_ErrorCannotOpenFile          = "Cannot open file.";
+    static const std::string g_EmptyString = "";
+    static Yaml::Node        g_NoneNode;
+
 	// Global function definitions. Implemented at end of this source file.
 	static std::string ExceptionMessage(const std::string & message, ReaderLine & line);
 	static std::string ExceptionMessage(const std::string & message, ReaderLine & line, const size_t errorPos);
 	static std::string ExceptionMessage(const std::string & message, const size_t errorLine, const size_t errorPos);
+
 
 	// Exception implementations
 	Exception::Exception(const std::string & message, const eType type) :
@@ -447,6 +447,249 @@ namespace Yaml
 
     };
 
+    // Iterator implementation class
+    class IteratorImp
+    {
+
+    public:
+
+        virtual ~IteratorImp()
+        {
+        }
+
+        virtual Node::eType GetType() const = 0;
+        virtual void InitBegin(SequenceImp * pSequenceImp) = 0;
+        virtual void InitEnd(SequenceImp * pSequenceImp) = 0;
+        virtual void InitBegin(MapImp * pMapImp) = 0;
+        virtual void InitEnd(MapImp * pMapImp) = 0;
+
+    };
+
+    class SequenceIteratorImp : public IteratorImp
+    {
+
+    public:
+
+        virtual Node::eType GetType() const
+        {
+            return Node::SequenceType;
+        }
+
+        virtual void InitBegin(SequenceImp * pSequenceImp)
+        {
+            m_Iterator = pSequenceImp->m_Sequence.begin();
+        }
+
+        virtual void InitEnd(SequenceImp * pSequenceImp)
+        {
+            m_Iterator = pSequenceImp->m_Sequence.end();
+        }
+
+        virtual void InitBegin(MapImp * pMapImp)
+        {
+        }
+
+        virtual void InitEnd(MapImp * pMapImp)
+        {
+        }
+
+        void Copy(const SequenceIteratorImp & it)
+        {
+            m_Iterator = it.m_Iterator;
+        }
+
+        std::map<size_t, Node *>::iterator m_Iterator;
+
+    };
+
+    class MapIteratorImp : public IteratorImp
+    {
+
+    public:
+
+        virtual Node::eType GetType() const
+        {
+            return Node::MapType;
+        }
+
+        virtual void InitBegin(SequenceImp * pSequenceImp)
+        {
+        }
+
+        virtual void InitEnd(SequenceImp * pSequenceImp)
+        {
+        }
+
+        virtual void InitBegin(MapImp * pMapImp)
+        {
+            m_Iterator = pMapImp->m_Map.begin();
+        }
+
+        virtual void InitEnd(MapImp * pMapImp)
+        {
+            m_Iterator = pMapImp->m_Map.end();
+        }
+
+        void Copy(const MapIteratorImp & it)
+        {
+            m_Iterator = it.m_Iterator;
+        }
+
+        std::map<std::string, Node *>::iterator m_Iterator;
+
+    };
+
+
+    // Iterator class
+    Iterator::Iterator() :
+        m_Type(None),
+        m_pImp(nullptr)
+    {
+    }
+
+    Iterator::~Iterator()
+    {
+        if(m_pImp)
+        {
+            switch(m_Type)
+            {
+            case SequenceType:
+                delete static_cast<SequenceIteratorImp*>(m_pImp);
+                break;
+            case MapType:
+                delete static_cast<MapIteratorImp*>(m_pImp);
+                break;
+            default:
+                break;
+            }
+
+        }
+    }
+
+    Iterator::Iterator(const Iterator & it)
+    {
+        *this = it;
+    }
+
+    Iterator & Iterator::operator = (const Iterator & it)
+    {
+        if(m_pImp)
+        {
+            switch(m_Type)
+            {
+            case SequenceType:
+                delete static_cast<SequenceIteratorImp*>(m_pImp);
+                break;
+            case MapType:
+                delete static_cast<MapIteratorImp*>(m_pImp);
+                break;
+            default:
+                break;
+            }
+            m_pImp = nullptr;
+            m_Type = None;
+        }
+
+        IteratorImp * pNewImp = nullptr;
+
+        switch(it.m_Type)
+        {
+        case SequenceType:
+            m_Type = SequenceType;
+            pNewImp = new SequenceIteratorImp;
+            static_cast<SequenceIteratorImp*>(pNewImp)->m_Iterator = static_cast<SequenceIteratorImp*>(it.m_pImp)->m_Iterator;
+            break;
+        case MapType:
+            m_Type = MapType;
+            pNewImp = new MapIteratorImp;
+            static_cast<MapIteratorImp*>(pNewImp)->m_Iterator = static_cast<MapIteratorImp*>(it.m_pImp)->m_Iterator;
+            break;
+        default:
+            break;
+        }
+
+        m_pImp = pNewImp;
+        return *this;
+    }
+
+    std::pair<const std::string &, Node &> Iterator::operator *()
+    {
+        switch(m_Type)
+        {
+        case SequenceType:
+            return {"", *(static_cast<SequenceIteratorImp*>(m_pImp)->m_Iterator->second)};
+            break;
+        case MapType:
+            return {static_cast<MapIteratorImp*>(m_pImp)->m_Iterator->first,
+                    *(static_cast<MapIteratorImp*>(m_pImp)->m_Iterator->second)};
+            break;
+        default:
+            break;
+        }
+
+        g_NoneNode.Clear();
+        return {"", g_NoneNode};
+    }
+
+    Iterator & Iterator::operator ++ (int dummy)
+    {
+        switch(m_Type)
+        {
+        case SequenceType:
+            static_cast<SequenceIteratorImp*>(m_pImp)->m_Iterator++;
+            break;
+        case MapType:
+            static_cast<MapIteratorImp*>(m_pImp)->m_Iterator++;
+            break;
+        default:
+            break;
+        }
+        return *this;
+    }
+
+    Iterator & Iterator::operator -- (int dummy)
+    {
+        switch(m_Type)
+        {
+        case SequenceType:
+            static_cast<SequenceIteratorImp*>(m_pImp)->m_Iterator--;
+            break;
+        case MapType:
+            static_cast<MapIteratorImp*>(m_pImp)->m_Iterator--;
+            break;
+        default:
+            break;
+        }
+        return *this;
+    }
+
+    bool Iterator::operator == (const Iterator & it)
+    {
+        if(m_Type != it.m_Type)
+        {
+            return false;
+        }
+
+        switch(m_Type)
+        {
+        case SequenceType:
+            return static_cast<SequenceIteratorImp*>(m_pImp)->m_Iterator == static_cast<SequenceIteratorImp*>(it.m_pImp)->m_Iterator;
+            break;
+        case MapType:
+            return static_cast<MapIteratorImp*>(m_pImp)->m_Iterator == static_cast<MapIteratorImp*>(it.m_pImp)->m_Iterator;
+            break;
+        default:
+            break;
+        }
+
+        return false;
+    }
+
+    bool Iterator::operator != (const Iterator & it)
+    {
+        return !(*this == it);
+    }
+
 
 	// Node class
 	Node::Node() :
@@ -459,10 +702,15 @@ namespace Yaml
         delete static_cast<NodeImp*>(m_pImp);
 	}
 
-	Node::eType Node::GetType() const
+	Node::eType Node::Type() const
 	{
         return NODE_IMP->m_Type;
 	}
+
+    bool Node::IsNone() const
+    {
+        return NODE_IMP->m_Type == Node::None;
+    }
 
     bool Node::IsSequence() const
     {
@@ -555,6 +803,66 @@ namespace Yaml
         NODE_IMP->InitScalar();
         TYPE_IMP->SetData(value);
         return *this;
+    }
+
+    Iterator Node::Begin()
+    {
+        Iterator it;
+
+        if(TYPE_IMP != nullptr)
+        {
+            IteratorImp * pItImp = nullptr;
+
+            switch(NODE_IMP->m_Type)
+            {
+            case Node::SequenceType:
+                it.m_Type = Iterator::SequenceType;
+                pItImp = new SequenceIteratorImp;
+                pItImp->InitBegin(static_cast<SequenceImp*>(TYPE_IMP));
+                break;
+            case Node::MapType:
+                it.m_Type = Iterator::MapType;
+                pItImp = new MapIteratorImp;
+                pItImp->InitBegin(static_cast<MapImp*>(TYPE_IMP));
+                break;
+            default:
+                break;
+            }
+
+            it.m_pImp = pItImp;
+        }
+
+        return it;
+    }
+
+    Iterator Node::End()
+    {
+       Iterator it;
+
+        if(TYPE_IMP != nullptr)
+        {
+            IteratorImp * pItImp = nullptr;
+
+            switch(NODE_IMP->m_Type)
+            {
+            case Node::SequenceType:
+                it.m_Type = Iterator::SequenceType;
+                pItImp = new SequenceIteratorImp;
+                pItImp->InitEnd(static_cast<SequenceImp*>(TYPE_IMP));
+                break;
+            case Node::MapType:
+                it.m_Type = Iterator::MapType;
+                pItImp = new MapIteratorImp;
+                pItImp->InitEnd(static_cast<MapImp*>(TYPE_IMP));
+                break;
+            default:
+                break;
+            }
+
+            it.m_pImp = pItImp;
+        }
+
+        return it;
     }
 
     const std::string & Node::AsString() const
@@ -1325,41 +1633,13 @@ namespace Yaml
 
 	};
 
-	// Reader class
-	Reader::Reader()
-	{
-	}
-
-	Reader::Reader(Node & root, const char * filename) :
-		Reader()
-	{
-		Parse(root, filename);
-	}
-
-	Reader::Reader(Node & root, std::iostream & stream) :
-		Reader()
-	{
-		Parse(root, stream);
-	}
-
-	Reader::Reader(Node & root, const std::string & string) :
-		Reader()
-	{
-		Parse(root, string);
-	}
-
-	Reader::Reader(Node & root, const char * buffer, const size_t size) :
-		Reader()
-	{
-		Parse(root, buffer, size);
-	}
-
-	void Reader::Parse(Node & root, const char * filename)
+	// Parsing functions
+	void Parse(Node & root, const char * filename)
 	{
 		std::ifstream f(filename, std::ifstream::binary);
 		if (f.is_open() == false)
 		{
-			throw OperationException("Cannot open file.");
+			throw OperationException(g_ErrorCannotOpenFile);
 		}
 
 		f.seekg(0, f.end);
@@ -1373,7 +1653,7 @@ namespace Yaml
 		Parse(root, data.get(), fileSize);
 	}
 
-	void Reader::Parse(Node & root, std::iostream & stream)
+	void Parse(Node & root, std::iostream & stream)
 	{
 		ReaderImp * pImp = nullptr;
 
@@ -1390,17 +1670,109 @@ namespace Yaml
 		}
 	}
 
-	void Reader::Parse(Node & root, const std::string & string)
+	void Parse(Node & root, const std::string & string)
 	{
 		std::stringstream ss(string);
 		Parse(root, ss);
 	}
 
-	void Reader::Parse(Node & root, const char * buffer, const size_t size)
+	void Parse(Node & root, const char * buffer, const size_t size)
 	{
 		std::stringstream ss(std::string(buffer, size));
 		Parse(root, ss);
 	}
+
+
+	// Serialization functions
+	void Serialize(Node & root, const char * filename, const size_t tabSize)
+    {
+        std::ofstream f(filename);
+		if (f.is_open() == false)
+		{
+			throw OperationException(g_ErrorCannotOpenFile);
+		}
+
+		try
+		{
+		    std::stringstream stream;
+		    Serialize(root, stream, tabSize);
+		    f.write(stream.str().c_str(), stream.str().size());
+		    f.close();
+		}
+		catch(const Exception & e)
+		{
+		   f.close();
+		   throw;
+		}
+    }
+
+    static void SerializeLoop(Node & node, std::iostream & stream, size_t level, const size_t tabSize)
+    {
+        switch(node.Type())
+        {
+            case Node::SequenceType:
+            {
+                for(auto it = node.Begin(); it != node.End(); it++)
+                {
+                    Node & value = (*it).second;
+                    if(value.IsNone())
+                    {
+                        continue;
+                    }
+                    stream << std::string(level, ' ') << "- ";
+                    if(value.IsScalar() == false)
+                    {
+                        stream << "\n";
+                    }
+
+                    SerializeLoop(value, stream, level + tabSize, tabSize);
+                }
+
+            }
+            break;
+            case Node::MapType:
+            {
+                for(auto it = node.Begin(); it != node.End(); it++)
+                {
+                    Node & value = (*it).second;
+                    if(value.IsNone())
+                    {
+                        continue;
+                    }
+                    stream << std::string(level, ' ') << (*it).first << ": ";
+                    if(value.IsScalar() == false)
+                    {
+                        stream << "\n";
+                    }
+
+                    SerializeLoop(value, stream, level + tabSize, tabSize);
+                }
+
+            }
+            break;
+            case Node::ScalarType:
+            {
+                /// NOT SUPPORTING multi-line scalars.
+                stream << node.As<std::string>() << "\n";
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    void Serialize(Node & root, std::iostream & stream, const size_t tabSize)
+    {
+        SerializeLoop(root, stream, 0, tabSize);
+    }
+
+    void Serialize(Node & root, std::string & string, const size_t tabSize)
+    {
+        std::stringstream stream;
+        Serialize(root, stream, tabSize);
+        string = stream.str();
+    }
 
 
 

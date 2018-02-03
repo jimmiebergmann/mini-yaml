@@ -36,6 +36,7 @@ https://www.codeproject.com/Articles/28720/YAML-Parser-in-C
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <map>
 
 /**
 * @breif Namespace wrapping mini-yaml classes.
@@ -43,6 +44,13 @@ https://www.codeproject.com/Articles/28720/YAML-Parser-in-C
 */
 namespace Yaml
 {
+
+    /**
+	* @breif Forward declarations.
+	*
+	*/
+    class Node;
+
 
     /**
 	* @breif Helper classes and functions
@@ -243,18 +251,96 @@ namespace Yaml
 
 
 	/**
-	* @breif Node class.
-	*		 Types of nodes:
-	*			- Sequence
-	*			- Map
-    *           - Scalar
+	* @breif Iterator class.
 	*
+	*/
+	class Iterator
+	{
+
+    public:
+
+        friend class Node;
+
+        /**
+        * @breif Default constructor.
+        *
+        */
+        Iterator();
+
+        /**
+        * @breif Copy constructor.
+        *
+        */
+        Iterator(const Iterator & it);
+
+        /**
+        * @breif Assignment operator.
+        *
+        */
+        Iterator & operator = (const Iterator & it);
+
+        /**
+        * @breif Destructor.
+        *
+        */
+        ~Iterator();
+
+        /**
+        * @breif Get node of iterator.
+        *        First pair item is the key of map value, empty if type is sequence.
+        *
+        */
+        std::pair<const std::string &, Node &> operator *();
+
+        /**
+        * @breif Post-increment operator.
+        *
+        */
+        Iterator & operator ++ (int);
+
+        /**
+        * @breif Post-decrement operator.
+        *
+        */
+        Iterator & operator -- (int);
+
+        /**
+        * @breif Check if iterator is equal to other iterator.
+        *
+        */
+        bool operator == (const Iterator & it);
+
+        /**
+        * @breif Check if iterator is not equal to other iterator.
+        *
+        */
+        bool operator != (const Iterator & it);
+
+    private:
+
+        enum eType
+        {
+            None,
+            SequenceType,
+            MapType
+        };
+
+        eType   m_Type; ///< Type of iterator.
+        void *  m_pImp; ///< Implementation of node class.
+
+	};
+
+
+	/**
+	* @breif Node class.
 	*
 	*/
 	class Node
 	{
 
 	public:
+
+	    friend class Iterator;
 
 		/**
 		* @breif Enumeration of node types.
@@ -284,7 +370,8 @@ namespace Yaml
 		* @breif Functions for checking type of node.
 		*
 		*/
-		eType GetType() const;
+		eType Type() const;
+		bool IsNone() const;
 		bool IsSequence() const;
 		bool IsMap() const;
 		bool IsScalar() const;
@@ -382,7 +469,20 @@ namespace Yaml
 		*        Converts node to scalar type if needed.
 		*
 		*/
-		Node & operator =   (const std::string & value);
+		Node & operator = (const std::string & value);
+
+		/**
+		* @breif Get start iterator.
+		*
+		*/
+		Iterator Begin();
+
+		/**
+		* @breif Get end iterator.
+		*
+		*/
+		Iterator End();
+
 
 	private:
 
@@ -404,54 +504,41 @@ namespace Yaml
 
 
 	/**
-	* @breif Reader class.
-	*		 Populating given node with parsed YAML data.
-	*
-	*/
-	class Reader
-	{
+    * @breif Parsing functions.
+    *		 Population given root node with deserialized data.
+    *
+    * @param root		Root node to populate.
+    * @param filename	Path of input file.
+    * @param stream		Input stream.
+    * @param string		String of input data.
+    * @param buffer		Char array of input data.
+    * @param size		Buffer size.
+    *
+    * @throw InternalException	An internal error occurred.
+    * @throw ParsingException	Invalid input YAML data.
+    * @throw OperationException	If filename or buffer pointer is invalid.
+    *
+    */
+    void Parse(Node & root, const char * filename);
+    void Parse(Node & root, std::iostream & stream);
+    void Parse(Node & root, const std::string & string);
+    void Parse(Node & root, const char * buffer, const size_t size);
 
-	public:
-
-		/**
-		* @breif Default constructor.
-		*		 Call parsing functions later in order to deserialize.
-		*
-		*/
-		Reader();
-
-		/**
-		* @breif Constructing reader class and deserializing.
-		*
-		* @see Parse
-		*
-		*/
-		Reader(Node & root, const char * filename);
-		Reader(Node & root, std::iostream & stream);
-		Reader(Node & root, const std::string & string);
-		Reader(Node & root, const char * buffer, const size_t size);
-
-		/**
-		* @breif Parsing classes.
-		*		 Population given root node with deserialized data.
-		*
-		* @param root		Root node to populate.
-		* @param filename	Path of input file.
-		* @param stream		Input stream.
-		* @param string		String of input data.
-		* @param buffer		Char array of input data.
-		* @param size		Buffer size.
-		*
-		* @throw InternalException	An internal error occurred.
-		* @throw ParsingException	Invalid input YAML data.
-		* @throw OperationException	If filename or buffer pointer is invalid.
-		*
-		*/
-		void Parse(Node & root, const char * filename);
-		void Parse(Node & root, std::iostream & stream);
-		void Parse(Node & root, const std::string & string);
-		void Parse(Node & root, const char * buffer, const size_t size);
-
-	};
+    /**
+    * @breif Serialization functions.
+    *
+    * @param root		Root node to serialize.
+    * @param filename	Path of output file.
+    * @param stream		Output stream.
+    * @param string		String of output data.
+    * @param tabSize	Number of spaces for each level.
+    *
+    * @throw InternalException	An internal error occurred.
+    * @throw OperationException	If filename or buffer pointer is invalid.
+    *
+    */
+    void Serialize(Node & root, const char * filename, const size_t tabSize = 4);
+    void Serialize(Node & root, std::iostream & stream, const size_t tabSize = 4);
+    void Serialize(Node & root, std::string & string, const size_t tabSize = 4);
 
 }
