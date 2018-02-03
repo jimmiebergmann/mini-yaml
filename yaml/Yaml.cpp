@@ -34,8 +34,8 @@
 
 
 // Implementation access definitions.
-#define NODE_IMP (*static_cast<NodeImp*>(m_pImp))
-#define TYPE_IMP (*static_cast<NodeImp*>(m_pImp)->m_pImp)
+#define NODE_IMP static_cast<NodeImp*>(m_pImp)
+#define TYPE_IMP static_cast<NodeImp*>(m_pImp)->m_pImp
 
 // Exception message definitions.
 
@@ -45,8 +45,11 @@ static const std::string g_ErrorTabInOffset				= "Tab found in offset.";
 static const std::string g_ErrorBlockSequenceNotAllowed = "Block sequence entries are not allowed in this context.";
 static const std::string g_ErrorUnexpectedDocumentEnd	= "Unexpected document end.";
 static const std::string g_ErrorDiffEntryNotAllowed	    = "Different entry is not allowed in this context.";
+static const std::string g_ErrorIncorrectOffset	        = "Incorrect offset.";
+static const std::string g_ErrorSequenceError	        = "Error in sequence node.";
 
 static const std::string g_EmptyString = "";
+static Yaml::Node        g_NoneNode;
 
 
 //static const std::string g_ErrorUnableToParse			= "Unable to parse.";
@@ -109,6 +112,130 @@ namespace Yaml
 	    virtual const std::string & GetData() const = 0;
 	    virtual bool SetData(const std::string & data) = 0;
 	    virtual size_t GetSize() const = 0;
+	    virtual Node * GetNode(const size_t index) = 0;
+	    virtual Node * GetNode(const std::string & key) = 0;
+	    virtual Node * Insert(const size_t index) = 0;
+	    virtual Node * PushFront() = 0;
+	    virtual Node * PushBack() = 0;
+	    virtual void Erase(const size_t index) = 0;
+	    virtual void Erase(const std::string & key) = 0;
+
+	};
+
+	class SequenceImp : public TypeImp
+	{
+
+    public:
+
+        ~SequenceImp()
+        {
+            for(auto it = m_Sequence.begin(); it != m_Sequence.end(); it++)
+            {
+                delete it->second;
+            }
+        }
+
+        virtual const std::string & GetData() const
+        {
+            return g_EmptyString;
+        }
+
+        virtual bool SetData(const std::string & data)
+        {
+            return false;
+        }
+
+	    virtual size_t GetSize() const
+	    {
+	        return m_Sequence.size();
+	    }
+
+	    virtual Node * GetNode(const size_t index)
+	    {
+	        auto it = m_Sequence.find(index);
+	        if(it != m_Sequence.end())
+            {
+                return it->second;
+            }
+            return nullptr;
+	    }
+
+	    virtual Node * GetNode(const std::string & key)
+	    {
+            return nullptr;
+	    }
+
+        virtual Node * Insert(const size_t index)
+	    {
+	        if(m_Sequence.size() == 0)
+            {
+                Node * pNode = new Node;
+                m_Sequence.insert({0, pNode});
+                return pNode;
+            }
+
+            if(index >= m_Sequence.size())
+            {
+                auto it = m_Sequence.end();
+                --it;
+                Node * pNode = new Node;
+                m_Sequence.insert({it->first, pNode});
+                return pNode;
+            }
+
+            auto it = m_Sequence.cbegin();
+            while(it != m_Sequence.cend())
+            {
+                m_Sequence[it->first+1] = it->second;
+
+                if(it->first == index)
+                {
+                    break;
+                }
+            }
+
+            Node * pNode = new Node;
+            m_Sequence.insert({index, pNode});
+            return pNode;
+	    }
+
+	    virtual Node * PushFront()
+	    {
+	        for(auto it = m_Sequence.cbegin(); it != m_Sequence.cend(); it++)
+            {
+                m_Sequence[it->first+1] = it->second;
+            }
+
+            Node * pNode = new Node;
+            m_Sequence.insert({0, pNode});
+            return pNode;
+	    }
+
+	    virtual Node * PushBack()
+	    {
+	        size_t index = 0;
+	        if(m_Sequence.size())
+            {
+                auto it = m_Sequence.end();
+                --it;
+                index = it->first + 1;
+            }
+
+	        Node * pNode = new Node;
+	        m_Sequence.insert({index, pNode});
+	        return pNode;
+	    }
+
+	    virtual void Erase(const size_t index)
+	    {
+	        m_Sequence.erase(index);
+	    }
+
+	    virtual void Erase(const std::string & key)
+	    {
+	    }
+
+        std::map<size_t, Node*> m_Sequence;
 
 	};
 
@@ -116,6 +243,14 @@ namespace Yaml
 	{
 
     public:
+
+        ~MapImp()
+        {
+            for(auto it = m_Map.begin(); it != m_Map.end(); it++)
+            {
+                delete it->second;
+            }
+        }
 
         virtual const std::string & GetData() const
         {
@@ -132,6 +267,52 @@ namespace Yaml
 	        return m_Map.size();
 	    }
 
+	    virtual Node * GetNode(const size_t index)
+	    {
+            return nullptr;
+	    }
+
+	    virtual Node * GetNode(const std::string & key)
+	    {
+	        auto it = m_Map.find(key);
+	        if(it == m_Map.end())
+            {
+                Node * pNode = new Node;
+                m_Map.insert({key, pNode});
+                return pNode;
+            }
+            else
+            {
+                return it->second;
+            }
+
+            return nullptr;
+	    }
+
+	    virtual Node * Insert(const size_t index)
+	    {
+	        return nullptr;
+	    }
+
+	    virtual Node * PushFront()
+	    {
+	        return nullptr;
+	    }
+
+	    virtual Node * PushBack()
+	    {
+	        return nullptr;
+	    }
+
+	    virtual void Erase(const size_t index)
+	    {
+	    }
+
+	    virtual void Erase(const std::string & key)
+	    {
+	        m_Map.erase(key);
+	    }
+
         std::map<std::string, Node*> m_Map;
 
 	};
@@ -140,6 +321,10 @@ namespace Yaml
 	{
 
     public:
+
+        ~ScalarImp()
+        {
+        }
 
         virtual const std::string & GetData() const
         {
@@ -155,6 +340,39 @@ namespace Yaml
 	    virtual size_t GetSize() const
 	    {
 	        return 1;
+	    }
+
+	    virtual Node * GetNode(const size_t index)
+	    {
+            return nullptr;
+	    }
+
+	    virtual Node * GetNode(const std::string & key)
+	    {
+            return nullptr;
+	    }
+
+	    virtual Node * Insert(const size_t index)
+	    {
+	        return nullptr;
+	    }
+
+	    virtual Node * PushFront()
+	    {
+	        return nullptr;
+	    }
+
+	    virtual Node * PushBack()
+	    {
+	        return nullptr;
+	    }
+
+	    virtual void Erase(const size_t index)
+	    {
+	    }
+
+	    virtual void Erase(const std::string & key)
+	    {
 	    }
 
         std::string m_Value;
@@ -191,14 +409,25 @@ namespace Yaml
 
         void InitSequence()
         {
-            /// MISSING IMPLEMENTATION!
+            if(m_Type != Node::SequenceType || m_pImp == nullptr)
+            {
+                if(m_pImp)
+                {
+                    delete m_pImp;
+                }
+                m_pImp = new SequenceImp;
+                m_Type = Node::SequenceType;
+            }
         }
 
         void InitMap()
         {
-            if(m_Type != Node::MapType)
+            if(m_Type != Node::MapType || m_pImp == nullptr)
             {
-                Clear();
+                if(m_pImp)
+                {
+                    delete m_pImp;
+                }
                 m_pImp = new MapImp;
                 m_Type = Node::MapType;
             }
@@ -206,15 +435,17 @@ namespace Yaml
 
         void InitScalar()
         {
-            if(m_Type != Node::ScalarType)
+            if(m_Type != Node::ScalarType || m_pImp == nullptr)
             {
-                Clear();
+                if(m_pImp)
+                {
+                    delete m_pImp;
+                }
                 m_pImp = new ScalarImp;
                 m_Type = Node::ScalarType;
             }
 
         }
-
 
         Node::eType    m_Type;  ///< Type of node.
         TypeImp *      m_pImp;  ///< Imp of type.
@@ -235,59 +466,110 @@ namespace Yaml
 
 	Node::eType Node::GetType() const
 	{
-        return NODE_IMP.m_Type;
+        return NODE_IMP->m_Type;
 	}
 
     bool Node::IsSequence() const
     {
-        return NODE_IMP.m_Type == Node::SequenceType;
+        return NODE_IMP->m_Type == Node::SequenceType;
     }
 
     bool Node::IsMap() const
     {
-        return NODE_IMP.m_Type == Node::MapType;
+        return NODE_IMP->m_Type == Node::MapType;
     }
 
     bool Node::IsScalar() const
     {
-        return NODE_IMP.m_Type == Node::ScalarType;
+        return NODE_IMP->m_Type == Node::ScalarType;
     }
 
     void Node::Clear()
     {
-        /// IMPLEMENTATION MISSING.
+        NODE_IMP->Clear();
     }
 
     size_t Node::Size() const
     {
-        /// INCORRECT IMPLEMENTATION.
-        return 0;
+        if(m_pImp == nullptr)
+        {
+            return 0;
+        }
+
+        return TYPE_IMP->GetSize();
+    }
+
+    Node & Node::Insert(const size_t index)
+    {
+        NODE_IMP->InitSequence();
+        return *TYPE_IMP->Insert(index);
+    }
+
+    Node & Node::PushFront()
+    {
+        NODE_IMP->InitSequence();
+        return *TYPE_IMP->PushFront();
+    }
+    Node & Node::PushBack()
+    {
+        NODE_IMP->InitSequence();
+        return *TYPE_IMP->PushBack();
+    }
+
+    Node & Node::operator[](const size_t index)
+    {
+        NODE_IMP->InitSequence();
+        Node * pNode = TYPE_IMP->GetNode(index);
+        if(pNode == nullptr)
+        {
+            g_NoneNode.Clear();
+            return g_NoneNode;
+        }
+        return *pNode;
     }
 
     Node & Node::operator[](const std::string & key)
     {
+        NODE_IMP->InitMap();
+        return *TYPE_IMP->GetNode(key);
+    }
 
-        if(NODE_IMP.m_Type != Node::MapType)
+    void Node::Erase(const size_t index)
+    {
+        if(TYPE_IMP == nullptr || NODE_IMP->m_Type != Node::SequenceType)
         {
-            Clear();
-            NODE_IMP.m_Type = Node::MapType;
+            return;
         }
 
-
-        /// INCORRECT IMPLEMENTATION.
-        return *this;
+        return TYPE_IMP->Erase(index);
     }
+
+    void Node::Erase(const std::string & key)
+    {
+        if(TYPE_IMP == nullptr || NODE_IMP->m_Type != Node::MapType)
+        {
+            return;
+        }
+
+        return TYPE_IMP->Erase(key);
+    }
+
 
     Node & Node::operator = (const std::string & value)
     {
-        NODE_IMP.InitScalar();
-        TYPE_IMP.SetData(value);
+        NODE_IMP->InitScalar();
+        TYPE_IMP->SetData(value);
         return *this;
     }
 
     const std::string & Node::AsString() const
     {
-        return TYPE_IMP.GetData();
+        if(TYPE_IMP == nullptr)
+        {
+            return g_EmptyString;
+        }
+
+        return TYPE_IMP->GetData();
     }
 
 
@@ -332,7 +614,7 @@ namespace Yaml
 
 		enum eFlag
 		{
-			LiteralScalarFlag,		///< Litteral scalar type, defined as "|".
+			LiteralScalarFlag,		///< Literal scalar type, defined as "|".
 			FoldedScalarFlag,		///< Folded scalar type, defined as "<".
 			ScalarNewlineFlag,		///< Scalar ends with a newline.
 		};
@@ -418,7 +700,7 @@ namespace Yaml
                 root.Clear();
                 ReadLines(stream);
                 PostProcessLines();
-                Print();
+                //Print();
                 ProcessRoot(root);
             }
             catch(Exception e)
@@ -579,75 +861,134 @@ namespace Yaml
 		void ProcessRoot(Node & root)
 		{
             // Get first line and start type.
-            auto firstIt = m_Lines.begin();
-            if(firstIt == m_Lines.end())
+            auto it = m_Lines.begin();
+            if(it == m_Lines.end())
             {
                 return;
             }
-            Node::eType firstType = (*firstIt)->Type;
-
-            // Iterate lines.
-            for(auto it = m_Lines.begin(); it != m_Lines.end(); it++)
-            {
-                ReaderLine * pLine = *it;
-                Node::eType currentType = (*it)->Type;
-                if(currentType != firstType)
-                {
-                    throw ParsingException(ExceptionMessage(g_ErrorDiffEntryNotAllowed, *pLine));
-                }
-
-                // Handle next line.
-                switch(currentType)
-                {
-                case Node::SequenceType:
-                    ProcessSequence(root, it);
-                    break;
-                case Node::MapType:
-                    ProcessMap(root, it);
-                    break;
-                case Node::ScalarType:
-                    ProcessScalar(root, it);
-                    break;
-                default:
-                    break;
-                }
-            }
-		}
-
-		void ProcessSequence(Node & node, std::list<ReaderLine *>::iterator & it)
-        {
-
-        }
-
-        void ProcessMap(Node & node, std::list<ReaderLine *>::iterator & it)
-        {
+            Node::eType type = (*it)->Type;
             ReaderLine * pLine = *it;
-            Node childNode;
-            node[pLine->Data] = childNode;
 
-            // Move to next line, error check.
-            ++it;
-            if(it == m_Lines.end())
+            // Handle next line.
+            switch(type)
+            {
+            case Node::SequenceType:
+                ProcessSequence(root, it);
+                break;
+            case Node::MapType:
+                ProcessMap(root, it);
+                break;
+            case Node::ScalarType:
+                ProcessScalar(root, it);
+                break;
+            default:
+                break;
+            }
+
+            if(it != m_Lines.end())
             {
                 throw InternalException(ExceptionMessage(g_ErrorUnexpectedDocumentEnd, *pLine));
             }
 
-            Node::eType nextType = (*it)->Type;
+		}
 
-            // Handle next line.
-            switch(nextType)
+		void ProcessSequence(Node & node, std::list<ReaderLine *>::iterator & it)
+        {
+            ReaderLine * pNextLine = nullptr;
+            while(it != m_Lines.end())
             {
-            case Node::SequenceType:
-                //ProcessSequence(childNode, it);
-                break;
-            case Node::MapType:
-                //ProcessMap(childNode, it);
-                break;
-            case Node::ScalarType:
-                ProcessScalar(childNode, it);
-                break;
-            default:
-                break;
+                ReaderLine * pLine = *it;
+                Node & childNode = node.PushBack();
+
+                // Move to next line, error check.
+                ++it;
+                if(it == m_Lines.end())
+                {
+                    throw InternalException(ExceptionMessage(g_ErrorUnexpectedDocumentEnd, *pLine));
+                }
+
+                // Handle value of map
+                Node::eType valueType = (*it)->Type;
+                switch(valueType)
+                {
+                case Node::SequenceType:
+                    ProcessSequence(childNode, it);
+                    break;
+                case Node::MapType:
+                    ProcessMap(childNode, it);
+                    break;
+                case Node::ScalarType:
+                    ProcessScalar(childNode, it);
+                    break;
+                default:
+                    break;
+                }
+
+                // Check next line. if map and correct level, go on, else exit.
+                // if same level but but of type map = error.
+                if(it == m_Lines.end() || ((pNextLine = *it)->Offset < pLine->Offset))
+                {
+                    break;
+                }
+                if(pNextLine->Offset > pLine->Offset)
+                {
+                    throw ParsingException(ExceptionMessage(g_ErrorIncorrectOffset, *pNextLine));
+                }
+                if(pNextLine->Type != pLine->Type)
+                {
+                    throw InternalException(ExceptionMessage(g_ErrorDiffEntryNotAllowed, *pNextLine));
+                }
+
+            }
+        }
+
+        void ProcessMap(Node & node, std::list<ReaderLine *>::iterator & it)
+        {
+            ReaderLine * pNextLine = nullptr;
+            while(it != m_Lines.end())
+            {
+                ReaderLine * pLine = *it;
+                Node & childNode = node[pLine->Data];
+
+                // Move to next line, error check.
+                ++it;
+                if(it == m_Lines.end())
+                {
+                    throw InternalException(ExceptionMessage(g_ErrorUnexpectedDocumentEnd, *pLine));
+                }
+
+                // Handle value of map
+                Node::eType valueType = (*it)->Type;
+                switch(valueType)
+                {
+                case Node::SequenceType:
+                    ProcessSequence(childNode, it);
+                    break;
+                case Node::MapType:
+                    ProcessMap(childNode, it);
+                    break;
+                case Node::ScalarType:
+                    ProcessScalar(childNode, it);
+                    break;
+                default:
+                    break;
+                }
+
+                // Check next line. if map and correct level, go on, else exit.
+                // if same level but but of type map = error.
+                if(it == m_Lines.end() || ((pNextLine = *it)->Offset < pLine->Offset))
+                {
+                    break;
+                }
+                if(pNextLine->Offset > pLine->Offset)
+                {
+                    throw ParsingException(ExceptionMessage(g_ErrorIncorrectOffset, *pNextLine));
+                }
+                if(pNextLine->Type != pLine->Type)
+                {
+                    throw InternalException(ExceptionMessage(g_ErrorDiffEntryNotAllowed, *pNextLine));
+                }
+
             }
         }
 
@@ -655,6 +996,7 @@ namespace Yaml
         {
             ReaderLine * pLine = *it;
             node = pLine->Data;
+            ++it;
         }
 
 		void Print()
@@ -718,6 +1060,7 @@ namespace Yaml
 
 
 				std::cout << "| ";
+				std::cout << pLine->No << " ";
 				std::cout << std::string(pLine->Offset, ' ');
 
 				if (pLine->Type == Node::ScalarType)

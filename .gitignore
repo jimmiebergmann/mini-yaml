@@ -8,6 +8,8 @@ enc_temp_folder
 # Temporary
 *~
 *.tlog
+Valgrind*
+CppCheckResults*
 
 # Build
 *.exp

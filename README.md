@@ -16,10 +16,11 @@ Document starts/ends are defined as("---" / "...").
 Example: "key:": value
 - Flow sequences("[]")/maps("{}") are not supported.
 - Explicit typing(!!type) is not supported.
+- Tags are not supported.
 
 
 ## Documentation
-No documentation yet.
+See examples/FirstExample.cpp
 
 #### Deserialization
 ...

@@ -43,6 +43,41 @@ https://www.codeproject.com/Articles/28720/YAML-Parser-in-C
 namespace Yaml
 {
 
+    /**
+	* @breif Helper classes and functions
+	*
+	*/
+    namespace impl
+	{
+
+	    /**
+        * @breif Helper functionality, converting string to any data type.
+        *        Strings are left untouched.
+        *
+        */
+	    template<typename T>
+        struct StringConverter
+        {
+            static T Get(const std::string & data)
+            {
+                T type;
+                std::stringstream ss(data);
+                ss >> type;
+                return type;
+            }
+        };
+        template<>
+        struct StringConverter<std::string>
+        {
+            static std::string Get(const std::string & data)
+            {
+                return data;
+            }
+        };
+
+	}
+
+
 	/**
 	* @breif Exception class.
 	*
@@ -94,7 +129,7 @@ namespace Yaml
 	/**
 	* @breif Internal exception class.
 	*
-	* @see Excetion
+	* @see Exception
 	*
 	*/
 	class InternalException : public Exception
@@ -116,7 +151,7 @@ namespace Yaml
 	/**
 	* @breif Parsing exception class.
 	*
-	* @see Excetion
+	* @see Exception
 	*
 	*/
 	class ParsingException : public Exception
@@ -138,7 +173,7 @@ namespace Yaml
 	/**
 	* @breif Operation exception class.
 	*
-	* @see Excetion
+	* @see Exception
 	*
 	*/
 	class OperationException : public Exception
@@ -217,33 +252,76 @@ namespace Yaml
 		template<typename T>
 		T As() const
 		{
-		    const std::string & data = AsString();
-
-		    /*if(std::is_same<T, std::string>::value)
-            {
-                return static_cast<T>(data);
-            }*/
-
-            T type;
-            std::stringstream ss(data);
-            ss >> type;
-            return type;
+		    return impl::StringConverter<T>::Get(AsString());
 		}
 
 		/**
 		* @breif Get size of node.
-		*        Scalar types will always return 1.
+		*        'Scalar' types will always return 1.
+		*        'None' types will always return 0.
 		*
 		*/
 		size_t Size() const;
 
 		// Sequence operators
+
+		/**
+		* @breif Insert sequence item at given index.
+		*        Converts node to sequence type if needed.
+		*        Adding new item to end of sequence if index is larger than sequence size.
+		*
+		*/
+        Node & Insert(const size_t index);
+
+        /**
+		* @breif Add new sequence index to back.
+		*        Converts node to sequence type if needed.
+		*
+		*/
+		Node & PushFront();
+
+		 /**
+		* @breif Add new sequence index to front.
+		*        Converts node to sequence type if needed.
+		*
+		*/
+		Node & PushBack();
+
+		/**
+		* @breif Get sequence item.
+		*        Converts node to sequence type if needed.
+		*        Not creating new Node if index is unknown.
+		*
+		*/
 		Node & operator []  (const size_t index);
 
-		// Map operators
-		Node & operator []  (const std::string & key);
+		/**
+		* @breif Get map item.
+		*        Converts node to map type if needed.
+		*        Creating new node of type 'None' if key is unknown.
+		*
+		*/
+		Node & operator [] (const std::string & key);
 
-		// Scalar operators
+		/**
+		* @breif Erase sequence item.
+		*        No action if node is not a sequence.
+		*
+		*/
+		void Erase(const size_t index);
+
+		/**
+		* @breif Erase map item.
+		*        No action if node is not an map.
+		*
+		*/
+		void Erase(const std::string & key);
+
+		/**
+		* @breif Set scalar value.
+		*        Converts node to scalar type if needed.
+		*
+		*/
 		Node & operator =   (const std::string & value);
 
 	private:
@@ -263,6 +341,7 @@ namespace Yaml
 		void * m_pImp; ///< Implementation of node class.
 
 	};
+
 
 	/**
 	* @breif Reader class.
@@ -303,7 +382,7 @@ namespace Yaml
 		* @param buffer		Char array of input data.
 		* @param size		Buffer size.
 		*
-		* @throw InternalException	An internal error occured.
+		* @throw InternalException	An internal error occurred.
 		* @throw ParsingException	Invalid input YAML data.
 		* @throw OperationException	If filename or buffer pointer is invalid.
 		*
