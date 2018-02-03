@@ -17,6 +17,7 @@ Example: "key:": value
 - Flow sequences("[]")/maps("{}") are not supported.
 - Explicit typing(!!type) is not supported.
 - Tags are not supported.
+- Comments are not supported.
 
 
 ## Documentation

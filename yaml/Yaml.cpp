@@ -281,12 +281,7 @@ namespace Yaml
                 m_Map.insert({key, pNode});
                 return pNode;
             }
-            else
-            {
-                return it->second;
-            }
-
-            return nullptr;
+            return it->second;
 	    }
 
 	    virtual Node * Insert(const size_t index)
@@ -858,6 +853,10 @@ namespace Yaml
 			}
 		}
 
+		/**
+		* @breif Process root node and start of document.
+		*
+		*/
 		void ProcessRoot(Node & root)
 		{
             // Get first line and start type.
@@ -892,6 +891,10 @@ namespace Yaml
 
 		}
 
+		/**
+		* @breif Process sequence node.
+		*
+		*/
 		void ProcessSequence(Node & node, std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pNextLine = nullptr;
@@ -942,6 +945,10 @@ namespace Yaml
             }
         }
 
+        /**
+		* @breif Process map node.
+		*
+		*/
         void ProcessMap(Node & node, std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pNextLine = nullptr;
@@ -992,6 +999,10 @@ namespace Yaml
             }
         }
 
+        /**
+		* @breif Process scalar node.
+		*
+		*/
         void ProcessScalar(Node & node, std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pLine = *it;
@@ -999,6 +1010,10 @@ namespace Yaml
             ++it;
         }
 
+        /**
+		* @breif Debug printing.
+		*
+		*/
 		void Print()
 		{
 			for (auto it = m_Lines.begin(); it != m_Lines.end(); it++)
@@ -1140,7 +1155,7 @@ namespace Yaml
 
 			// Create new line and insert
 			std::string newLine = pLine->Data.substr(valueStart);
-			it = m_Lines.insert(++it, new ReaderLine(newLine, pLine->No, valueStart));
+			it = m_Lines.insert(++it, new ReaderLine(newLine, pLine->No, pLine->Offset + valueStart));
 			pLine->Data = "";
 
 			return false;

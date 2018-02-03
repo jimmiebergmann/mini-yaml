@@ -35,6 +35,7 @@ https://www.codeproject.com/Articles/28720/YAML-Parser-in-C
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 /**
 * @breif Namespace wrapping mini-yaml classes.
@@ -65,6 +66,20 @@ namespace Yaml
                 ss >> type;
                 return type;
             }
+
+            static T Get(const std::string & data, const T & defaultValue)
+            {
+                T type;
+                std::stringstream ss(data);
+                ss >> type;
+
+                if(ss.fail())
+                {
+                    return defaultValue;
+                }
+
+                return type;
+            }
         };
         template<>
         struct StringConverter<std::string>
@@ -72,6 +87,41 @@ namespace Yaml
             static std::string Get(const std::string & data)
             {
                 return data;
+            }
+
+            static std::string Get(const std::string & data, const std::string & defaultValue)
+            {
+                if(data.size() == 0)
+                {
+                    return defaultValue;
+                }
+                return data;
+            }
+        };
+
+        template<>
+        struct StringConverter<bool>
+        {
+            static bool Get(const std::string & data)
+            {
+                std::string tmpData = data;
+                std::transform(tmpData.begin(), tmpData.end(), tmpData.begin(), ::tolower);
+                if(tmpData == "true" || tmpData == "yes" || tmpData == "1")
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            static bool Get(const std::string & data, const bool & defaultValue)
+            {
+                if(data.size() == 0)
+                {
+                    return defaultValue;
+                }
+
+                return Get(data);
             }
         };
 
@@ -253,6 +303,16 @@ namespace Yaml
 		T As() const
 		{
 		    return impl::StringConverter<T>::Get(AsString());
+		}
+
+		/**
+		* @breif Get node as given template type.
+		*
+		*/
+		template<typename T>
+		T As(const T & defaultValue) const
+		{
+		    return impl::StringConverter<T>::Get(AsString(), defaultValue);
 		}
 
 		/**

@@ -27,21 +27,22 @@
 
 using namespace Yaml;
 
-static void Test_1();
-static void Test_2();
-
+static void Example1();
+static void Example2();
+static void Example3();
+static void Example4();
 
 int main()
 {
-
-    Test_1();
-    Test_2();
+    Example1();
+    Example2();
+    Example3();
+    Example4();
 
 	return 0;
 }
 
-
-void Test_1()
+void Example1()
 {
     const std::string data =
 		"data1 : \t | \t \n"
@@ -83,7 +84,7 @@ void Test_1()
     std::cout << root["data7"].As<float>() << std::endl;
 }
 
-void Test_2()
+void Example2()
 {
     const std::string data =
 		" - Hello world\n"
@@ -110,4 +111,117 @@ void Test_2()
     std::cout << root[1].As<int>() << std::endl;
     std::cout << root[2].As<float>() << std::endl;
 }
+
+void Example3()
+{
+    const std::string data =
+        "data1: \n"
+        "  123\n"
+        "data2: Hello world\n"
+        "data3:\n"
+        "   - key1: 123\n"
+        "     key2: Test\n"
+		"   - Hello world\n"
+		"   - 123\n"
+		"   - 123.4\n";
+
+    Node root;
+    Reader reader;
+    try
+    {
+        reader.Parse(root, data);
+    }
+    catch (const Exception e)
+    {
+        std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
+        std::cin.get();
+    }
+
+    std::cout << root["data1"].As<int>() << std::endl;
+    std::cout << root["data2"].As<std::string>() << std::endl;
+    std::cout << root["data3"][0]["key1"].As<int>() << std::endl;
+    std::cout << root["data3"][0]["key2"].As<std::string>() << std::endl;
+    std::cout << root["data3"][1].As<std::string>() << std::endl;
+    std::cout << root["data3"][2].As<int>() << std::endl;
+    std::cout << root["data3"][3].As<float>() << std::endl;
+}
+
+void Example4()
+{
+    Node root;
+    Reader reader;
+    try
+    {
+        reader.Parse(root, "../examples/data1.txt");
+    }
+    catch (const Exception e)
+    {
+        std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
+        std::cin.get();
+    }
+
+    try
+    {
+        Node & server = root["server"];
+        Node & services = root["services"];
+
+        if(server.IsMap() == false)
+        {
+            throw InternalException("Server is not of type Map.");
+        }
+        if(services.IsSequence() == false)
+        {
+            throw InternalException("Services is not of type sequence.");
+        }
+
+        std::cout << "Server:" << std::endl;
+        std::cout << "  max connections: " << server["max_connections"].As<int>() << std::endl;
+        std::cout << "  com port       : " << server["com_port"].As<unsigned short>() << std::endl;
+
+        std::cout << "Services:" << std::endl;
+        for(size_t i = 0; i < services.Size(); i++)
+        {
+            std::cout << " Service " << i << std::endl;
+            Node & service = services[i];
+
+            std::cout << "  enabled:         " << service["enabled"].As<bool>(false) << std::endl;
+            std::cout << "  name:            " << service["name"].As<std::string>() << std::endl;
+            std::cout << "  protocol:        " << service["protocol"].As<std::string>() << std::endl;
+            std::cout << "  host:            " << service["host"].As<std::string>() << std::endl;
+            std::cout << "  port:            " << service["port"].As<unsigned short>() << std::endl;
+            std::cout << "  balancing:       " << service["balancing"].As<std::string>("No balancing value.") << std::endl;
+            std::cout << "  max_connections: " << service["max_connections"].As<int>(99999) << std::endl;
+            std::cout << "  session:         " << service["session"].As<std::string>("No session value.") << std::endl;
+
+            Node & nodes = service["nodes"];
+            if(nodes.IsSequence() == false)
+            {
+                throw InternalException("Nodes is not of type sequence.");
+            }
+
+            std::cout << "  Nodes:" << std::endl;
+            for(size_t i = 0; i < nodes.Size(); i++)
+            {
+                std::cout << "   Node " << i << std::endl;
+                Node & node = nodes[i];
+
+                std::cout << "    name:      " << node["name"].As<std::string>() << std::endl;
+                std::cout << "    protocol:  " << node["protocol"].As<std::string>() << std::endl;
+                std::cout << "    host:      " << node["host"].As<std::string>() << std::endl;
+                std::cout << "    port:      " << node["port"].As<unsigned short>() << std::endl;
+                std::cout << std::endl;
+            }
+
+            std::cout << std::endl;
+        }
+
+    }
+    catch (const Exception e)
+    {
+        std::cout << "Example exception " << e.Type() << ": " << e.what() << std::endl;
+        std::cin.get();
+    }
+}
+
+
 
