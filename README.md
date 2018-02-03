@@ -3,7 +3,7 @@ Single header YAML 1.0 C++11 serializer/deserializer.
 
 ## Quick example
 #### file.txt
-```sh
+```
 key: foo bar
 list:
   - hello world
@@ -11,7 +11,7 @@ list:
     boolean: true
 ```
 #### .cpp
-```sh
+```cpp
 Node root;
 Reader reader(root, data);
 
@@ -21,7 +21,7 @@ cout << root["list"][1]["integer"].As<int>() << endl;
 cout << root["list"][1]["boolean"].As<bool>() << endl;
 ```
 #### Output
-```sh
+```
 foo bar
 hello world
 123
