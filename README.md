@@ -1,5 +1,5 @@
 # mini-yaml
-[![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=master)](https://travis-ci.org/jimmiebergmann/mini-yaml)
+[![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=master)](https://travis-ci.org/jimmiebergmann/mini-yaml)  
 Single header YAML 1.0 C++11 serializer/deserializer.
 
 ## Quickstart
