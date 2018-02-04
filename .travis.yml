@@ -1,0 +1,17 @@
+language:
+  - cpp
+
+compiler:
+  - gcc
+  - clang
+
+script:
+  - cd test/goolgetest/googletest/make/
+  - make
+  - cd ../../../
+  - make
+  - cd ../bin/
+  - ./test
+
+notifications:
+  email: false

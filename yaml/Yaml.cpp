@@ -334,7 +334,7 @@ namespace Yaml
 
 	    virtual size_t GetSize() const
 	    {
-	        return 1;
+	        return 0;
 	    }
 
 	    virtual Node * GetNode(const size_t index)
@@ -697,6 +697,23 @@ namespace Yaml
 	{
 	}
 
+	Node::Node(const Node & node)
+	{
+	    throw InternalException("Copy is not allowed yet.");
+	}
+
+	Node::Node(const std::string & value) :
+	    Node()
+	{
+	    *this = value;
+	}
+
+    Node::Node(const char * value) :
+        Node()
+    {
+        *this = value;
+    }
+
 	Node::~Node()
 	{
         delete static_cast<NodeImp*>(m_pImp);
@@ -734,7 +751,7 @@ namespace Yaml
 
     size_t Node::Size() const
     {
-        if(m_pImp == nullptr)
+        if(TYPE_IMP == nullptr)
         {
             return 0;
         }
@@ -802,6 +819,13 @@ namespace Yaml
     {
         NODE_IMP->InitScalar();
         TYPE_IMP->SetData(value);
+        return *this;
+    }
+
+    Node & Node::operator = (const char * value)
+    {
+        NODE_IMP->InitScalar();
+        TYPE_IMP->SetData(value ? std::string(value) : "");
         return *this;
     }
 

@@ -360,6 +360,19 @@ namespace Yaml
 		*/
 		Node();
 
+        /**
+		* @breif Copy constructor.
+		*
+		*/
+        Node(const Node & node);
+
+		/**
+		* @breif Assignment constructors.
+		*
+		*/
+		Node(const std::string & value);
+		Node(const char * value);
+
 		/**
 		* @breif Destructor.
 		*
@@ -404,8 +417,7 @@ namespace Yaml
 
 		/**
 		* @breif Get size of node.
-		*        'Scalar' types will always return 1.
-		*        'None' types will always return 0.
+		*        Nodes of type None or Scalar will return 0.
 		*
 		*/
 		size_t Size() const;
@@ -470,6 +482,7 @@ namespace Yaml
 		*
 		*/
 		Node & operator = (const std::string & value);
+		Node & operator = (const char * value);
 
 		/**
 		* @breif Get start iterator.
@@ -485,12 +498,6 @@ namespace Yaml
 
 
 	private:
-
-        /**
-		* @breif Copy constructor.
-		*
-		*/
-        Node(const Node & node);
 
         /**
 		* @breif Get as string. If type is scalar, else empty.

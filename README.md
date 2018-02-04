@@ -29,11 +29,12 @@ hello world
 ```
 
 ## Usage
-Put [/yaml](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml) in your project directory and simply #include "yaml.hpp".
+Put [/yaml](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml) in your project directory and simply #include "[yaml/Yaml.hpp](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml/Yaml.hpp)".
 See [examples/FirstExample.cpp](https://github.com/jimmiebergmann/mini-yaml/blob/master/examples/FirstExample.cpp) for additional examples.
 
 ## Todo
 - Add build and test automation.
+- Allow copy constructor of nodes.
 - Serialize multi-line scalars.
 - Properly serialize quotation marks.
 - Parse/serialize comments.
