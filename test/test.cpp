@@ -134,6 +134,18 @@ TEST(Node, Size)
     }
 }
 
+TEST(Parse, File)
+{
+    {
+        Yaml::Node root;
+        EXPECT_THROW(Parse(root, "bad_path_of_file.txt"), Yaml::OperationException);
+    }
+    {
+        Yaml::Node root;
+        EXPECT_NO_THROW(Parse(root, "../.travis.yml"));
+    }
+}
+
 
 int main(int argc, char **argv)
 {

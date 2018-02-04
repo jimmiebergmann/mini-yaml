@@ -228,6 +228,12 @@ namespace Yaml
 
 	    virtual void Erase(const size_t index)
 	    {
+	        auto it = m_Sequence.find(index);
+	        if(it == m_Sequence.end())
+            {
+                return;
+            }
+            delete it->second;
 	        m_Sequence.erase(index);
 	    }
 
@@ -305,6 +311,12 @@ namespace Yaml
 
 	    virtual void Erase(const std::string & key)
 	    {
+	        auto it = m_Map.find(key);
+	        if(it == m_Map.end())
+            {
+                return;
+            }
+            delete it->second;
 	        m_Map.erase(key);
 	    }
 
