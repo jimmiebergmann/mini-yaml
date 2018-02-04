@@ -6,7 +6,7 @@ compiler:
   - clang
 
 script:
-  - cd test/goolgetest/googletest/make/
+  - cd test/googletest/googletest/make/
   - make
   - cd ../../../
   - make
