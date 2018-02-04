@@ -5,13 +5,20 @@ compiler:
   - gcc
   - clang
 
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - valgrind
+
 script:
   - cd test/googletest/googletest/make/
   - make
   - cd ../../../
   - make
   - cd ../bin/
-  - ./test
+  - valgrind --leak-check=full --track-origins=yes --error-exitcode=1 ./test
 
 notifications:
   email: false

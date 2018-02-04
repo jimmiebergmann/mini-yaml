@@ -144,11 +144,19 @@ TEST(Parse, File)
         Yaml::Node root;
         EXPECT_NO_THROW(Parse(root, "../.travis.yml"));
     }
+    {
+        Yaml::Node root;
+        EXPECT_THROW(Parse(root, "../yaml/Yaml.hpp"), Yaml::ParsingException);
+    }
 }
 
 
 int main(int argc, char **argv)
 {
+    /// VALGRIND TEST!
+    int * a = new int;
+
+
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
