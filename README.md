@@ -44,6 +44,7 @@ See [examples/FirstExample.cpp](https://github.com/jimmiebergmann/mini-yaml/blob
 
 ## Build status
 Builds are passed if all tests are good and no memory leaks were found.
+
 | Branch | Status |
 | ------ | ------ |
 | master | [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=master)](https://travis-ci.org/jimmiebergmann/mini-yaml) |
