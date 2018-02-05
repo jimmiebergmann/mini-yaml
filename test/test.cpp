@@ -174,6 +174,117 @@ TEST(Node, Size)
     }
 }
 
+void Compare_Node_Copy(Yaml::Node & node)
+{
+    EXPECT_TRUE(node.IsSequence());
+    EXPECT_EQ(node.Size(), 3);
+
+
+    Yaml::Node & item_1 = node[0];
+    EXPECT_TRUE(item_1.IsScalar());
+    EXPECT_EQ(item_1.As<std::string>(), "item 1");
+
+    {
+        Yaml::Node & item_2 = node[1];
+        EXPECT_TRUE(item_2.IsMap());
+        EXPECT_EQ(item_2.Size(), 1);
+
+        Yaml::Node & key = item_2["key"];
+        EXPECT_TRUE(key.IsSequence());
+        EXPECT_EQ(key.Size(), 2);
+
+        Yaml::Node & item_2_1 = key[0];
+        EXPECT_TRUE(item_2_1.IsScalar());
+        EXPECT_EQ(item_2_1.As<std::string>(), "item 2.1");
+
+        Yaml::Node & item_2_2 = key[1];
+        EXPECT_TRUE(item_2_2.IsMap());
+        EXPECT_EQ(item_2_2.Size(), 1);
+
+        Yaml::Node & key_two = item_2_2["key two"];
+        EXPECT_TRUE(key_two.IsScalar());
+        EXPECT_EQ(key_two.As<std::string>(), "item 2.2");
+    }
+
+    Yaml::Node & item_3 = node[2];
+    EXPECT_TRUE(item_3.IsScalar());
+    EXPECT_EQ(item_3.As<std::string>(), "item 3");
+}
+
+TEST(Node, Copy)
+{
+    {
+        Yaml::Node root;
+        root["key 1"] = "value 1";
+        root["key 2"] = "value 2";
+        root["key 3"] = "value 3";
+
+        {
+            Yaml::Node copy(root);
+
+            EXPECT_TRUE(copy.IsMap());
+
+            Yaml::Node & key_1 = copy["key 1"];
+            EXPECT_TRUE(key_1.IsScalar());
+            EXPECT_EQ(key_1.As<std::string>(), "value 1");
+
+            Yaml::Node & key_2 = copy["key 2"];
+            EXPECT_TRUE(key_2.IsScalar());
+            EXPECT_EQ(key_2.As<std::string>(), "value 2");
+
+            Yaml::Node & key_3 = copy["key 3"];
+            EXPECT_TRUE(key_3.IsScalar());
+            EXPECT_EQ(key_3.As<std::string>(), "value 3");
+        }
+    }
+
+    {
+        Yaml::Node root;
+        root.PushBack() = "item 1";
+        root.PushBack() = "item 2";
+        root.PushBack() = "item 3";
+
+        {
+            Yaml::Node copy(root);
+
+            EXPECT_TRUE(copy.IsSequence());
+            EXPECT_EQ(copy.Size(), 3);
+
+            Yaml::Node & item_1 = copy[0];
+            EXPECT_TRUE(item_1.IsScalar());
+            EXPECT_EQ(item_1.As<std::string>(), "item 1");
+
+            Yaml::Node & item_2 = copy[1];
+            EXPECT_TRUE(item_2.IsScalar());
+            EXPECT_EQ(item_2.As<std::string>(), "item 2");
+
+            Yaml::Node & item_3 = copy[2];
+            EXPECT_TRUE(item_3.IsScalar());
+            EXPECT_EQ(item_3.As<std::string>(), "item 3");
+        }
+    }
+
+    {
+        Yaml::Node root;
+        root.PushBack() = "item 1";
+        Yaml::Node & map = root.PushBack()["key"];
+        map.PushBack() = "item 2.1";
+        map.PushBack()["key two"] = "item 2.2";
+        root.PushBack() = "item 3";
+
+        {
+            Yaml::Node copy(root);
+            Compare_Node_Copy(copy);
+        }
+
+        {
+            Yaml::Node assign;
+            assign = root;
+            Compare_Node_Copy(assign);
+        }
+    }
+}
+
 TEST(Parse, File)
 {
     {
@@ -337,21 +448,22 @@ TEST(Parse, File_learnyaml)
     }
 }
 
-TEST(Iterator, loop)
+TEST(Iterator, Iterator)
 {
     Yaml::Node root;
-    EXPECT_NO_THROW(Parse(root, "../test/learnyaml.yaml"));
+    root["key"] = "value";
+    root["another_key"] = "Another Value";
+    root["another_nested_map"]["key"] = "value";
 
-    Yaml::Node & a_nested_map = root["a_nested_map"];
-    EXPECT_TRUE(a_nested_map.IsMap());
-    EXPECT_EQ(a_nested_map.Size(), 3);
+    EXPECT_TRUE(root.IsMap());
+    EXPECT_EQ(root.Size(), 3);
 
     size_t loops = 0;
     bool flags[3] = {false, false, false};
-    for(Yaml::Iterator it = a_nested_map.Begin(); it != a_nested_map.End(); it++)
+    for(Yaml::Iterator it = root.Begin(); it != root.End(); it++)
     {
         std::pair<std::string, Yaml::Node&> value = *it;
-        std::string key = value.first;
+        const std::string & key = value.first;
 
         if(key == "key")
         {
@@ -370,6 +482,56 @@ TEST(Iterator, loop)
         else if(key == "another_nested_map")
         {
             Yaml::Node & node = value.second;
+            EXPECT_TRUE(node.IsMap());
+            flags[2] = true;
+        }
+
+        loops++;
+    }
+
+    EXPECT_EQ(loops, 3);
+    EXPECT_TRUE(flags[0]);
+    EXPECT_TRUE(flags[1]);
+    EXPECT_TRUE(flags[2]);
+
+}
+
+TEST(Iterator, ConstIterator)
+{
+    Yaml::Node root;
+    root["key"] = "value";
+    root["another_key"] = "Another Value";
+    root["another_nested_map"]["key"] = "value";
+    const Yaml::Node & constRoot = root;;
+
+
+    EXPECT_TRUE(constRoot.IsMap());
+    EXPECT_EQ(constRoot.Size(), 3);
+
+    size_t loops = 0;
+    bool flags[3] = {false, false, false};
+    for(Yaml::ConstIterator it = constRoot.Begin(); it != constRoot.End(); it++)
+    {
+        std::pair<std::string, const Yaml::Node&> value = *it;
+        const std::string & key = value.first;
+
+        if(key == "key")
+        {
+            const Yaml::Node & node = value.second;
+            EXPECT_TRUE(node.IsScalar());
+            EXPECT_EQ(node.As<std::string>(), "value");
+            flags[0] = true;
+        }
+        else if(key == "another_key")
+        {
+            const Yaml::Node & node = value.second;
+            EXPECT_TRUE(node.IsScalar());
+            EXPECT_EQ(node.As<std::string>(), "Another Value");
+            flags[1] = true;
+        }
+        else if(key == "another_nested_map")
+        {
+            const Yaml::Node & node = value.second;
             EXPECT_TRUE(node.IsMap());
             flags[2] = true;
         }

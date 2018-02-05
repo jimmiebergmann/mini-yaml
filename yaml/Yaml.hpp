@@ -326,7 +326,88 @@ namespace Yaml
         };
 
         eType   m_Type; ///< Type of iterator.
-        void *  m_pImp; ///< Implementation of node class.
+        void *  m_pImp; ///< Implementation of iterator class.
+
+	};
+
+
+	/**
+	* @breif Constant iterator class.
+	*
+	*/
+	class ConstIterator
+	{
+
+    public:
+
+        friend class Node;
+
+        /**
+        * @breif Default constructor.
+        *
+        */
+        ConstIterator();
+
+        /**
+        * @breif Copy constructor.
+        *
+        */
+        ConstIterator(const ConstIterator & it);
+
+        /**
+        * @breif Assignment operator.
+        *
+        */
+        ConstIterator & operator = (const ConstIterator & it);
+
+        /**
+        * @breif Destructor.
+        *
+        */
+        ~ConstIterator();
+
+        /**
+        * @breif Get node of iterator.
+        *        First pair item is the key of map value, empty if type is sequence.
+        *
+        */
+        std::pair<const std::string &, const Node &> operator *();
+
+        /**
+        * @breif Post-increment operator.
+        *
+        */
+        ConstIterator & operator ++ (int);
+
+        /**
+        * @breif Post-decrement operator.
+        *
+        */
+        ConstIterator & operator -- (int);
+
+        /**
+        * @breif Check if iterator is equal to other iterator.
+        *
+        */
+        bool operator == (const ConstIterator & it);
+
+        /**
+        * @breif Check if iterator is not equal to other iterator.
+        *
+        */
+        bool operator != (const ConstIterator & it);
+
+    private:
+
+        enum eType
+        {
+            None,
+            SequenceType,
+            MapType
+        };
+
+        eType   m_Type; ///< Type of iterator.
+        void *  m_pImp; ///< Implementation of constant iterator class.
 
 	};
 
@@ -448,40 +529,29 @@ namespace Yaml
 		Node & PushBack();
 
 		/**
-		* @breif Get sequence item.
-		*        Converts node to sequence type if needed.
-		*        Not creating new Node if index is unknown.
+		* @breif    Get sequence/map item.
+		*           Converts node to sequence/map type if needed.
+		*
+		* @param index  Sequence index. Returns None type Node if index is unknown.
+		* @param key    Map key. Creates a new node if key is unknown.
 		*
 		*/
 		Node & operator []  (const size_t index);
-
-		/**
-		* @breif Get map item.
-		*        Converts node to map type if needed.
-		*        Creating new node of type 'None' if key is unknown.
-		*
-		*/
 		Node & operator [] (const std::string & key);
 
 		/**
-		* @breif Erase sequence item.
-		*        No action if node is not a sequence.
+		* @breif Erase item.
+		*        No action if node is not a sequence or map.
 		*
 		*/
 		void Erase(const size_t index);
-
-		/**
-		* @breif Erase map item.
-		*        No action if node is not an map.
-		*
-		*/
 		void Erase(const std::string & key);
 
 		/**
-		* @breif Set scalar value.
-		*        Converts node to scalar type if needed.
+		* @breif Assignment operators.
 		*
 		*/
+		Node & operator = (const Node & node);
 		Node & operator = (const std::string & value);
 		Node & operator = (const char * value);
 
@@ -490,12 +560,14 @@ namespace Yaml
 		*
 		*/
 		Iterator Begin();
+		ConstIterator Begin() const;
 
 		/**
 		* @breif Get end iterator.
 		*
 		*/
 		Iterator End();
+		ConstIterator End() const;
 
 
 	private:

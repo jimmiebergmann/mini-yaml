@@ -64,6 +64,7 @@ namespace Yaml
 	static std::string ExceptionMessage(const std::string & message, const size_t errorLine, const size_t errorPos);
     static bool FindQuote(const std::string & input, size_t & start, size_t & end, size_t searchPos = 0);
     static size_t FindNotCited(const std::string & input, char token);
+    static void CopyNode(const Node & from, Node & to);
 
 	// Exception implementations
 	Exception::Exception(const std::string & message, const eType type) :
@@ -552,6 +553,80 @@ namespace Yaml
 
     };
 
+    class SequenceConstIteratorImp : public IteratorImp
+    {
+
+    public:
+
+        virtual Node::eType GetType() const
+        {
+            return Node::SequenceType;
+        }
+
+        virtual void InitBegin(SequenceImp * pSequenceImp)
+        {
+            m_Iterator = pSequenceImp->m_Sequence.begin();
+        }
+
+        virtual void InitEnd(SequenceImp * pSequenceImp)
+        {
+            m_Iterator = pSequenceImp->m_Sequence.end();
+        }
+
+        virtual void InitBegin(MapImp * pMapImp)
+        {
+        }
+
+        virtual void InitEnd(MapImp * pMapImp)
+        {
+        }
+
+        void Copy(const SequenceConstIteratorImp & it)
+        {
+            m_Iterator = it.m_Iterator;
+        }
+
+        std::map<size_t, Node *>::const_iterator m_Iterator;
+
+    };
+
+    class MapConstIteratorImp : public IteratorImp
+    {
+
+    public:
+
+        virtual Node::eType GetType() const
+        {
+            return Node::MapType;
+        }
+
+        virtual void InitBegin(SequenceImp * pSequenceImp)
+        {
+        }
+
+        virtual void InitEnd(SequenceImp * pSequenceImp)
+        {
+        }
+
+        virtual void InitBegin(MapImp * pMapImp)
+        {
+            m_Iterator = pMapImp->m_Map.begin();
+        }
+
+        virtual void InitEnd(MapImp * pMapImp)
+        {
+            m_Iterator = pMapImp->m_Map.end();
+        }
+
+        void Copy(const MapConstIteratorImp & it)
+        {
+            m_Iterator = it.m_Iterator;
+        }
+
+        std::map<std::string, Node *>::const_iterator m_Iterator;
+
+    };
+
 
     // Iterator class
     Iterator::Iterator() :
@@ -704,15 +779,167 @@ namespace Yaml
     }
 
 
+    // Const Iterator class
+    ConstIterator::ConstIterator() :
+        m_Type(None),
+        m_pImp(nullptr)
+    {
+    }
+
+    ConstIterator::~ConstIterator()
+    {
+        if(m_pImp)
+        {
+            switch(m_Type)
+            {
+            case SequenceType:
+                delete static_cast<SequenceConstIteratorImp*>(m_pImp);
+                break;
+            case MapType:
+                delete static_cast<MapConstIteratorImp*>(m_pImp);
+                break;
+            default:
+                break;
+            }
+
+        }
+    }
+
+    ConstIterator::ConstIterator(const ConstIterator & it)
+    {
+        *this = it;
+    }
+
+    ConstIterator & ConstIterator::operator = (const ConstIterator & it)
+    {
+        if(m_pImp)
+        {
+            switch(m_Type)
+            {
+            case SequenceType:
+                delete static_cast<SequenceConstIteratorImp*>(m_pImp);
+                break;
+            case MapType:
+                delete static_cast<MapConstIteratorImp*>(m_pImp);
+                break;
+            default:
+                break;
+            }
+            m_pImp = nullptr;
+            m_Type = None;
+        }
+
+        IteratorImp * pNewImp = nullptr;
+
+        switch(it.m_Type)
+        {
+        case SequenceType:
+            m_Type = SequenceType;
+            pNewImp = new SequenceConstIteratorImp;
+            static_cast<SequenceConstIteratorImp*>(pNewImp)->m_Iterator = static_cast<SequenceConstIteratorImp*>(it.m_pImp)->m_Iterator;
+            break;
+        case MapType:
+            m_Type = MapType;
+            pNewImp = new MapConstIteratorImp;
+            static_cast<MapConstIteratorImp*>(pNewImp)->m_Iterator = static_cast<MapConstIteratorImp*>(it.m_pImp)->m_Iterator;
+            break;
+        default:
+            break;
+        }
+
+        m_pImp = pNewImp;
+        return *this;
+    }
+
+    std::pair<const std::string &, const Node &> ConstIterator::operator *()
+    {
+        switch(m_Type)
+        {
+        case SequenceType:
+            return {"", *(static_cast<SequenceConstIteratorImp*>(m_pImp)->m_Iterator->second)};
+            break;
+        case MapType:
+            return {static_cast<MapConstIteratorImp*>(m_pImp)->m_Iterator->first,
+                    *(static_cast<MapConstIteratorImp*>(m_pImp)->m_Iterator->second)};
+            break;
+        default:
+            break;
+        }
+
+        g_NoneNode.Clear();
+        return {"", g_NoneNode};
+    }
+
+    ConstIterator & ConstIterator::operator ++ (int dummy)
+    {
+        switch(m_Type)
+        {
+        case SequenceType:
+            static_cast<SequenceConstIteratorImp*>(m_pImp)->m_Iterator++;
+            break;
+        case MapType:
+            static_cast<MapConstIteratorImp*>(m_pImp)->m_Iterator++;
+            break;
+        default:
+            break;
+        }
+        return *this;
+    }
+
+    ConstIterator & ConstIterator::operator -- (int dummy)
+    {
+        switch(m_Type)
+        {
+        case SequenceType:
+            static_cast<SequenceConstIteratorImp*>(m_pImp)->m_Iterator--;
+            break;
+        case MapType:
+            static_cast<MapConstIteratorImp*>(m_pImp)->m_Iterator--;
+            break;
+        default:
+            break;
+        }
+        return *this;
+    }
+
+    bool ConstIterator::operator == (const ConstIterator & it)
+    {
+        if(m_Type != it.m_Type)
+        {
+            return false;
+        }
+
+        switch(m_Type)
+        {
+        case SequenceType:
+            return static_cast<SequenceConstIteratorImp*>(m_pImp)->m_Iterator == static_cast<SequenceConstIteratorImp*>(it.m_pImp)->m_Iterator;
+            break;
+        case MapType:
+            return static_cast<MapConstIteratorImp*>(m_pImp)->m_Iterator == static_cast<MapConstIteratorImp*>(it.m_pImp)->m_Iterator;
+            break;
+        default:
+            break;
+        }
+
+        return false;
+    }
+
+    bool ConstIterator::operator != (const ConstIterator & it)
+    {
+        return !(*this == it);
+    }
+
+
 	// Node class
 	Node::Node() :
         m_pImp(new NodeImp)
 	{
 	}
 
-	Node::Node(const Node & node)
+	Node::Node(const Node & node) :
+	    Node()
 	{
-	    throw InternalException("Copy is not allowed yet.");
+	    *this = node;
 	}
 
 	Node::Node(const std::string & value) :
@@ -827,6 +1054,12 @@ namespace Yaml
         return TYPE_IMP->Erase(key);
     }
 
+    Node & Node::operator = (const Node & node)
+    {
+        NODE_IMP->Clear();
+        CopyNode(node, *this);
+        return *this;
+    }
 
     Node & Node::operator = (const std::string & value)
     {
@@ -872,6 +1105,36 @@ namespace Yaml
         return it;
     }
 
+    ConstIterator Node::Begin() const
+    {
+        ConstIterator it;
+
+        if(TYPE_IMP != nullptr)
+        {
+            IteratorImp * pItImp = nullptr;
+
+            switch(NODE_IMP->m_Type)
+            {
+            case Node::SequenceType:
+                it.m_Type = ConstIterator::SequenceType;
+                pItImp = new SequenceConstIteratorImp;
+                pItImp->InitBegin(static_cast<SequenceImp*>(TYPE_IMP));
+                break;
+            case Node::MapType:
+                it.m_Type = ConstIterator::MapType;
+                pItImp = new MapConstIteratorImp;
+                pItImp->InitBegin(static_cast<MapImp*>(TYPE_IMP));
+                break;
+            default:
+                break;
+            }
+
+            it.m_pImp = pItImp;
+        }
+
+        return it;
+    }
+
     Iterator Node::End()
     {
        Iterator it;
@@ -890,6 +1153,36 @@ namespace Yaml
             case Node::MapType:
                 it.m_Type = Iterator::MapType;
                 pItImp = new MapIteratorImp;
+                pItImp->InitEnd(static_cast<MapImp*>(TYPE_IMP));
+                break;
+            default:
+                break;
+            }
+
+            it.m_pImp = pItImp;
+        }
+
+        return it;
+    }
+
+    ConstIterator Node::End() const
+    {
+       ConstIterator it;
+
+        if(TYPE_IMP != nullptr)
+        {
+            IteratorImp * pItImp = nullptr;
+
+            switch(NODE_IMP->m_Type)
+            {
+            case Node::SequenceType:
+                it.m_Type = ConstIterator::SequenceType;
+                pItImp = new SequenceConstIteratorImp;
+                pItImp->InitEnd(static_cast<SequenceImp*>(TYPE_IMP));
+                break;
+            case Node::MapType:
+                it.m_Type = ConstIterator::MapType;
+                pItImp = new MapConstIteratorImp;
                 pItImp->InitEnd(static_cast<MapImp*>(TYPE_IMP));
                 break;
             default:
@@ -1940,6 +2233,36 @@ namespace Yaml
         }
 
         return tokenPos;
+    }
+
+    void CopyNode(const Node & from, Node & to)
+    {
+        const Node::eType type = from.Type();
+
+        switch(type)
+        {
+        case Node::SequenceType:
+            for(auto it = from.Begin(); it != from.End(); it++)
+            {
+                const Node & currentNode = (*it).second;
+                Node & newNode = to.PushBack();
+                CopyNode(currentNode, newNode);
+            }
+            break;
+        case Node::MapType:
+            for(auto it = from.Begin(); it != from.End(); it++)
+            {
+                const Node & currentNode = (*it).second;
+                Node & newNode = to[(*it).first];
+                CopyNode(currentNode, newNode);
+            }
+            break;
+        case Node::ScalarType:
+            to = from.As<std::string>();
+            break;
+        case Node::None:
+            break;
+        }
     }
 
 }
