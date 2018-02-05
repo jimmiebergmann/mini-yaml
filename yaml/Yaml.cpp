@@ -62,7 +62,8 @@ namespace Yaml
 	static std::string ExceptionMessage(const std::string & message, ReaderLine & line);
 	static std::string ExceptionMessage(const std::string & message, ReaderLine & line, const size_t errorPos);
 	static std::string ExceptionMessage(const std::string & message, const size_t errorLine, const size_t errorPos);
-
+    static bool FindQuote(const std::string & input, size_t & start, size_t & end, size_t searchPos = 0);
+    static size_t FindNotCited(const std::string & input, char token);
 
 	// Exception implementations
 	Exception::Exception(const std::string & message, const eType type) :
@@ -1071,6 +1072,13 @@ namespace Yaml
 				std::getline(stream, line);
 				lineNo++;
 
+				// Remove comment
+				const size_t commentPos = FindNotCited(line, '#');
+				if(commentPos != std::string::npos)
+                {
+                    line.resize(commentPos);
+                }
+
 				// Start of document.
 				if (documentStartFound == false && line == "---")
 				{
@@ -1830,5 +1838,108 @@ namespace Yaml
 	{
 		return message + std::string(" Line ") + std::to_string(errorLine) + std::string(" column ") + std::to_string(errorPos);
 	}
+
+    bool FindQuote(const std::string & input, size_t & start, size_t & end, size_t searchPos)
+    {
+        start = end = std::string::npos;
+        size_t qPos = searchPos;
+        bool foundStart = false;
+
+        while(qPos != std::string::npos)
+        {
+            // Find first quote.
+            qPos = input.find_first_of("\"'", qPos);
+            if(qPos == std::string::npos)
+            {
+                return false;
+            }
+
+            const char token = input[qPos];
+            if(token == '"' && (qPos == 0 || input[qPos-1] != '\\'))
+            {
+                // Found start quote.
+                if(foundStart == false)
+                {
+                    start = qPos;
+                    foundStart = true;
+                }
+                // Found end quote
+                else
+                {
+                    end = qPos;
+                    return true;
+                }
+            }
+
+            // Check if it's possible for another loop.
+            if(qPos + 1 == input.size())
+            {
+                return false;
+            }
+            qPos++;
+        }
+
+        return false;
+    }
+
+    size_t FindNotCited(const std::string & input, char token)
+    {
+        size_t tokenPos = input.find_first_of(token);
+        if(tokenPos == std::string::npos)
+        {
+            return std::string::npos;
+        }
+
+        // Find all quotes
+        std::vector<std::pair<size_t, size_t>> quotes;
+
+        size_t quoteStart = 0;
+        size_t quoteEnd = 0;
+        while(FindQuote(input, quoteStart, quoteEnd, quoteEnd))
+        {
+            quotes.push_back({quoteStart, quoteEnd});
+
+            if(quoteEnd + 1 == input.size())
+            {
+                break;
+            }
+            quoteEnd++;
+        }
+
+        if(quotes.size() == 0)
+        {
+            return tokenPos;
+        }
+
+        size_t currentQuoteIndex = 0;
+        std::pair<size_t, size_t> currentQuote = {0, 0};
+
+        while(currentQuoteIndex < quotes.size())
+        {
+            currentQuote = quotes[currentQuoteIndex];
+
+            if(tokenPos < currentQuote.first)
+            {
+                return tokenPos;
+            }
+            if(tokenPos <= currentQuote.second)
+            {
+                // Find next token
+                if(tokenPos + 1 == input.size())
+                {
+                    return std::string::npos;
+                }
+                tokenPos = input.find_first_of(token, tokenPos + 1);
+                if(tokenPos == std::string::npos)
+                {
+                    return std::string::npos;
+                }
+            }
+
+            currentQuoteIndex++;
+        }
+
+        return tokenPos;
+    }
 
 }

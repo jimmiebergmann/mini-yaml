@@ -368,6 +368,7 @@ namespace Yaml
 
 		/**
 		* @breif Assignment constructors.
+		*        Converts node to scalar type if needed.
 		*
 		*/
 		Node(const std::string & value);

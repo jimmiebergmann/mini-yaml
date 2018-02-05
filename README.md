@@ -42,11 +42,12 @@ See [examples/FirstExample.cpp](https://github.com/jimmiebergmann/mini-yaml/blob
 ## Todo
 - Do more tests.
 - Allow copy constructor of nodes.
-- Serialize multi-line scalars.
+- Serialize newlines in multi-line scalars.
 - Properly serialize quotation marks.
-- Parse/serialize comments.
 - Ignore explicit typing(!!type) in parsing.
 - Allow customization of serialization. Tab size, sequence item newline, etc..
 - Parse tags.
 - Parse flow sequences/maps.
+- Parse complex keys.
+- Parse sets.
 
