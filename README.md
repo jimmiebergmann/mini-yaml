@@ -68,10 +68,9 @@ Builds are passed if all tests are good and no memory leaks were found.
 | dev | [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=dev)](https://travis-ci.org/jimmiebergmann/mini-yaml)|
 
 ## Todo
-- Serialize newlines in multi-line scalars.
-- Properly serialize quotation marks.
-- Ignore explicit typing(!!type) in parsing.
-- Allow customization of serialization. Tab size, sequence item newline, etc..
+- Parse scalar newlines.
+- Properly parse/serialize quotation marks.
+- Parse/serialize explicit typing(!!type).
 - Parse tags.
 - Parse flow sequences/maps.
 - Parse complex keys.

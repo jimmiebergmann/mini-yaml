@@ -543,8 +543,16 @@ TEST(Iterator, ConstIterator)
     EXPECT_TRUE(flags[0]);
     EXPECT_TRUE(flags[1]);
     EXPECT_TRUE(flags[2]);
-
 }
+
+TEST(Serialize, Serialize)
+{
+    Yaml::Node root;
+    EXPECT_NO_THROW(Parse(root, "../test/learnyaml.yaml"));
+
+    EXPECT_NO_THROW(Serialize(root, "out.yaml"));
+}
+
 
 int main(int argc, char **argv)
 {

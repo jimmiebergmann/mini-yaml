@@ -604,6 +604,38 @@ namespace Yaml
     void Parse(Node & root, const std::string & string);
     void Parse(Node & root, const char * buffer, const size_t size);
 
+
+    /**
+    * @breif    Serialization configuration structure,
+    *           describing output behavior.
+    *
+    */
+    struct SerializeConfig
+    {
+
+        /**
+        * @breif Constructor.
+        *
+        * @param spaceIndentation       Number of spaces per indentation.
+        * @param scalarMaxLength        Maximum length of scalars. Serialized as folder scalars if exceeded.
+        *                               Ignored if equal to 0.
+        * @param sequencMapNewline      Put maps on a new line if parent node is a sequence.
+        * @param sequenceScalarNewline  Put scalars on a new line if parent node is a sequence.
+        * @param mapScalarNewline       Put scalars on a new line if parent node is a map.
+        *
+        */
+        SerializeConfig( const size_t spaceIndentation = 2,
+                         const size_t scalarMaxLength = 64,
+                         const bool sequencMapNewline = false,
+                         const bool mapScalarNewline = false);
+
+        size_t SpaceIndentation;    ///< Number of spaces per indentation.
+        size_t ScalarMaxLength;     ///< Maximum length of scalars. Serialized as folder scalars if exceeded.
+        bool SequencMapNewline;     ///< Put maps on a new line if parent node is a sequence.
+        bool MapScalarNewline;      ///< Put scalars on a new line if parent node is a map.
+    };
+
+
     /**
     * @breif Serialization functions.
     *
@@ -611,14 +643,15 @@ namespace Yaml
     * @param filename	Path of output file.
     * @param stream		Output stream.
     * @param string		String of output data.
-    * @param tabSize	Number of spaces for each level.
+    * @param config 	Serialization configurations.
     *
     * @throw InternalException	An internal error occurred.
     * @throw OperationException	If filename or buffer pointer is invalid.
+    *                           If config is invalid.
     *
     */
-    void Serialize(Node & root, const char * filename, const size_t tabSize = 4);
-    void Serialize(Node & root, std::iostream & stream, const size_t tabSize = 4);
-    void Serialize(Node & root, std::string & string, const size_t tabSize = 4);
+    void Serialize(const Node & root, const char * filename, const SerializeConfig & config = {2, 64, false, false});
+    void Serialize(const Node & root, std::iostream & stream, const SerializeConfig & config = {2, 64, false, false});
+    void Serialize(const Node & root, std::string & string, const SerializeConfig & config = {2, 64, false, false});
 
 }

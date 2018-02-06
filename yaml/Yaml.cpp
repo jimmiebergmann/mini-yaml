@@ -55,6 +55,7 @@ namespace Yaml
     static const std::string g_ErrorIncorrectOffset	        = "Incorrect offset.";
     static const std::string g_ErrorSequenceError	        = "Error in sequence node.";
     static const std::string g_ErrorCannotOpenFile          = "Cannot open file.";
+    static const std::string g_ErrorIndentation             = "Space indentation is less than 2.";
     static const std::string g_EmptyString = "";
     static Yaml::Node        g_NoneNode;
 
@@ -1936,7 +1937,7 @@ namespace Yaml
 				{
 					if (it == m_Lines.end() || (*it)->Offset < pLine->Offset)
 					{
-						if (pLine->GetFlag(ReaderLine::ScalarNewlineFlag) == true)
+						if (pLine->GetFlag(ReaderLine::ScalarNewlineFlag))
 						{
 							pLine->Data += "\n";
 						}
@@ -1944,7 +1945,14 @@ namespace Yaml
 					}
 
 					ReaderLine * pNextLine = *it;
-					pLine->Data += "\n";
+					if (pLine->GetFlag(ReaderLine::LiteralScalarFlag))
+                    {
+                        pLine->Data += "\n";
+                    }
+                    else if (pLine->GetFlag(ReaderLine::FoldedScalarFlag))
+                    {
+                        pLine->Data += " ";
+                    }
 					pLine->Data += std::string(pNextLine->Offset - pLine->Offset, ' ');
 					pLine->Data += pNextLine->Data;
 
@@ -2023,77 +2031,197 @@ namespace Yaml
 	}
 
 
-	// Serialization functions
-	void Serialize(Node & root, const char * filename, const size_t tabSize)
+	// Serialize configuration structure.
+    SerializeConfig::SerializeConfig(const size_t spaceIndentation,
+                                     const size_t scalarMaxLength,
+                                     const bool sequencMapNewline,
+                                     const bool mapScalarNewline) :
+        SpaceIndentation(spaceIndentation),
+        ScalarMaxLength(scalarMaxLength),
+        SequencMapNewline(sequencMapNewline),
+        MapScalarNewline(mapScalarNewline)
     {
+    }
+
+
+	// Serialization functions
+	void Serialize(const Node & root, const char * filename, const SerializeConfig & config)
+    {
+        std::stringstream stream;
+        Serialize(root, stream, config);
+
         std::ofstream f(filename);
 		if (f.is_open() == false)
 		{
 			throw OperationException(g_ErrorCannotOpenFile);
 		}
 
-		try
-		{
-		    std::stringstream stream;
-		    Serialize(root, stream, tabSize);
-		    f.write(stream.str().c_str(), stream.str().size());
-		    f.close();
-		}
-		catch(const Exception & e)
-		{
-		   f.close();
-		   throw;
-		}
+        f.write(stream.str().c_str(), stream.str().size());
+        f.close();
     }
 
-    static void SerializeLoop(Node & node, std::iostream & stream, size_t level, const size_t tabSize)
+    size_t LineFolding(const std::string & input, std::vector<std::string> & folded, const size_t maxLength)
     {
+        folded.clear();
+        if(input.size() == 0)
+        {
+            return 0;
+        }
+
+        size_t currentPos = 0;
+        size_t lastPos = 0;
+        size_t spacePos = std::string::npos;
+        while(currentPos < input.size())
+        {
+            currentPos = lastPos + maxLength;
+
+            if(currentPos < input.size())
+            {
+               spacePos = input.find_first_of(' ', currentPos);
+            }
+
+            if(spacePos == std::string::npos || currentPos >= input.size())
+            {
+                const std::string endLine = input.substr(lastPos);
+                if(endLine.size())
+                {
+                    folded.push_back(endLine);
+                }
+
+                return folded.size();
+            }
+
+            folded.push_back(input.substr(lastPos, spacePos - lastPos));
+
+            lastPos = spacePos + 1;
+        }
+
+        return folded.size();
+    }
+
+    static void SerializeLoop(const Node & node, std::iostream & stream, bool useLevel, const size_t level, const SerializeConfig & config)
+    {
+        const size_t indention = config.SpaceIndentation;
+
         switch(node.Type())
         {
             case Node::SequenceType:
             {
                 for(auto it = node.Begin(); it != node.End(); it++)
                 {
-                    Node & value = (*it).second;
+                    const Node & value = (*it).second;
                     if(value.IsNone())
                     {
                         continue;
                     }
                     stream << std::string(level, ' ') << "- ";
-                    if(value.IsScalar() == false)
+                    useLevel = false;
+                    if(value.IsSequence() || (value.IsMap() && config.SequencMapNewline == true))
                     {
+                        useLevel = true;
                         stream << "\n";
                     }
 
-                    SerializeLoop(value, stream, level + tabSize, tabSize);
+                    SerializeLoop(value, stream, useLevel, level + 2, config);
                 }
 
             }
             break;
             case Node::MapType:
             {
+                size_t count = 0;
                 for(auto it = node.Begin(); it != node.End(); it++)
                 {
-                    Node & value = (*it).second;
+                    const Node & value = (*it).second;
                     if(value.IsNone())
                     {
                         continue;
                     }
-                    stream << std::string(level, ' ') << (*it).first << ": ";
-                    if(value.IsScalar() == false)
+
+                    if(useLevel || count > 0)
                     {
+                       stream << std::string(level, ' ');
+                    }
+                    stream << (*it).first << ": ";
+                    useLevel = false;
+                    if(value.IsScalar() == false || (value.IsScalar() && config.MapScalarNewline))
+                    {
+                        useLevel = true;
                         stream << "\n";
                     }
 
-                    SerializeLoop(value, stream, level + tabSize, tabSize);
+                    SerializeLoop(value, stream, useLevel, level + indention, config);
+
+                    useLevel = true;
+                    count++;
                 }
 
             }
             break;
             case Node::ScalarType:
             {
-                /// NOT SUPPORTING multi-line scalars.
-                stream << node.As<std::string>() << "\n";
+                const std::string value = node.As<std::string>();
+
+                // Empty scalar
+                if(value.size() == 0)
+                {
+                    stream << "\n";
+                    break;
+                }
+
+                // Get lines of scalar.
+                std::string line = "";
+                std::vector<std::string> lines;
+                std::istringstream iss(value);
+                while (iss.eof() == false)
+                {
+                    std::getline(iss, line);
+                    lines.push_back(line);
+                }
+
+                // Block scalar
+                const std::string & lastLine = lines.back();
+                const bool endNewline = lastLine.size() == 0;
+                if(endNewline)
+                {
+                    lines.pop_back();
+                }
+
+                // Literal
+                if(lines.size() > 1)
+                {
+                    stream << "|";
+                }
+                // Folded/plain
+                else
+                {
+                    const std::string frontLine = lines.front();
+                    if(config.ScalarMaxLength == 0 || lines.front().size() <= config.ScalarMaxLength ||
+                       LineFolding(frontLine, lines, config.ScalarMaxLength) == 1)
+                    {
+                        if(useLevel)
+                        {
+                             stream << std::string(level, ' ');
+                        }
+                        stream << value << "\n";
+                        break;
+                    }
+                    else
+                    {
+                        stream << ">";
+                    }
+                }
+
+                if(endNewline == false)
+                {
+                     stream << "-";
+                }
+                stream << "\n";
+
+                for(auto it = lines.begin(); it != lines.end(); it++)
+                {
+                    stream << std::string(level, ' ') << (*it) << "\n";
+                }
             }
             break;
 
@@ -2102,15 +2230,20 @@ namespace Yaml
         }
     }
 
-    void Serialize(Node & root, std::iostream & stream, const size_t tabSize)
+    void Serialize(const Node & root, std::iostream & stream, const SerializeConfig & config)
     {
-        SerializeLoop(root, stream, 0, tabSize);
+        if(config.SpaceIndentation < 2)
+        {
+            throw OperationException(g_ErrorIndentation);
+        }
+
+        SerializeLoop(root, stream, false, 0, config);
     }
 
-    void Serialize(Node & root, std::string & string, const size_t tabSize)
+    void Serialize(const Node & root, std::string & string, const SerializeConfig & config)
     {
         std::stringstream stream;
-        Serialize(root, stream, tabSize);
+        Serialize(root, stream, config);
         string = stream.str();
     }
 
