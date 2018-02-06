@@ -338,8 +338,13 @@ void Parse_File_learnyaml(Yaml::Node & root)
     EXPECT_TRUE(key_with_spaces.IsScalar());
     EXPECT_EQ(key_with_spaces.As<std::string>(), "value");
 
+    Yaml::Node & keys_can_be_quoted_too = root["Keys: can be \"quoted\" too."];
+    EXPECT_TRUE(keys_can_be_quoted_too.IsScalar());
+    EXPECT_EQ(keys_can_be_quoted_too.As<std::string>(), "Useful if you want to put a ':' in your key.");
+
     // Not testing multi-line scalars for now.
     // ...
+
 
     {
         Yaml::Node & a_nested_map = root["a_nested_map"];

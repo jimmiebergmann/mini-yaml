@@ -1,3 +1,4 @@
+# Slightly modified to fit our purpose.
 # Origin: https://learnxinyminutes.com/docs/yaml/
 
 # Comments in YAML look like this.
@@ -19,7 +20,7 @@ null_value: null
 key with spaces: value
 # Notice that strings don't need to be quoted. However, they can be.
 however: "A string, enclosed in quotes."
-"Keys can be quoted too.": "Useful if you want to put a ':' in your key."
+"Keys: can be \"quoted\" too.": "Useful if you want to put a ':' in your key."
 
 # Multiple-line strings can be written either as a 'literal block' (using |),
 # or a 'folded block' (using '>').

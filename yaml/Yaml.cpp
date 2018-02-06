@@ -48,6 +48,8 @@ namespace Yaml
 	// Exception message definitions.
     static const std::string g_ErrorInvalidCharacter		= "Invalid character found.";
     static const std::string g_ErrorKeyMissing				= "Missing key.";
+    static const std::string g_ErrorKeyIncorrect			= "Incorrect key.";
+    static const std::string g_ErrorValueIncorrect			= "Incorrect value.";
     static const std::string g_ErrorTabInOffset				= "Tab found in offset.";
     static const std::string g_ErrorBlockSequenceNotAllowed = "Block sequence entries are not allowed in this context.";
     static const std::string g_ErrorUnexpectedDocumentEnd	= "Unexpected document end.";
@@ -64,8 +66,12 @@ namespace Yaml
 	static std::string ExceptionMessage(const std::string & message, ReaderLine & line, const size_t errorPos);
 	static std::string ExceptionMessage(const std::string & message, const size_t errorLine, const size_t errorPos);
     static bool FindQuote(const std::string & input, size_t & start, size_t & end, size_t searchPos = 0);
+    static size_t FindNotCited(const std::string & input, char token, size_t & preQuoteCount);
     static size_t FindNotCited(const std::string & input, char token);
     static void CopyNode(const Node & from, Node & to);
+    static bool KeyShouldBeCited(const std::string & key);
+    static void AddEscapeTokens(std::string & input, const std::string & tokens);
+    static void RemoveAllEscapeTokens(std::string & input);
 
 	// Exception implementations
 	Exception::Exception(const std::string & message, const eType type) :
@@ -1819,12 +1825,17 @@ namespace Yaml
 		{
 			ReaderLine * pLine = *it;
 
-			// Find map token.
-			size_t tokenPos = pLine->Data.find_first_of(":");
+			// Find map key.
+			size_t preKeyQuotes = 0;
+			size_t tokenPos = FindNotCited(pLine->Data, ':', preKeyQuotes);
 			if (tokenPos == std::string::npos)
 			{
 				return false;
 			}
+			if(preKeyQuotes > 1)
+            {
+                throw ParsingException(ExceptionMessage(g_ErrorKeyIncorrect, *pLine));
+            }
 
 			pLine->Type = Node::MapType;
 
@@ -1836,6 +1847,18 @@ namespace Yaml
 				throw ParsingException(ExceptionMessage(g_ErrorKeyMissing, *pLine));
 			}
 			key.resize(keyEnd + 1);
+
+			// Handle cited key.
+			if(preKeyQuotes == 1)
+            {
+                if(key.front() != '"' || key.back() != '"')
+                {
+                    throw ParsingException(ExceptionMessage(g_ErrorKeyIncorrect, *pLine));
+                }
+
+                key = key.substr(1, key.size() - 2);
+            }
+            RemoveAllEscapeTokens(key);
 
 			// Get value
 			std::string value = "";
@@ -1884,6 +1907,17 @@ namespace Yaml
 				}
 				else
 				{
+				    // Remove quote
+				    if(value.front() == '"')
+                    {
+                        if(value.size() < 2 || value.back() != '"')
+                        {
+                            throw ParsingException(ExceptionMessage(g_ErrorValueIncorrect, *pLine));
+                        }
+
+                        value = value.substr(1, value.size() - 2);
+                    }
+
 					it = m_Lines.insert(it, new ReaderLine(value, pLine->No, valueStart));
 					return false;
 				}
@@ -2142,7 +2176,19 @@ namespace Yaml
                     {
                        stream << std::string(level, ' ');
                     }
-                    stream << (*it).first << ": ";
+
+                    std::string key = (*it).first;
+                    AddEscapeTokens(key, "\\\"");
+                    if(KeyShouldBeCited(key))
+                    {
+                        stream << "\"" << key << "\"" << ": ";
+                    }
+                    else
+                    {
+                        stream << key << ": ";
+                    }
+
+
                     useLevel = false;
                     if(value.IsScalar() == false || (value.IsScalar() && config.MapScalarNewline))
                     {
@@ -2308,8 +2354,9 @@ namespace Yaml
         return false;
     }
 
-    size_t FindNotCited(const std::string & input, char token)
+    size_t FindNotCited(const std::string & input, char token, size_t & preQuoteCount)
     {
+        preQuoteCount = 0;
         size_t tokenPos = input.find_first_of(token);
         if(tokenPos == std::string::npos)
         {
@@ -2348,6 +2395,7 @@ namespace Yaml
             {
                 return tokenPos;
             }
+            preQuoteCount++;
             if(tokenPos <= currentQuote.second)
             {
                 // Find next token
@@ -2366,6 +2414,12 @@ namespace Yaml
         }
 
         return tokenPos;
+    }
+
+    size_t FindNotCited(const std::string & input, char token)
+    {
+        size_t dummy = 0;
+        return FindNotCited(input, token, dummy);
     }
 
     void CopyNode(const Node & from, Node & to)
@@ -2397,5 +2451,42 @@ namespace Yaml
             break;
         }
     }
+
+    bool KeyShouldBeCited(const std::string & key)
+    {
+        return key.find_first_of("\":{}[],&*#?|-<>=!%@") != std::string::npos;
+    }
+
+    void AddEscapeTokens(std::string & input, const std::string & tokens)
+    {
+        for(auto it = tokens.begin(); it != tokens.end(); it++)
+        {
+            const char token = *it;
+            const std::string replace = std::string("\\") + std::string(1, token);
+            size_t found = input.find_first_of(token);
+            while(found != std::string::npos)
+            {
+                input.replace(found, 1, replace);
+                found = input.find_first_of(token, found + 2);
+            }
+        }
+    }
+
+    void RemoveAllEscapeTokens(std::string & input)
+    {
+        size_t found = input.find_first_of("\\");
+        while(found != std::string::npos)
+        {
+            if(found + 1 == input.size())
+            {
+                return;
+            }
+
+            std::string replace(1, input[found + 1]);
+            input.replace(found, 2, replace);
+            found = input.find_first_of("\\", found + 1);
+        }
+    }
+
 
 }
