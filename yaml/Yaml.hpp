@@ -46,25 +46,25 @@ namespace Yaml
 {
 
     /**
-	* @breif Forward declarations.
-	*
-	*/
+    * @breif Forward declarations.
+    *
+    */
     class Node;
 
 
     /**
-	* @breif Helper classes and functions
-	*
-	*/
+    * @breif Helper classes and functions
+    *
+    */
     namespace impl
-	{
+    {
 
-	    /**
+        /**
         * @breif Helper functionality, converting string to any data type.
         *        Strings are left untouched.
         *
         */
-	    template<typename T>
+        template<typename T>
         struct StringConverter
         {
             static T Get(const std::string & data)
@@ -133,129 +133,129 @@ namespace Yaml
             }
         };
 
-	}
+    }
 
 
-	/**
-	* @breif Exception class.
-	*
-	*/
-	class Exception : public std::runtime_error
-	{
+    /**
+    * @breif Exception class.
+    *
+    */
+    class Exception : public std::runtime_error
+    {
 
-	public:
+    public:
 
-		/**
-		* @breif Enumeration of exception types.
-		*
-		*/
-		enum eType
-		{
-			InternalError,	///< Internal error.
-			ParsingError,	///< Invalid parsing data.
-			OperationError	///< User operation error.
-		};
+        /**
+        * @breif Enumeration of exception types.
+        *
+        */
+        enum eType
+        {
+            InternalError,  ///< Internal error.
+            ParsingError,   ///< Invalid parsing data.
+            OperationError  ///< User operation error.
+        };
 
-		/**
-		* @breif Constructor.
-		*
-		* @param message	Exception message.
-		* @param type		Type of exception.
-		*
-		*/
-		Exception(const std::string & message, const eType type);
+        /**
+        * @breif Constructor.
+        *
+        * @param message    Exception message.
+        * @param type       Type of exception.
+        *
+        */
+        Exception(const std::string & message, const eType type);
 
-		/**
-		* @breif Get type of exception.
-		*
-		*/
-		eType Type() const;
+        /**
+        * @breif Get type of exception.
+        *
+        */
+        eType Type() const;
 
-		/**
-		* @breif Get message of exception.
-		*
-		*/
-		const char * Message() const;
+        /**
+        * @breif Get message of exception.
+        *
+        */
+        const char * Message() const;
 
-	private:
+    private:
 
-		eType m_Type;	///< Type of exception.
+        eType m_Type;   ///< Type of exception.
 
-	};
-
-
-	/**
-	* @breif Internal exception class.
-	*
-	* @see Exception
-	*
-	*/
-	class InternalException : public Exception
-	{
-
-	public:
-
-		/**
-		* @breif Constructor.
-		*
-		* @param message Exception message.
-		*
-		*/
-		InternalException(const std::string & message);
-
-	};
+    };
 
 
-	/**
-	* @breif Parsing exception class.
-	*
-	* @see Exception
-	*
-	*/
-	class ParsingException : public Exception
-	{
+    /**
+    * @breif Internal exception class.
+    *
+    * @see Exception
+    *
+    */
+    class InternalException : public Exception
+    {
 
-	public:
+    public:
 
-		/**
-		* @breif Constructor.
-		*
-		* @param message Exception message.
-		*
-		*/
-		ParsingException(const std::string & message);
+        /**
+        * @breif Constructor.
+        *
+        * @param message Exception message.
+        *
+        */
+        InternalException(const std::string & message);
 
-	};
-
-
-	/**
-	* @breif Operation exception class.
-	*
-	* @see Exception
-	*
-	*/
-	class OperationException : public Exception
-	{
-
-	public:
-
-		/**
-		* @breif Constructor.
-		*
-		* @param message Exception message.
-		*
-		*/
-		OperationException(const std::string & message);
-
-	};
+    };
 
 
-	/**
-	* @breif Iterator class.
-	*
-	*/
-	class Iterator
-	{
+    /**
+    * @breif Parsing exception class.
+    *
+    * @see Exception
+    *
+    */
+    class ParsingException : public Exception
+    {
+
+    public:
+
+        /**
+        * @breif Constructor.
+        *
+        * @param message Exception message.
+        *
+        */
+        ParsingException(const std::string & message);
+
+    };
+
+
+    /**
+    * @breif Operation exception class.
+    *
+    * @see Exception
+    *
+    */
+    class OperationException : public Exception
+    {
+
+    public:
+
+        /**
+        * @breif Constructor.
+        *
+        * @param message Exception message.
+        *
+        */
+        OperationException(const std::string & message);
+
+    };
+
+
+    /**
+    * @breif Iterator class.
+    *
+    */
+    class Iterator
+    {
 
     public:
 
@@ -328,15 +328,15 @@ namespace Yaml
         eType   m_Type; ///< Type of iterator.
         void *  m_pImp; ///< Implementation of iterator class.
 
-	};
+    };
 
 
-	/**
-	* @breif Constant iterator class.
-	*
-	*/
-	class ConstIterator
-	{
+    /**
+    * @breif Constant iterator class.
+    *
+    */
+    class ConstIterator
+    {
 
     public:
 
@@ -409,200 +409,200 @@ namespace Yaml
         eType   m_Type; ///< Type of iterator.
         void *  m_pImp; ///< Implementation of constant iterator class.
 
-	};
+    };
 
 
-	/**
-	* @breif Node class.
-	*
-	*/
-	class Node
-	{
+    /**
+    * @breif Node class.
+    *
+    */
+    class Node
+    {
 
-	public:
+    public:
 
-	    friend class Iterator;
-
-		/**
-		* @breif Enumeration of node types.
-		*
-		*/
-		enum eType
-		{
-			None,
-			SequenceType,
-			MapType,
-			ScalarType
-		};
-
-		/**
-		* @breif Default constructor.
-		*
-		*/
-		Node();
+        friend class Iterator;
 
         /**
-		* @breif Copy constructor.
-		*
-		*/
+        * @breif Enumeration of node types.
+        *
+        */
+        enum eType
+        {
+            None,
+            SequenceType,
+            MapType,
+            ScalarType
+        };
+
+        /**
+        * @breif Default constructor.
+        *
+        */
+        Node();
+
+        /**
+        * @breif Copy constructor.
+        *
+        */
         Node(const Node & node);
 
-		/**
-		* @breif Assignment constructors.
-		*        Converts node to scalar type if needed.
-		*
-		*/
-		Node(const std::string & value);
-		Node(const char * value);
-
-		/**
-		* @breif Destructor.
-		*
-		*/
-		~Node();
+        /**
+        * @breif Assignment constructors.
+        *        Converts node to scalar type if needed.
+        *
+        */
+        Node(const std::string & value);
+        Node(const char * value);
 
         /**
-		* @breif Functions for checking type of node.
-		*
-		*/
-		eType Type() const;
-		bool IsNone() const;
-		bool IsSequence() const;
-		bool IsMap() const;
-		bool IsScalar() const;
+        * @breif Destructor.
+        *
+        */
+        ~Node();
 
         /**
-		* @breif Completely clear node.
-		*
-		*/
-		void Clear();
+        * @breif Functions for checking type of node.
+        *
+        */
+        eType Type() const;
+        bool IsNone() const;
+        bool IsSequence() const;
+        bool IsMap() const;
+        bool IsScalar() const;
 
         /**
-		* @breif Get node as given template type.
-		*
-		*/
-		template<typename T>
-		T As() const
-		{
-		    return impl::StringConverter<T>::Get(AsString());
-		}
+        * @breif Completely clear node.
+        *
+        */
+        void Clear();
 
-		/**
-		* @breif Get node as given template type.
-		*
-		*/
-		template<typename T>
-		T As(const T & defaultValue) const
-		{
-		    return impl::StringConverter<T>::Get(AsString(), defaultValue);
-		}
+        /**
+        * @breif Get node as given template type.
+        *
+        */
+        template<typename T>
+        T As() const
+        {
+            return impl::StringConverter<T>::Get(AsString());
+        }
 
-		/**
-		* @breif Get size of node.
-		*        Nodes of type None or Scalar will return 0.
-		*
-		*/
-		size_t Size() const;
+        /**
+        * @breif Get node as given template type.
+        *
+        */
+        template<typename T>
+        T As(const T & defaultValue) const
+        {
+            return impl::StringConverter<T>::Get(AsString(), defaultValue);
+        }
 
-		// Sequence operators
+        /**
+        * @breif Get size of node.
+        *        Nodes of type None or Scalar will return 0.
+        *
+        */
+        size_t Size() const;
 
-		/**
-		* @breif Insert sequence item at given index.
-		*        Converts node to sequence type if needed.
-		*        Adding new item to end of sequence if index is larger than sequence size.
-		*
-		*/
+        // Sequence operators
+
+        /**
+        * @breif Insert sequence item at given index.
+        *        Converts node to sequence type if needed.
+        *        Adding new item to end of sequence if index is larger than sequence size.
+        *
+        */
         Node & Insert(const size_t index);
 
         /**
-		* @breif Add new sequence index to back.
-		*        Converts node to sequence type if needed.
-		*
-		*/
-		Node & PushFront();
+        * @breif Add new sequence index to back.
+        *        Converts node to sequence type if needed.
+        *
+        */
+        Node & PushFront();
 
-		 /**
-		* @breif Add new sequence index to front.
-		*        Converts node to sequence type if needed.
-		*
-		*/
-		Node & PushBack();
-
-		/**
-		* @breif    Get sequence/map item.
-		*           Converts node to sequence/map type if needed.
-		*
-		* @param index  Sequence index. Returns None type Node if index is unknown.
-		* @param key    Map key. Creates a new node if key is unknown.
-		*
-		*/
-		Node & operator []  (const size_t index);
-		Node & operator [] (const std::string & key);
-
-		/**
-		* @breif Erase item.
-		*        No action if node is not a sequence or map.
-		*
-		*/
-		void Erase(const size_t index);
-		void Erase(const std::string & key);
-
-		/**
-		* @breif Assignment operators.
-		*
-		*/
-		Node & operator = (const Node & node);
-		Node & operator = (const std::string & value);
-		Node & operator = (const char * value);
-
-		/**
-		* @breif Get start iterator.
-		*
-		*/
-		Iterator Begin();
-		ConstIterator Begin() const;
-
-		/**
-		* @breif Get end iterator.
-		*
-		*/
-		Iterator End();
-		ConstIterator End() const;
-
-
-	private:
+         /**
+        * @breif Add new sequence index to front.
+        *        Converts node to sequence type if needed.
+        *
+        */
+        Node & PushBack();
 
         /**
-		* @breif Get as string. If type is scalar, else empty.
-		*
-		*/
-		const std::string & AsString() const;
+        * @breif    Get sequence/map item.
+        *           Converts node to sequence/map type if needed.
+        *
+        * @param index  Sequence index. Returns None type Node if index is unknown.
+        * @param key    Map key. Creates a new node if key is unknown.
+        *
+        */
+        Node & operator []  (const size_t index);
+        Node & operator [] (const std::string & key);
+
+        /**
+        * @breif Erase item.
+        *        No action if node is not a sequence or map.
+        *
+        */
+        void Erase(const size_t index);
+        void Erase(const std::string & key);
+
+        /**
+        * @breif Assignment operators.
+        *
+        */
+        Node & operator = (const Node & node);
+        Node & operator = (const std::string & value);
+        Node & operator = (const char * value);
+
+        /**
+        * @breif Get start iterator.
+        *
+        */
+        Iterator Begin();
+        ConstIterator Begin() const;
+
+        /**
+        * @breif Get end iterator.
+        *
+        */
+        Iterator End();
+        ConstIterator End() const;
+
+
+    private:
+
+        /**
+        * @breif Get as string. If type is scalar, else empty.
+        *
+        */
+        const std::string & AsString() const;
 
 		void * m_pImp; ///< Implementation of node class.
 
-	};
+    };
 
 
-	/**
+    /**
     * @breif Parsing functions.
-    *		 Population given root node with deserialized data.
+    *        Population given root node with deserialized data.
     *
-    * @param root		Root node to populate.
-    * @param filename	Path of input file.
-    * @param stream		Input stream.
-    * @param string		String of input data.
-    * @param buffer		Char array of input data.
-    * @param size		Buffer size.
+    * @param root       Root node to populate.
+    * @param filename   Path of input file.
+    * @param stream     Input stream.
+    * @param string     String of input data.
+    * @param buffer     Char array of input data.
+    * @param size       Buffer size.
     *
-    * @throw InternalException	An internal error occurred.
-    * @throw ParsingException	Invalid input YAML data.
-    * @throw OperationException	If filename or buffer pointer is invalid.
+    * @throw InternalException  An internal error occurred.
+    * @throw ParsingException   Invalid input YAML data.
+    * @throw OperationException If filename or buffer pointer is invalid.
     *
     */
-    void Parse(Node & root, const char * filename);
-    void Parse(Node & root, std::iostream & stream);
-    void Parse(Node & root, const std::string & string);
-    void Parse(Node & root, const char * buffer, const size_t size);
+	void Parse(Node & root, const char * filename);
+	void Parse(Node & root, std::iostream & stream);
+	void Parse(Node & root, const std::string & string);
+	void Parse(Node & root, const char * buffer, const size_t size);
 
 
     /**
@@ -620,14 +620,13 @@ namespace Yaml
         * @param scalarMaxLength        Maximum length of scalars. Serialized as folder scalars if exceeded.
         *                               Ignored if equal to 0.
         * @param sequencMapNewline      Put maps on a new line if parent node is a sequence.
-        * @param sequenceScalarNewline  Put scalars on a new line if parent node is a sequence.
         * @param mapScalarNewline       Put scalars on a new line if parent node is a map.
         *
         */
-        SerializeConfig( const size_t spaceIndentation = 2,
-                         const size_t scalarMaxLength = 64,
-                         const bool sequencMapNewline = false,
-                         const bool mapScalarNewline = false);
+        SerializeConfig(const size_t spaceIndentation = 2,
+						const size_t scalarMaxLength = 64,
+						const bool sequencMapNewline = false,
+						const bool mapScalarNewline = false);
 
         size_t SpaceIndentation;    ///< Number of spaces per indentation.
         size_t ScalarMaxLength;     ///< Maximum length of scalars. Serialized as folder scalars if exceeded.
@@ -639,14 +638,14 @@ namespace Yaml
     /**
     * @breif Serialization functions.
     *
-    * @param root		Root node to serialize.
-    * @param filename	Path of output file.
-    * @param stream		Output stream.
-    * @param string		String of output data.
-    * @param config 	Serialization configurations.
+    * @param root       Root node to serialize.
+    * @param filename   Path of output file.
+    * @param stream     Output stream.
+    * @param string     String of output data.
+    * @param config     Serialization configurations.
     *
-    * @throw InternalException	An internal error occurred.
-    * @throw OperationException	If filename or buffer pointer is invalid.
+    * @throw InternalException  An internal error occurred.
+    * @throw OperationException If filename or buffer pointer is invalid.
     *                           If config is invalid.
     *
     */

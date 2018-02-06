@@ -69,8 +69,8 @@ Builds are passed if all tests are good and no memory leaks were found.
 
 ## Todo
 - Parse scalar newlines.
-- Parse/serialize explicit typing(!!type).
-- Parse tags.
+- Parse/serialize tags(!!type).
+- Parse anchors.
 - Parse flow sequences/maps.
 - Parse complex keys.
 - Parse sets.
