@@ -1,0 +1,14 @@
+---
+key: foo
+     bar
+...
+
+---
+key: "value
+...
+
+---
+key: "val"ue"
+...
+
+

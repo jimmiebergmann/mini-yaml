@@ -1383,11 +1383,7 @@ namespace Yaml
 				if (documentStartFound == false && line == "---")
 				{
 					// Erase all lines before this line.
-					for (auto it = m_Lines.begin(); it != m_Lines.end(); it++)
-					{
-						delete *it;
-					}
-					m_Lines.clear();
+					ClearLines();
 					documentStartFound = true;
 					continue;
 				}
@@ -1907,12 +1903,19 @@ namespace Yaml
 				}
 				else
 				{
-				    // Remove quote
-				    if(value.front() == '"')
+                    if (it != m_Lines.end() && (*it)->Offset > pLine->Offset)
                     {
-                        if(value.size() < 2 || value.back() != '"')
+                        throw ParsingException(ExceptionMessage(g_ErrorIncorrectOffset, *pLine));
+                    }
+
+				    // Remove quote
+				    size_t quoteStart = std::string::npos;
+				    size_t quoteEnd = std::string::npos;
+				    if(FindQuote(value, quoteStart, quoteEnd, 0) || value.front() == '"')
+                    {
+                        if(quoteStart == 0 && quoteEnd != value.size() - 1)
                         {
-                            throw ParsingException(ExceptionMessage(g_ErrorValueIncorrect, *pLine));
+                             throw ParsingException(ExceptionMessage(g_ErrorValueIncorrect, *pLine));
                         }
 
                         value = value.substr(1, value.size() - 2);
