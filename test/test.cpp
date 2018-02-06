@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "../yaml/Yaml.hpp"
 #include <iostream>
+#include <fstream>
 
 TEST(Exception, throw)
 {
@@ -305,11 +306,8 @@ TEST(Parse, File)
     }
 }
 
-TEST(Parse, File_learnyaml)
+void Parse_File_learnyaml(Yaml::Node & root)
 {
-    Yaml::Node root;
-    EXPECT_NO_THROW(Parse(root, "../test/learnyaml.yaml"));
-
     Yaml::Node & key = root["key"];
     EXPECT_TRUE(key.IsScalar());
     EXPECT_EQ(key.As<std::string>(), "value");
@@ -448,6 +446,62 @@ TEST(Parse, File_learnyaml)
     }
 }
 
+TEST(Parse, File_learnyaml)
+{
+    const std::string filename = "../test/learnyaml.yaml";
+
+    {
+        Yaml::Node root;
+        EXPECT_NO_THROW(Parse(root, filename.c_str()));
+
+        Parse_File_learnyaml(root);
+    }
+    {
+        std::ifstream fin(filename, std::ifstream::binary);
+        EXPECT_TRUE(fin.is_open());
+        if(fin.is_open())
+        {
+            fin.seekg(0, fin.end);
+            size_t dataSize = static_cast<size_t>(fin.tellg());
+            fin.seekg(0, fin.beg);
+            char * pData = new char [dataSize];
+            fin.read(pData, dataSize);
+            fin.close();
+
+            Yaml::Node root;
+            EXPECT_NO_THROW(Parse(root, pData, dataSize));
+            delete [] pData;
+            Parse_File_learnyaml(root);
+        }
+    }
+    {
+        std::ifstream fin(filename, std::ifstream::binary);
+        EXPECT_TRUE(fin.is_open());
+        if(fin.is_open())
+        {
+            fin.seekg(0, fin.end);
+            size_t dataSize = static_cast<size_t>(fin.tellg());
+            fin.seekg(0, fin.beg);
+            char * pData = new char [dataSize];
+            fin.read(pData, dataSize);
+            fin.close();
+            std::string data(pData, dataSize);
+            delete [] pData;
+
+            // String
+            Yaml::Node root_string;
+            EXPECT_NO_THROW(Parse(root_string, data));
+            Parse_File_learnyaml(root_string);
+
+            // Stream
+            std::stringstream stream(data);
+            Yaml::Node root_stream;
+            EXPECT_NO_THROW(Parse(root_stream, stream));
+            Parse_File_learnyaml(root_stream);
+        }
+    }
+}
+
 TEST(Iterator, Iterator)
 {
     Yaml::Node root;
@@ -550,7 +604,29 @@ TEST(Serialize, Serialize)
     Yaml::Node root;
     EXPECT_NO_THROW(Parse(root, "../test/learnyaml.yaml"));
 
-    EXPECT_NO_THROW(Serialize(root, "out.yaml"));
+    {
+        EXPECT_NO_THROW(Serialize(root, "test_learnyaml.yaml"));
+
+        Yaml::Node learn_yaml;
+        EXPECT_NO_THROW(Parse(learn_yaml, "test_learnyaml.yaml"));
+        Parse_File_learnyaml(learn_yaml);
+    }
+    {
+        std::string data = "";
+        EXPECT_NO_THROW(Serialize(root, data));
+
+        Yaml::Node learn_yaml;
+        EXPECT_NO_THROW(Parse(learn_yaml, data));
+        Parse_File_learnyaml(learn_yaml);
+    }
+    {
+        std::stringstream data;
+        EXPECT_NO_THROW(Serialize(root, data));
+
+        Yaml::Node learn_yaml;
+        EXPECT_NO_THROW(Parse(learn_yaml, data));
+        Parse_File_learnyaml(learn_yaml);
+    }
 }
 
 
