@@ -578,7 +578,7 @@ namespace Yaml
         */
         const std::string & AsString() const;
 
-		void * m_pImp; ///< Implementation of node class.
+        void * m_pImp; ///< Implementation of node class.
 
     };
 
@@ -599,10 +599,10 @@ namespace Yaml
     * @throw OperationException If filename or buffer pointer is invalid.
     *
     */
-	void Parse(Node & root, const char * filename);
-	void Parse(Node & root, std::iostream & stream);
-	void Parse(Node & root, const std::string & string);
-	void Parse(Node & root, const char * buffer, const size_t size);
+    void Parse(Node & root, const char * filename);
+    void Parse(Node & root, std::iostream & stream);
+    void Parse(Node & root, const std::string & string);
+    void Parse(Node & root, const char * buffer, const size_t size);
 
 
     /**
@@ -624,9 +624,9 @@ namespace Yaml
         *
         */
         SerializeConfig(const size_t spaceIndentation = 2,
-						const size_t scalarMaxLength = 64,
-						const bool sequencMapNewline = false,
-						const bool mapScalarNewline = false);
+                        const size_t scalarMaxLength = 64,
+                        const bool sequencMapNewline = false,
+                        const bool mapScalarNewline = false);
 
         size_t SpaceIndentation;    ///< Number of spaces per indentation.
         size_t ScalarMaxLength;     ///< Maximum length of scalars. Serialized as folder scalars if exceeded.
