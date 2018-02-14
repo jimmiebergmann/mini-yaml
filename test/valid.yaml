@@ -1,0 +1,28 @@
+#Scalar tests
+---
+key: foo
+     bar
+
+---
+foo
+bar
+
+---
+"foo
+bar"
+
+---
+"foo\"
+\"bar"
+
+---
+foo
+    bar
+
+---
+|
+ foo
+ bar
+...
+
+

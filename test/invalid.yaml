@@ -1,14 +1,21 @@
----
-key: foo
-     bar
-...
-
+#Scalar tests
 ---
 key: "value
-...
 
 ---
 key: "val"ue"
-...
 
+---
+"foo"
+"bar"
+
+---
+key:
+ "foo"
+ "bar"
+
+---
+|
+foo
+bar
 

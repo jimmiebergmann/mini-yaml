@@ -619,18 +619,18 @@ namespace Yaml
         * @param spaceIndentation       Number of spaces per indentation.
         * @param scalarMaxLength        Maximum length of scalars. Serialized as folder scalars if exceeded.
         *                               Ignored if equal to 0.
-        * @param sequencMapNewline      Put maps on a new line if parent node is a sequence.
+        * @param sequenceMapNewline     Put maps on a new line if parent node is a sequence.
         * @param mapScalarNewline       Put scalars on a new line if parent node is a map.
         *
         */
         SerializeConfig(const size_t spaceIndentation = 2,
                         const size_t scalarMaxLength = 64,
-                        const bool sequencMapNewline = false,
+                        const bool sequenceMapNewline = false,
                         const bool mapScalarNewline = false);
 
         size_t SpaceIndentation;    ///< Number of spaces per indentation.
         size_t ScalarMaxLength;     ///< Maximum length of scalars. Serialized as folder scalars if exceeded.
-        bool SequencMapNewline;     ///< Put maps on a new line if parent node is a sequence.
+        bool SequenceMapNewline;    ///< Put maps on a new line if parent node is a sequence.
         bool MapScalarNewline;      ///< Put scalars on a new line if parent node is a map.
     };
 

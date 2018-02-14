@@ -3,6 +3,19 @@
 #include <iostream>
 #include <fstream>
 
+/*
+Yaml 1.0 spec notes:
+
+*   Multi-line scalars with no token"|(+-) <(+-)" has not newline in end or after each row(uses spaces).
+    |   token = 1 newline.
+    |-  token = 0 newlines.
+    |+  token = 2 newlines.
+    >   token, same as | but with spaces instead of newlines after each row.
+
+* An escaped newline is ignored. \ = last character of line.
+
+*/
+/*
 TEST(Exception, throw)
 {
     {
@@ -304,7 +317,7 @@ TEST(Parse, File)
         Yaml::Node root;
         EXPECT_NO_THROW(Yaml::Parse(root, "../test/learnyaml.yaml"));
     }
-}
+*/
 
 void Parse_File_learnyaml(Yaml::Node & root)
 {
@@ -459,9 +472,9 @@ TEST(Parse, File_learnyaml)
         Yaml::Node root;
         EXPECT_NO_THROW(Yaml::Parse(root, filename.c_str()));
 
-        Parse_File_learnyaml(root);
+        //Parse_File_learnyaml(root);
     }
-    {
+    /*{
         std::ifstream fin(filename, std::ifstream::binary);
         EXPECT_TRUE(fin.is_open());
         if(fin.is_open())
@@ -476,7 +489,7 @@ TEST(Parse, File_learnyaml)
             Yaml::Node root;
             EXPECT_NO_THROW(Yaml::Parse(root, pData, dataSize));
             delete [] pData;
-            Parse_File_learnyaml(root);
+            //Parse_File_learnyaml(root);
         }
     }
     {
@@ -504,9 +517,9 @@ TEST(Parse, File_learnyaml)
             EXPECT_NO_THROW(Yaml::Parse(root_stream, stream));
             Parse_File_learnyaml(root_stream);
         }
-    }
+    }*/
 }
-
+/*
 TEST(Parse, Invalid)
 {
     std::ifstream fin("../test/invalid.yaml", std::ifstream::binary);
@@ -524,12 +537,61 @@ TEST(Parse, Invalid)
         std::stringstream stream(data);
         Yaml::Node root_stream;
 
-        const size_t tests = 3;
+        const size_t tests = 6;
         size_t loops = 0;
         while(loops < tests)
         {
-              EXPECT_THROW(Yaml::Parse(root_stream, stream), Yaml::ParsingException);
-              loops++;
+            loops++;
+
+            //try
+            //{
+            //    Yaml::Parse(root_stream, stream);
+            //}
+            //catch(const Yaml::Exception & e)
+            //{
+            //    std::cout << "Exception(" << e.Type() <<  "): " << e.what() << std::endl;
+            //}
+
+            EXPECT_THROW(Yaml::Parse(root_stream, stream), Yaml::ParsingException);
+
+        }
+    }
+}
+
+TEST(Parse, Valid)
+{
+    std::ifstream fin("../test/valid.yaml", std::ifstream::binary);
+    EXPECT_TRUE(fin.is_open());
+    if(fin.is_open())
+    {
+        fin.seekg(0, fin.end);
+        size_t dataSize = static_cast<size_t>(fin.tellg());
+        fin.seekg(0, fin.beg);
+        char * pData = new char [dataSize];
+        fin.read(pData, dataSize);
+        fin.close();
+        std::string data(pData, dataSize);
+        delete [] pData;
+        std::stringstream stream(data);
+        Yaml::Node root_stream;
+
+        const size_t tests = 5;
+        size_t loops = 0;
+        while(loops < tests)
+        {
+            loops++;
+
+            //try
+            //{
+            //    Yaml::Parse(root_stream, stream);
+            //}
+            //catch(const Yaml::Exception & e)
+            //{
+            //    std::cout << "Exception(" << e.Type() <<  "): " << e.what() << std::endl;
+            //}
+
+            EXPECT_NO_THROW(Yaml::Parse(root_stream, stream));
+
         }
     }
 }
@@ -659,7 +721,7 @@ TEST(Serialize, Serialize)
         EXPECT_NO_THROW(Yaml::Parse(learn_yaml, data));
         Parse_File_learnyaml(learn_yaml);
     }
-}
+}*/
 
 
 int main(int argc, char **argv)

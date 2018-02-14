@@ -1225,29 +1225,19 @@ namespace Yaml
     public:
 
         /**
-        * @breif Default constructor.
-        *
-        */
-        ReaderLine() :
-            Data(""),
-            No(0),
-            Offset(0),
-            Type(Node::None),
-            Flags(0),
-            NextLine(nullptr)
-        {
-        }
-
-        /**
         * @breif Constructor.
         *
         */
-        ReaderLine(const std::string & data, size_t no, size_t offset) :
+        ReaderLine(const std::string & data = "",
+                   const size_t no = 0,
+                   const size_t offset = 0,
+                   const Node::eType type = Node::None,
+                   const unsigned char flags = 0) :
             Data(data),
             No(no),
             Offset(offset),
-            Type(Node::None),
-            Flags(0),
+            Type(type),
+            Flags(flags),
             NextLine(nullptr)
         {
         }
@@ -1256,7 +1246,7 @@ namespace Yaml
         {
             LiteralScalarFlag,      ///< Literal scalar type, defined as "|".
             FoldedScalarFlag,       ///< Folded scalar type, defined as "<".
-            ScalarNewlineFlag,      ///< Scalar ends with a newline.
+            ScalarNewlineFlag       ///< Scalar ends with a newline.
         };
 
         /**
@@ -1265,7 +1255,34 @@ namespace Yaml
         */
         void SetFlag(const eFlag flag)
         {
-            Flags |= m_FlagMask[static_cast<size_t>(flag)];
+            Flags |= FlagMask[static_cast<size_t>(flag)];
+        }
+
+        /**
+        * @breif Set flags by mask value.
+        *
+        */
+        void SetFlags(const unsigned char flags)
+        {
+            Flags |= flags;
+        }
+
+        /**
+        * @breif Unset flag.
+        *
+        */
+        void UnsetFlag(const eFlag flag)
+        {
+            Flags &= ~FlagMask[static_cast<size_t>(flag)];
+        }
+
+        /**
+        * @breif Unset flags by mask value.
+        *
+        */
+        void UnsetFlags(const unsigned char flags)
+        {
+            Flags &= ~flags;
         }
 
         /**
@@ -1274,7 +1291,7 @@ namespace Yaml
         */
         bool GetFlag(const eFlag flag) const
         {
-            return Flags & m_FlagMask[static_cast<size_t>(flag)];
+            return Flags & FlagMask[static_cast<size_t>(flag)];
         }
 
         /**
@@ -1288,9 +1305,11 @@ namespace Yaml
                 return;
             }
 
-            unsigned char newFlags = from->Flags & (m_FlagMask[0] | m_FlagMask[1] | m_FlagMask[2]);
+            unsigned char newFlags = from->Flags & (FlagMask[0] | FlagMask[1] | FlagMask[2]);
             Flags |= newFlags;
         }
+
+        static const unsigned char FlagMask[3];
 
         std::string     Data;       ///< Data of line.
         size_t          No;         ///< Line number.
@@ -1299,15 +1318,19 @@ namespace Yaml
         unsigned char   Flags;      ///< Flags of line.
         ReaderLine *    NextLine;   ///< Pointer to next line.
 
-    private:
 
-        static const unsigned char m_FlagMask[3];
 
     };
 
-    const unsigned char ReaderLine::m_FlagMask[3] = { 0x01, 0x02, 0x04 };
+    const unsigned char ReaderLine::FlagMask[3] = { 0x01, 0x02, 0x04 };
 
-    class ReaderImp
+
+    /**
+    * @breif Implementation class of Yaml parsing.
+    *        Parsing incoming stream and outputs a root node.
+    *
+    */
+    class ParseImp
     {
 
     public:
@@ -1316,7 +1339,7 @@ namespace Yaml
         * @breif Default constructor.
         *
         */
-        ReaderImp()
+        ParseImp()
         {
         }
 
@@ -1324,7 +1347,7 @@ namespace Yaml
         * @breif Destructor.
         *
         */
-        ~ReaderImp()
+        ~ParseImp()
         {
             ClearLines();
         }
@@ -1340,15 +1363,25 @@ namespace Yaml
                 root.Clear();
                 ReadLines(stream);
                 PostProcessLines();
-                //Print();
-                ProcessRoot(root);
+                Print();
+                //ParseRoot(root);
             }
             catch(Exception e)
             {
-                ClearLines();
                 root.Clear();
                 throw;
             }
+        }
+
+    private:
+
+        /**
+        * @breif Copy constructor.
+        *
+        */
+        ParseImp(const ParseImp & copy)
+        {
+
         }
 
         /**
@@ -1361,14 +1394,17 @@ namespace Yaml
         */
         void ReadLines(std::iostream & stream)
         {
-            std::string line = "";
-            size_t      lineNo = 0;
-            bool        documentStartFound = false;
+            std::string     line = "";
+            size_t          lineNo = 0;
+            bool            documentStartFound = false;
+            bool            foundFirstNotEmpty = false;
+            std::streampos  streamPos = 0;
 
             // Read all lines, as long as the stream is ok.
             while (!stream.eof() && !stream.fail())
             {
                 // Read line
+                streamPos = stream.tellg();
                 std::getline(stream, line);
                 lineNo++;
 
@@ -1393,6 +1429,11 @@ namespace Yaml
                 {
                     break;
                 }
+                else if(line == "---")
+                {
+                    stream.seekg(streamPos);
+                    break;
+                }
 
                 // Remove trailing return.
                 if (line.size())
@@ -1403,12 +1444,7 @@ namespace Yaml
                     }
                 }
 
-                // This is an empty line, ignore.
-                if (line.size() == 0)
-                {
-                    continue;
-                }
-
+                // Validate characters.
                 for (size_t i = 0; i < line.size(); i++)
                 {
                     if (line[i] != '\t' && (line[i] < 32 || line[i] > 125))
@@ -1417,40 +1453,44 @@ namespace Yaml
                     }
                 }
 
-                m_Lines.push_back(new ReaderLine(line, lineNo, 0));
-            }
+                // Validate tabs
+                const size_t firstTabPos    = line.find_first_of('\t');
+                size_t       startOffset    = line.find_first_not_of(" \t");
+                const size_t endOffset      = line.find_last_not_of(" \t");
 
-            for (auto it = m_Lines.begin(); it != m_Lines.end();)
-            {
-                ReaderLine * pLine = *it;
-
-                // Find first/last of tabs and spaces.
-                const size_t firstTabPos    = pLine->Data.find_first_of('\t');
-                const size_t startOffset    = pLine->Data.find_first_not_of(" \t");
-                const size_t endOffset      = pLine->Data.find_last_not_of(" \t");
-
-                // No data in line
-                if (startOffset == std::string::npos)
+                // Make sure no tabs are in the very front.
+                if (startOffset != std::string::npos)
                 {
-                    delete pLine;
-                    it = m_Lines.erase(it);
-                    continue;
+                    if(firstTabPos < startOffset)
+                    {
+                        throw ParsingException(ExceptionMessage(g_ErrorTabInOffset, lineNo, firstTabPos));
+                    }
+
+                    // Remove front/ending spaces.
+                    line = line.substr(startOffset, endOffset - startOffset + 1);
+                }
+                else
+                {
+                    startOffset = 0;
+                    line = "";
                 }
 
-                // Do not allow tabs in offset.
-                if (firstTabPos < startOffset)
+                // Add line.
+                if(foundFirstNotEmpty == false)
                 {
-                    throw ParsingException(ExceptionMessage(g_ErrorTabInOffset, *pLine, firstTabPos));
+                    if(line.size())
+                    {
+                        foundFirstNotEmpty = true;
+                    }
+                    else
+                    {
+                        continue;
+                    }
                 }
 
-                // Remove starting/ending spaces
-                pLine->Data = pLine->Data.substr(startOffset).substr(0, endOffset - startOffset + 1);
-                pLine->Offset = startOffset;
-
-                // Move to next line.
-                ++it;
+                ReaderLine * pLine = new ReaderLine(line, lineNo, startOffset);
+                m_Lines.push_back(pLine);
             }
-
         }
 
         /**
@@ -1463,19 +1503,19 @@ namespace Yaml
             for (auto it = m_Lines.begin(); it != m_Lines.end();)
             {
                 // Sequence.
-                if (PostProcessSequence(it) == true)
+                if (PostProcessSequenceLine(it) == true)
                 {
                     continue;
                 }
 
                 // Mapping.
-                if (PostProcessMapping(it) == true)
+                if (PostProcessMappingLine(it) == true)
                 {
                     continue;
                 }
 
                 // Scalar.
-                PostProcessScalar(it);
+                PostProcessScalarLine(it);
             }
 
             // Set next line of all lines.
@@ -1503,10 +1543,188 @@ namespace Yaml
         }
 
         /**
+        * @breif Run post-processing and check for sequence.
+        *        Split line into two lines if sequence token is not on it's own line.
+        *
+        * @return true if line is sequence, else false.
+        *
+        */
+        bool PostProcessSequenceLine(std::list<ReaderLine *>::iterator & it)
+        {
+            ReaderLine * pLine = *it;
+
+            // Sequence split
+            if (IsSequenceStart(pLine->Data) == false)
+            {
+                return false;
+            }
+
+            pLine->Type = Node::SequenceType;
+
+            ClearTrailingEmptyLines(++it);
+
+            const size_t valueStart = pLine->Data.find_first_not_of(" \t", 1);
+            if (valueStart == std::string::npos)
+            {
+                return true;
+            }
+
+            // Create new line and insert
+            std::string newLine = pLine->Data.substr(valueStart);
+            it = m_Lines.insert(it, new ReaderLine(newLine, pLine->No, pLine->Offset + valueStart));
+            pLine->Data = "";
+
+            return false;
+        }
+
+        /**
+        * @breif Run post-processing and check for mapping.
+        *        Split line into two lines if mapping value is not on it's own line.
+        *
+        * @return true if line is mapping, else move on to scalar parsing.
+        *
+        */
+        bool PostProcessMappingLine(std::list<ReaderLine *>::iterator & it)
+        {
+            ReaderLine * pLine = *it;
+
+            // Find map key.
+            size_t preKeyQuotes = 0;
+            size_t tokenPos = FindNotCited(pLine->Data, ':', preKeyQuotes);
+            if (tokenPos == std::string::npos)
+            {
+                return false;
+            }
+            if(preKeyQuotes > 1)
+            {
+                throw ParsingException(ExceptionMessage(g_ErrorKeyIncorrect, *pLine));
+            }
+
+            pLine->Type = Node::MapType;
+
+            // Get key
+            std::string key = pLine->Data.substr(0, tokenPos);
+            const size_t keyEnd = key.find_last_not_of(" \t");
+            if (keyEnd == std::string::npos)
+            {
+                throw ParsingException(ExceptionMessage(g_ErrorKeyMissing, *pLine));
+            }
+            key.resize(keyEnd + 1);
+
+            // Handle cited key.
+            if(preKeyQuotes == 1)
+            {
+                if(key.front() != '"' || key.back() != '"')
+                {
+                    throw ParsingException(ExceptionMessage(g_ErrorKeyIncorrect, *pLine));
+                }
+
+                key = key.substr(1, key.size() - 2);
+            }
+            RemoveAllEscapeTokens(key);
+
+            // Get value
+            std::string value = "";
+            size_t valueStart = std::string::npos;
+            if (tokenPos + 1 != pLine->Data.size())
+            {
+                valueStart = pLine->Data.find_first_not_of(" \t", tokenPos + 1);
+                if (valueStart != std::string::npos)
+                {
+                    value = pLine->Data.substr(valueStart);
+                }
+            }
+
+            // Make sure the value is not a sequence start.
+            if (IsSequenceStart(value) == true)
+            {
+                throw ParsingException(ExceptionMessage(g_ErrorBlockSequenceNotAllowed, *pLine, valueStart));
+            }
+
+            pLine->Data = key;
+
+
+            // Remove all empty lines after map key.
+            ClearTrailingEmptyLines(++it);
+
+            // Add new empty line?
+            size_t newLineOffset = valueStart;
+            if(newLineOffset == std::string::npos)
+            {
+                if(it != m_Lines.end() && (*it)->Offset > pLine->Offset)
+                {
+                    return true;
+                }
+
+                newLineOffset = tokenPos + 2;
+            }
+            else
+            {
+                newLineOffset += pLine->Offset;
+            }
+
+            // Add new line with value.
+            unsigned char blockFlags = 0;
+            if(IsBlockScalar(value, blockFlags) == true)
+            {
+                newLineOffset = pLine->Offset;
+            }
+            ReaderLine * pNewLine = new ReaderLine(value, pLine->No, newLineOffset, Node::ScalarType, blockFlags);
+            it = m_Lines.insert(it, pNewLine);
+
+            // Return false in order to handle next line(scalar value).
+            return false;
+        }
+
+        /**
+        * @breif Run post-processing and check for scalar.
+        *        Checking for multi-line scalars.
+        *
+        * @return true if scalar search should continue, else false.
+        *
+        */
+        void PostProcessScalarLine(std::list<ReaderLine *>::iterator & it)
+        {
+            ReaderLine * pLine = *it;
+            pLine->Type = Node::ScalarType;
+
+            size_t parentOffset = pLine->Offset;
+            if(pLine != m_Lines.front())
+            {
+                 std::list<ReaderLine *>::iterator lastIt = it;
+                --lastIt;
+                parentOffset = (*lastIt)->Offset;
+            }
+
+           std::list<ReaderLine *>::iterator lastNotEmpty = it++;
+
+            // Find last empty lines
+            while(it != m_Lines.end())
+            {
+                pLine = *it;
+                pLine->Type = Node::ScalarType;
+                if(pLine->Data.size())
+                {
+                    if(pLine->Offset <= parentOffset)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        lastNotEmpty = it;
+                    }
+                }
+                ++it;
+            }
+
+            ClearTrailingEmptyLines(++lastNotEmpty);
+        }
+
+        /**
         * @breif Process root node and start of document.
         *
         */
-        void ProcessRoot(Node & root)
+        void ParseRoot(Node & root)
         {
             // Get first line and start type.
             auto it = m_Lines.begin();
@@ -1521,13 +1739,13 @@ namespace Yaml
             switch(type)
             {
             case Node::SequenceType:
-                ProcessSequence(root, it);
+                ParseSequence(root, it);
                 break;
             case Node::MapType:
-                ProcessMap(root, it);
+                ParseMap(root, it);
                 break;
             case Node::ScalarType:
-                ProcessScalar(root, it);
+                ParseScalar(root, it);
                 break;
             default:
                 break;
@@ -1544,7 +1762,7 @@ namespace Yaml
         * @breif Process sequence node.
         *
         */
-        void ProcessSequence(Node & node, std::list<ReaderLine *>::iterator & it)
+        void ParseSequence(Node & node, std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pNextLine = nullptr;
             while(it != m_Lines.end())
@@ -1564,20 +1782,20 @@ namespace Yaml
                 switch(valueType)
                 {
                 case Node::SequenceType:
-                    ProcessSequence(childNode, it);
+                    ParseSequence(childNode, it);
                     break;
                 case Node::MapType:
-                    ProcessMap(childNode, it);
+                    ParseMap(childNode, it);
                     break;
                 case Node::ScalarType:
-                    ProcessScalar(childNode, it);
+                    ParseScalar(childNode, it);
                     break;
                 default:
                     break;
                 }
 
-                // Check next line. if map and correct level, go on, else exit.
-                // if same level but but of type map = error.
+                // Check next line. if sequence and correct level, go on, else exit.
+                // If same level but but of type map = error.
                 if(it == m_Lines.end() || ((pNextLine = *it)->Offset < pLine->Offset))
                 {
                     break;
@@ -1586,7 +1804,7 @@ namespace Yaml
                 {
                     throw ParsingException(ExceptionMessage(g_ErrorIncorrectOffset, *pNextLine));
                 }
-                if(pNextLine->Type != pLine->Type)
+                if(pNextLine->Type != Node::SequenceType)
                 {
                     throw InternalException(ExceptionMessage(g_ErrorDiffEntryNotAllowed, *pNextLine));
                 }
@@ -1598,7 +1816,7 @@ namespace Yaml
         * @breif Process map node.
         *
         */
-        void ProcessMap(Node & node, std::list<ReaderLine *>::iterator & it)
+        void ParseMap(Node & node, std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pNextLine = nullptr;
             while(it != m_Lines.end())
@@ -1618,13 +1836,13 @@ namespace Yaml
                 switch(valueType)
                 {
                 case Node::SequenceType:
-                    ProcessSequence(childNode, it);
+                    ParseSequence(childNode, it);
                     break;
                 case Node::MapType:
-                    ProcessMap(childNode, it);
+                    ParseMap(childNode, it);
                     break;
                 case Node::ScalarType:
-                    ProcessScalar(childNode, it);
+                    ParseScalar(childNode, it);
                     break;
                 default:
                     break;
@@ -1652,7 +1870,7 @@ namespace Yaml
         * @breif Process scalar node.
         *
         */
-        void ProcessScalar(Node & node, std::list<ReaderLine *>::iterator & it)
+        void ParseScalar(Node & node, std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pLine = *it;
             node = pLine->Data;
@@ -1765,241 +1983,25 @@ namespace Yaml
             m_Lines.clear();
         }
 
-    private:
-
-        /**
-        * @breif Copy constructor.
-        *
-        */
-        ReaderImp(const ReaderImp & copy)
+        void ClearTrailingEmptyLines(std::list<ReaderLine *>::iterator & it)
         {
-
-        }
-
-        /**
-        * @breif Run post-processing and check for sequence.
-        *        Split line into two lines if sequence token is not on it's own line.
-        *
-        * @return true if line is sequence, else false.
-        *
-        */
-        bool PostProcessSequence(std::list<ReaderLine *>::iterator & it)
-        {
-            ReaderLine * pLine = *it;
-
-            // Sequence split
-            if (IsSequenceStart(pLine->Data) == false)
+            while(it != m_Lines.end())
             {
-                return false;
-            }
-
-            pLine->Type = Node::SequenceType;
-
-            const size_t valueStart = pLine->Data.find_first_not_of(" \t", 1);
-            if (valueStart == std::string::npos)
-            {
-                ++it;
-                return true;
-            }
-
-            // Create new line and insert
-            std::string newLine = pLine->Data.substr(valueStart);
-            it = m_Lines.insert(++it, new ReaderLine(newLine, pLine->No, pLine->Offset + valueStart));
-            pLine->Data = "";
-
-            return false;
-        }
-
-        /**
-        * @breif Run post-processing and check for mapping.
-        *        Split line into two lines if mapping value is not on it's own line.
-        *
-        * @return true if line is mapping, else move on to scalar parsing.
-        *
-        */
-        bool PostProcessMapping(std::list<ReaderLine *>::iterator & it)
-        {
-            ReaderLine * pLine = *it;
-
-            // Find map key.
-            size_t preKeyQuotes = 0;
-            size_t tokenPos = FindNotCited(pLine->Data, ':', preKeyQuotes);
-            if (tokenPos == std::string::npos)
-            {
-                return false;
-            }
-            if(preKeyQuotes > 1)
-            {
-                throw ParsingException(ExceptionMessage(g_ErrorKeyIncorrect, *pLine));
-            }
-
-            pLine->Type = Node::MapType;
-
-            // Get key
-            std::string key = pLine->Data.substr(0, tokenPos);
-            const size_t keyEnd = key.find_last_not_of(" \t");
-            if (keyEnd == std::string::npos)
-            {
-                throw ParsingException(ExceptionMessage(g_ErrorKeyMissing, *pLine));
-            }
-            key.resize(keyEnd + 1);
-
-            // Handle cited key.
-            if(preKeyQuotes == 1)
-            {
-                if(key.front() != '"' || key.back() != '"')
+                ReaderLine * pLine = *it;
+                if(pLine->Data.size() == 0)
                 {
-                    throw ParsingException(ExceptionMessage(g_ErrorKeyIncorrect, *pLine));
-                }
-
-                key = key.substr(1, key.size() - 2);
-            }
-            RemoveAllEscapeTokens(key);
-
-            // Get value
-            std::string value = "";
-            size_t valueStart = std::string::npos;
-            if (tokenPos + 1 != pLine->Data.size())
-            {
-                valueStart = pLine->Data.find_first_not_of(" \t", tokenPos + 1);
-                if (valueStart != std::string::npos)
-                {
-                    value = pLine->Data.substr(valueStart);
-                }
-            }
-
-            // Make sure the value is not a sequence start.
-            if (IsSequenceStart(value) == true)
-            {
-                throw ParsingException(ExceptionMessage(g_ErrorBlockSequenceNotAllowed, *pLine, valueStart));
-            }
-
-            // Set line data as key
-            pLine->Data = key;
-
-            // Move to next line
-            ++it;
-
-            // Add new line with value
-            if (value.size())
-            {
-                if (value == "|")
-                {
-                    pLine->SetFlag(ReaderLine::LiteralScalarFlag);
-                    pLine->SetFlag(ReaderLine::ScalarNewlineFlag);
-                }
-                else if (value == ">")
-                {
-                    pLine->SetFlag(ReaderLine::FoldedScalarFlag);
-                    pLine->SetFlag(ReaderLine::ScalarNewlineFlag);
-                }
-                else if (value == "|-")
-                {
-                    pLine->SetFlag(ReaderLine::LiteralScalarFlag);
-                }
-                else if (value == ">-")
-                {
-                    pLine->SetFlag(ReaderLine::FoldedScalarFlag);
-                }
-                else
-                {
-                    if (it != m_Lines.end() && (*it)->Offset > pLine->Offset)
-                    {
-                        throw ParsingException(ExceptionMessage(g_ErrorIncorrectOffset, *pLine));
-                    }
-
-                    // Remove quote
-                    size_t quoteStart = std::string::npos;
-                    size_t quoteEnd = std::string::npos;
-                    if(FindQuote(value, quoteStart, quoteEnd, 0) || value.front() == '"')
-                    {
-                        if(quoteStart == 0 && quoteEnd != value.size() - 1)
-                        {
-                             throw ParsingException(ExceptionMessage(g_ErrorValueIncorrect, *pLine));
-                        }
-
-                        value = value.substr(1, value.size() - 2);
-                    }
-
-                    it = m_Lines.insert(it, new ReaderLine(value, pLine->No, valueStart));
-                    return false;
-                }
-
-                return false;
-            }
-            else
-            {
-                // Add empty scalar value if next offset is the same or lower than this one.
-                if (it != m_Lines.end() && (*it)->Offset <= pLine->Offset)
-                {
-                    it = m_Lines.insert(it, new ReaderLine("", pLine->No, tokenPos + 1));
-                    (*it)->Type = Node::ScalarType;
-                    ++it;
-                    return true;
-                }
-            }
-
-            return true;
-        }
-
-        /**
-        * @breif Run post-processing and check for scalar.
-        *        Checking for multi-line scalars.
-        *
-        * @return true if scalar search should continue, else false.
-        *
-        */
-        void PostProcessScalar(std::list<ReaderLine *>::iterator & it)
-        {
-            ReaderLine * pLine = *it;
-            pLine->Type = Node::ScalarType;
-
-            // Copy scalar flags.
-            if (it != m_Lines.begin())
-            {
-                // Get flags from previous line.
-                std::list<ReaderLine *>::iterator prevIt = it;
-                --prevIt;
-                ReaderLine * pPrevLine = *prevIt;
-                pLine->CopyScalarFlags(pPrevLine);
-            }
-
-            // Move to next line
-            ++it;
-
-            // Check if next line should be merged.
-            if (pLine->GetFlag(ReaderLine::FoldedScalarFlag) || pLine->GetFlag(ReaderLine::LiteralScalarFlag))
-            {
-                while (1)
-                {
-                    if (it == m_Lines.end() || (*it)->Offset < pLine->Offset)
-                    {
-                        if (pLine->GetFlag(ReaderLine::ScalarNewlineFlag))
-                        {
-                            pLine->Data += "\n";
-                        }
-                        return;
-                    }
-
-                    ReaderLine * pNextLine = *it;
-                    if (pLine->GetFlag(ReaderLine::LiteralScalarFlag))
-                    {
-                        pLine->Data += "\n";
-                    }
-                    else if (pLine->GetFlag(ReaderLine::FoldedScalarFlag))
-                    {
-                        pLine->Data += " ";
-                    }
-                    pLine->Data += std::string(pNextLine->Offset - pLine->Offset, ' ');
-                    pLine->Data += pNextLine->Data;
-
                     delete *it;
                     it = m_Lines.erase(it);
                 }
+                else
+                {
+                    return;
+                }
+
             }
         }
 
-        bool IsSequenceStart(const std::string & data) const
+        static bool IsSequenceStart(const std::string & data)
         {
             if (data.size() == 0 || data[0] != '-')
             {
@@ -2012,6 +2014,37 @@ namespace Yaml
             }
 
             return true;
+        }
+
+        static bool IsBlockScalar(const std::string & data, unsigned char & flags)
+        {
+            flags = 0;
+            if(data.size() == 0)
+            {
+                return false;
+            }
+
+            if(data[0] == '|')
+            {
+                if(data.size() >= 2 && data[1] != '-')
+                {
+                    flags |= ReaderLine::FlagMask[static_cast<size_t>(ReaderLine::ScalarNewlineFlag)];
+                }
+                flags |= ReaderLine::FlagMask[static_cast<size_t>(ReaderLine::LiteralScalarFlag)];
+                return true;
+            }
+
+            if(data[0] == '>')
+            {
+                if(data.size() >= 2 && data[1] != '-')
+                {
+                    flags |= ReaderLine::FlagMask[static_cast<size_t>(ReaderLine::ScalarNewlineFlag)];
+                }
+                flags |= ReaderLine::FlagMask[static_cast<size_t>(ReaderLine::FoldedScalarFlag)];
+                return true;
+            }
+
+            return false;
         }
 
         std::list<ReaderLine *> m_Lines;    ///< List of lines.
@@ -2040,11 +2073,11 @@ namespace Yaml
 
     void Parse(Node & root, std::iostream & stream)
     {
-        ReaderImp * pImp = nullptr;
+        ParseImp * pImp = nullptr;
 
         try
         {
-            pImp = new ReaderImp;
+            pImp = new ParseImp;
             pImp->Parse(root, stream);
             delete pImp;
         }
@@ -2071,11 +2104,11 @@ namespace Yaml
     // Serialize configuration structure.
     SerializeConfig::SerializeConfig(const size_t spaceIndentation,
                                      const size_t scalarMaxLength,
-                                     const bool sequencMapNewline,
+                                     const bool sequenceMapNewline,
                                      const bool mapScalarNewline) :
         SpaceIndentation(spaceIndentation),
         ScalarMaxLength(scalarMaxLength),
-        SequencMapNewline(sequencMapNewline),
+        SequenceMapNewline(sequenceMapNewline),
         MapScalarNewline(mapScalarNewline)
     {
     }
@@ -2153,7 +2186,7 @@ namespace Yaml
                     }
                     stream << std::string(level, ' ') << "- ";
                     useLevel = false;
-                    if(value.IsSequence() || (value.IsMap() && config.SequencMapNewline == true))
+                    if(value.IsSequence() || (value.IsMap() && config.SequenceMapNewline == true))
                     {
                         useLevel = true;
                         stream << "\n";
