@@ -15,7 +15,7 @@ Yaml 1.0 spec notes:
 * An escaped newline is ignored. \ = last character of line.
 
 */
-/*
+
 TEST(Exception, throw)
 {
     {
@@ -225,7 +225,7 @@ void Compare_Node_Copy(Yaml::Node & node)
     EXPECT_EQ(item_3.As<std::string>(), "item 3");
 }
 
-TEST(Node, Copy)
+TEST(Node, Copy_1)
 {
     {
         Yaml::Node root;
@@ -299,26 +299,6 @@ TEST(Node, Copy)
     }
 }
 
-TEST(Parse, File)
-{
-    {
-        Yaml::Node root;
-        EXPECT_THROW(Yaml::Parse(root, "bad_path_of_file.txt"), Yaml::OperationException);
-    }
-    {
-        Yaml::Node root;
-        EXPECT_NO_THROW(Yaml::Parse(root, "../.travis.yml"));
-    }
-    {
-        Yaml::Node root;
-        EXPECT_THROW(Yaml::Parse(root, "../yaml/Yaml.hpp"), Yaml::ParsingException);
-    }
-    {
-        Yaml::Node root;
-        EXPECT_NO_THROW(Yaml::Parse(root, "../test/learnyaml.yaml"));
-    }
-*/
-
 void Parse_File_learnyaml(Yaml::Node & root)
 {
     Yaml::Node & key = root["key"];
@@ -353,11 +333,27 @@ void Parse_File_learnyaml(Yaml::Node & root)
 
     Yaml::Node & keys_can_be_quoted_too = root["Keys: can be \"quoted\" too."];
     EXPECT_TRUE(keys_can_be_quoted_too.IsScalar());
-    EXPECT_EQ(keys_can_be_quoted_too.As<std::string>(), "Useful if you want to put a ':' in your key.");
+    EXPECT_EQ(keys_can_be_quoted_too.As<std::string>(), "Useful if you want to put a ':' in your key. Or use comment char(#).");
 
-    // Not testing multi-line scalars for now.
-    // ...
+    Yaml::Node & scalar_block = root["scalar_block"];
+    EXPECT_TRUE(scalar_block.IsScalar());
+    EXPECT_EQ(scalar_block.As<std::string>(), "block of text will separate all lines with spaces.");
 
+    Yaml::Node & literal_block = root["literal_block"];
+    EXPECT_TRUE(literal_block.IsScalar());
+    EXPECT_EQ(literal_block.As<std::string>(),  "This entire block of text will be the value of the 'literal_block' key,      \n"
+                                                "with line breaks being preserved.\n\n"
+                                                "The literal continues until de-dented, and the leading indentation is\n"
+                                                "stripped.\n\n"
+                                                "    Any lines that are 'more-indented' keep the rest of their indentation -\n"
+                                                "    these lines will be indented by 4 spaces.\n");
+
+    Yaml::Node & folded_style = root["folded_style"];
+    EXPECT_TRUE(folded_style.IsScalar());
+    EXPECT_EQ(folded_style.As<std::string>(),   "This entire block of text will be the value of 'folded_style', but this time, all newlines will be replaced with a single space.\n"
+                                                "Blank lines, like above, are converted to a newline character.\n\n"
+                                                "    'More-indented' lines keep their newlines, too -\n"
+                                                "    this text will appear over two lines.\n");
 
     {
         Yaml::Node & a_nested_map = root["a_nested_map"];
@@ -464,6 +460,44 @@ void Parse_File_learnyaml(Yaml::Node & root)
     }
 }
 
+TEST(Node, Copy_2)
+{
+
+    Yaml::Node root;
+    EXPECT_NO_THROW(Yaml::Parse(root, "../test/learnyaml.yaml"));
+
+    {
+        Yaml::Node copy(root);
+        Parse_File_learnyaml(copy);
+    }
+    {
+        Yaml::Node copy = root;
+        Parse_File_learnyaml(copy);
+    }
+
+
+}
+
+TEST(Parse, File)
+{
+    {
+        Yaml::Node root;
+        EXPECT_THROW(Yaml::Parse(root, "bad_path_of_file.txt"), Yaml::OperationException);
+    }
+    {
+        Yaml::Node root;
+        EXPECT_NO_THROW(Yaml::Parse(root, "../.travis.yml"));
+    }
+    {
+        Yaml::Node root;
+        EXPECT_THROW(Yaml::Parse(root, "../yaml/Yaml.hpp"), Yaml::ParsingException);
+    }
+    {
+        Yaml::Node root;
+        EXPECT_NO_THROW(Yaml::Parse(root, "../test/learnyaml.yaml"));
+    }
+}
+
 TEST(Parse, File_learnyaml)
 {
     const std::string filename = "../test/learnyaml.yaml";
@@ -472,9 +506,9 @@ TEST(Parse, File_learnyaml)
         Yaml::Node root;
         EXPECT_NO_THROW(Yaml::Parse(root, filename.c_str()));
 
-        //Parse_File_learnyaml(root);
+        Parse_File_learnyaml(root);
     }
-    /*{
+    {
         std::ifstream fin(filename, std::ifstream::binary);
         EXPECT_TRUE(fin.is_open());
         if(fin.is_open())
@@ -489,7 +523,7 @@ TEST(Parse, File_learnyaml)
             Yaml::Node root;
             EXPECT_NO_THROW(Yaml::Parse(root, pData, dataSize));
             delete [] pData;
-            //Parse_File_learnyaml(root);
+            Parse_File_learnyaml(root);
         }
     }
     {
@@ -517,9 +551,9 @@ TEST(Parse, File_learnyaml)
             EXPECT_NO_THROW(Yaml::Parse(root_stream, stream));
             Parse_File_learnyaml(root_stream);
         }
-    }*/
+    }
 }
-/*
+
 TEST(Parse, Invalid)
 {
     std::ifstream fin("../test/invalid.yaml", std::ifstream::binary);
@@ -537,7 +571,7 @@ TEST(Parse, Invalid)
         std::stringstream stream(data);
         Yaml::Node root_stream;
 
-        const size_t tests = 6;
+        const size_t tests = 5;
         size_t loops = 0;
         while(loops < tests)
         {
@@ -575,7 +609,7 @@ TEST(Parse, Valid)
         std::stringstream stream(data);
         Yaml::Node root_stream;
 
-        const size_t tests = 5;
+        const size_t tests = 7;
         size_t loops = 0;
         while(loops < tests)
         {
@@ -721,7 +755,7 @@ TEST(Serialize, Serialize)
         EXPECT_NO_THROW(Yaml::Parse(learn_yaml, data));
         Parse_File_learnyaml(learn_yaml);
     }
-}*/
+}
 
 
 int main(int argc, char **argv)

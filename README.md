@@ -68,7 +68,6 @@ Builds are passed if all tests are good and no memory leaks were found.
 | dev | [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=dev)](https://travis-ci.org/jimmiebergmann/mini-yaml)|
 
 ## Todo
-- Parse scalar newlines.
 - Parse/serialize tags(!!type).
 - Parse anchors.
 - Parse flow sequences/maps.

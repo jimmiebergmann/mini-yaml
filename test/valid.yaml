@@ -4,6 +4,9 @@ key: foo
      bar
 
 ---
+key: "val\"ue"
+
+---
 foo
 bar
 
@@ -23,6 +26,4 @@ foo
 |
  foo
  bar
-...
-
 

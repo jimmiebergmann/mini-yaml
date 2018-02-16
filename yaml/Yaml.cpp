@@ -51,13 +51,15 @@ namespace Yaml
     static const std::string g_ErrorKeyIncorrect            = "Incorrect key.";
     static const std::string g_ErrorValueIncorrect          = "Incorrect value.";
     static const std::string g_ErrorTabInOffset             = "Tab found in offset.";
-    static const std::string g_ErrorBlockSequenceNotAllowed = "Block sequence entries are not allowed in this context.";
+    static const std::string g_ErrorBlockSequenceNotAllowed = "Sequence entries are not allowed in this context.";
     static const std::string g_ErrorUnexpectedDocumentEnd   = "Unexpected document end.";
     static const std::string g_ErrorDiffEntryNotAllowed     = "Different entry is not allowed in this context.";
     static const std::string g_ErrorIncorrectOffset         = "Incorrect offset.";
     static const std::string g_ErrorSequenceError           = "Error in sequence node.";
     static const std::string g_ErrorCannotOpenFile          = "Cannot open file.";
     static const std::string g_ErrorIndentation             = "Space indentation is less than 2.";
+    static const std::string g_ErrorInvalidBlockScalar      = "Invalid block scalar.";
+    static const std::string g_ErrorInvalidQuote      = "Invalid quote.";
     static const std::string g_EmptyString = "";
     static Yaml::Node        g_NoneNode;
 
@@ -65,11 +67,14 @@ namespace Yaml
     static std::string ExceptionMessage(const std::string & message, ReaderLine & line);
     static std::string ExceptionMessage(const std::string & message, ReaderLine & line, const size_t errorPos);
     static std::string ExceptionMessage(const std::string & message, const size_t errorLine, const size_t errorPos);
+    static std::string ExceptionMessage(const std::string & message, const size_t errorLine, const std::string & data);
+
     static bool FindQuote(const std::string & input, size_t & start, size_t & end, size_t searchPos = 0);
     static size_t FindNotCited(const std::string & input, char token, size_t & preQuoteCount);
     static size_t FindNotCited(const std::string & input, char token);
+    static bool ValidateQuote(const std::string & input);
     static void CopyNode(const Node & from, Node & to);
-    static bool KeyShouldBeCited(const std::string & key);
+    static bool ShouldBeCited(const std::string & key);
     static void AddEscapeTokens(std::string & input, const std::string & tokens);
     static void RemoveAllEscapeTokens(std::string & input);
 
@@ -1363,8 +1368,8 @@ namespace Yaml
                 root.Clear();
                 ReadLines(stream);
                 PostProcessLines();
-                Print();
-                //ParseRoot(root);
+                //Print();
+                ParseRoot(root);
             }
             catch(Exception e)
             {
@@ -1456,7 +1461,6 @@ namespace Yaml
                 // Validate tabs
                 const size_t firstTabPos    = line.find_first_of('\t');
                 size_t       startOffset    = line.find_first_not_of(" \t");
-                const size_t endOffset      = line.find_last_not_of(" \t");
 
                 // Make sure no tabs are in the very front.
                 if (startOffset != std::string::npos)
@@ -1466,8 +1470,8 @@ namespace Yaml
                         throw ParsingException(ExceptionMessage(g_ErrorTabInOffset, lineNo, firstTabPos));
                     }
 
-                    // Remove front/ending spaces.
-                    line = line.substr(startOffset, endOffset - startOffset + 1);
+                    // Remove front spaces.
+                    line = line.substr(startOffset);
                 }
                 else
                 {
@@ -1664,12 +1668,12 @@ namespace Yaml
             }
 
             // Add new line with value.
-            unsigned char blockFlags = 0;
-            if(IsBlockScalar(value, blockFlags) == true)
+            unsigned char dummyBlockFlags = 0;
+            if(IsBlockScalar(value, pLine->No, dummyBlockFlags) == true)
             {
                 newLineOffset = pLine->Offset;
             }
-            ReaderLine * pNewLine = new ReaderLine(value, pLine->No, newLineOffset, Node::ScalarType, blockFlags);
+            ReaderLine * pNewLine = new ReaderLine(value, pLine->No, newLineOffset, Node::ScalarType);
             it = m_Lines.insert(it, pNewLine);
 
             // Return false in order to handle next line(scalar value).
@@ -1872,9 +1876,156 @@ namespace Yaml
         */
         void ParseScalar(Node & node, std::list<ReaderLine *>::iterator & it)
         {
+            std::string data = "";
+            ReaderLine * pFirstLine = *it;
             ReaderLine * pLine = *it;
-            node = pLine->Data;
-            ++it;
+
+            // Check if current line is a block scalar.
+            unsigned char blockFlags = 0;
+            bool isBlockScalar = IsBlockScalar(pLine->Data, pLine->No, blockFlags);
+            const bool newLineFlag = static_cast<bool>(blockFlags & ReaderLine::FlagMask[static_cast<size_t>(ReaderLine::ScalarNewlineFlag)]);
+            const bool foldedFlag = static_cast<bool>(blockFlags & ReaderLine::FlagMask[static_cast<size_t>(ReaderLine::FoldedScalarFlag)]);
+            const bool literalFlag = static_cast<bool>(blockFlags & ReaderLine::FlagMask[static_cast<size_t>(ReaderLine::LiteralScalarFlag)]);
+            size_t parentOffset = 0;
+
+            // Find parent offset
+            if(it != m_Lines.begin())
+            {
+                std::list<ReaderLine *>::iterator parentIt = it;
+                --parentIt;
+                parentOffset = (*parentIt)->Offset;
+            }
+
+            // Move to next iterator/line if current line is a block scalar.
+            if(isBlockScalar)
+            {
+                ++it;
+                if(it == m_Lines.end() || (pLine = *it)->Type != Node::ScalarType)
+                {
+                    return;
+                }
+            }
+
+            // Not a block scalar, cut end spaces/tabs
+            if(isBlockScalar == false)
+            {
+                while(1)
+                {
+                    pLine = *it;
+
+                    if(parentOffset != 0 && pLine->Offset <= parentOffset)
+                    {
+                        throw ParsingException(ExceptionMessage(g_ErrorIncorrectOffset, *pLine));
+                    }
+
+                    const size_t endOffset = pLine->Data.find_last_not_of(" \t");
+                    if(endOffset == std::string::npos)
+                    {
+                        data += "\n";
+                    }
+                    else
+                    {
+                        data += pLine->Data.substr(0, endOffset + 1);
+                    }
+
+                    // Move to next line
+                    ++it;
+                    if(it == m_Lines.end() || (*it)->Type != Node::ScalarType)
+                    {
+                        break;
+                    }
+
+                    data += " ";
+                }
+
+                if(ValidateQuote(data) == false)
+                {
+                    throw ParsingException(ExceptionMessage(g_ErrorInvalidQuote, *pFirstLine));
+                }
+            }
+            // Block scalar
+            else
+            {
+                pLine = *it;
+                size_t blockOffset = pLine->Offset;
+                if(blockOffset <= parentOffset)
+                {
+                    throw ParsingException(ExceptionMessage(g_ErrorIncorrectOffset, *pLine));
+                }
+
+                bool addedSpace = false;
+                while(it != m_Lines.end() && (*it)->Type == Node::ScalarType)
+                {
+                    pLine = *it;
+
+                    const size_t endOffset = pLine->Data.find_last_not_of(" \t");
+                    if(endOffset != std::string::npos && pLine->Offset < blockOffset)
+                    {
+                        throw ParsingException(ExceptionMessage(g_ErrorIncorrectOffset, *pLine));
+                    }
+
+                    if(endOffset == std::string::npos)
+                    {
+                        if(addedSpace)
+                        {
+                            data[data.size() - 1] = '\n';
+                            addedSpace = false;
+                        }
+                        else
+                        {
+                            data += "\n";
+                        }
+
+                        ++it;
+                        continue;
+                    }
+                    else
+                    {
+                        if(blockOffset != pLine->Offset && foldedFlag)
+                        {
+                            if(addedSpace)
+                            {
+                                data[data.size() - 1] = '\n';
+                                addedSpace = false;
+                            }
+                            else
+                            {
+                                data += "\n";
+                            }
+                        }
+                        data += std::string(pLine->Offset - blockOffset, ' ');
+                        data += pLine->Data;
+                    }
+
+                    // Move to next line
+                    ++it;
+                    if(it == m_Lines.end() || (*it)->Type != Node::ScalarType)
+                    {
+                        if(newLineFlag)
+                        {
+                            data += "\n";
+                        }
+                        break;
+                    }
+
+                    if(foldedFlag)
+                    {
+                        data += " ";
+                        addedSpace = true;
+                    }
+                    else if(literalFlag && endOffset != std::string::npos)
+                    {
+                        data += "\n";
+                    }
+                }
+            }
+
+            if(data.size() && (data[0] == '"' || data[0] == '\''))
+            {
+                data = data.substr(1, data.size() - 2 );
+            }
+
+            node = data;
         }
 
         /**
@@ -2016,7 +2167,7 @@ namespace Yaml
             return true;
         }
 
-        static bool IsBlockScalar(const std::string & data, unsigned char & flags)
+        static bool IsBlockScalar(const std::string & data, const size_t line, unsigned char & flags)
         {
             flags = 0;
             if(data.size() == 0)
@@ -2026,7 +2177,14 @@ namespace Yaml
 
             if(data[0] == '|')
             {
-                if(data.size() >= 2 && data[1] != '-')
+                if(data.size() >= 2)
+                {
+                    if(data[1] != '-' && data[1] != ' ' && data[1] != '\t')
+                    {
+                        throw ParsingException(ExceptionMessage(g_ErrorInvalidBlockScalar, line, data));
+                    }
+                }
+                else
                 {
                     flags |= ReaderLine::FlagMask[static_cast<size_t>(ReaderLine::ScalarNewlineFlag)];
                 }
@@ -2036,7 +2194,14 @@ namespace Yaml
 
             if(data[0] == '>')
             {
-                if(data.size() >= 2 && data[1] != '-')
+                if(data.size() >= 2)
+                {
+                    if(data[1] != '-' && data[1] != ' ' && data[1] != '\t')
+                    {
+                        throw ParsingException(ExceptionMessage(g_ErrorInvalidBlockScalar, line, data));
+                    }
+                }
+                else
                 {
                     flags |= ReaderLine::FlagMask[static_cast<size_t>(ReaderLine::ScalarNewlineFlag)];
                 }
@@ -2215,7 +2380,7 @@ namespace Yaml
 
                     std::string key = (*it).first;
                     AddEscapeTokens(key, "\\\"");
-                    if(KeyShouldBeCited(key))
+                    if(ShouldBeCited(key))
                     {
                         stream << "\"" << key << "\"" << ": ";
                     }
@@ -2285,6 +2450,12 @@ namespace Yaml
                         {
                              stream << std::string(level, ' ');
                         }
+
+                        if(ShouldBeCited(value))
+                        {
+                            stream << "\"" << value << "\"\n";
+                            break;
+                        }
                         stream << value << "\n";
                         break;
                     }
@@ -2299,6 +2470,7 @@ namespace Yaml
                      stream << "-";
                 }
                 stream << "\n";
+
 
                 for(auto it = lines.begin(); it != lines.end(); it++)
                 {
@@ -2345,6 +2517,11 @@ namespace Yaml
     std::string ExceptionMessage(const std::string & message, const size_t errorLine, const size_t errorPos)
     {
         return message + std::string(" Line ") + std::to_string(errorLine) + std::string(" column ") + std::to_string(errorPos);
+    }
+
+    std::string ExceptionMessage(const std::string & message, const size_t errorLine, const std::string & data)
+    {
+        return message + std::string(" Line ") + std::to_string(errorLine) + std::string(": ") + data;
     }
 
     bool FindQuote(const std::string & input, size_t & start, size_t & end, size_t searchPos)
@@ -2458,6 +2635,54 @@ namespace Yaml
         return FindNotCited(input, token, dummy);
     }
 
+    bool ValidateQuote(const std::string & input)
+    {
+        if(input.size() == 0)
+        {
+            return true;
+        }
+
+        char token = 0;
+        size_t searchPos = 0;
+        if(input[0] == '\"' || input[0] == '\'')
+        {
+            if(input.size() == 1)
+            {
+                return false;
+            }
+            token = input[0];
+            searchPos = 1;
+        }
+
+        while(searchPos != std::string::npos && searchPos < input.size() - 2)
+        {
+            searchPos = input.find_first_of("\"'", searchPos + 1);
+            if(searchPos == std::string::npos)
+            {
+                break;
+            }
+
+            const char foundToken = input[searchPos];
+
+            if(input[searchPos] == '\"' || input[searchPos] == '\'')
+            {
+                if(foundToken == token)
+                {
+                    if(searchPos == input.size() - 1)
+                    {
+                        return true;
+                    }
+                    if(input[searchPos-1] != '\\')
+                    {
+                       return false;
+                    }
+                }
+            }
+        }
+
+        return token == 0;
+    }
+
     void CopyNode(const Node & from, Node & to)
     {
         const Node::eType type = from.Type();
@@ -2488,7 +2713,7 @@ namespace Yaml
         }
     }
 
-    bool KeyShouldBeCited(const std::string & key)
+    bool ShouldBeCited(const std::string & key)
     {
         return key.find_first_of("\":{}[],&*#?|-<>=!%@") != std::string::npos;
     }
