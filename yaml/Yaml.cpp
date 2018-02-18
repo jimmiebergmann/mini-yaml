@@ -2654,7 +2654,7 @@ namespace Yaml
             searchPos = 1;
         }
 
-        while(searchPos != std::string::npos && searchPos < input.size() - 2)
+        while(searchPos != std::string::npos && searchPos < input.size() - 1)
         {
             searchPos = input.find_first_of("\"'", searchPos + 1);
             if(searchPos == std::string::npos)
@@ -2666,17 +2666,32 @@ namespace Yaml
 
             if(input[searchPos] == '\"' || input[searchPos] == '\'')
             {
-                if(foundToken == token)
+                if(token == 0 && input[searchPos-1] != '\\')
                 {
-                    if(searchPos == input.size() - 1)
+                    return false;
+                }
+                //if(foundToken == token)
+                //{
+
+                    /*if(foundToken == token && searchPos == input.size() - 1 && input[searchPos-1] != '\\')
                     {
                         return true;
+                        if(searchPos == input.size() - 1)
+                        {
+                            return true;
+                        }
+                        return false;
                     }
-                    if(input[searchPos-1] != '\\')
+                    else */
+                    if(foundToken == token && input[searchPos-1] != '\\')
                     {
-                       return false;
+                        if(searchPos == input.size() - 1)
+                        {
+                            return true;
+                        }
+                        return false;
                     }
-                }
+                //}
             }
         }
 

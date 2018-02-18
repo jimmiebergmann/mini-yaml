@@ -571,7 +571,7 @@ TEST(Parse, Invalid)
         std::stringstream stream(data);
         Yaml::Node root_stream;
 
-        const size_t tests = 5;
+        const size_t tests = 8;
         size_t loops = 0;
         while(loops < tests)
         {
@@ -609,7 +609,7 @@ TEST(Parse, Valid)
         std::stringstream stream(data);
         Yaml::Node root_stream;
 
-        const size_t tests = 7;
+        const size_t tests = 8;
         size_t loops = 0;
         while(loops < tests)
         {

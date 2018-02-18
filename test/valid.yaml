@@ -7,6 +7,9 @@ key: foo
 key: "val\"ue"
 
 ---
+key: "value\""
+
+---
 foo
 bar
 
