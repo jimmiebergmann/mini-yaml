@@ -27,6 +27,7 @@
 #include <memory>
 #include <fstream>
 #include <sstream>
+#include <vector>
 #include <list>
 #include <cstdio>
 #include <stdarg.h>
@@ -59,8 +60,8 @@ namespace Yaml
     static const std::string g_ErrorCannotOpenFile          = "Cannot open file.";
     static const std::string g_ErrorIndentation             = "Space indentation is less than 2.";
     static const std::string g_ErrorInvalidBlockScalar      = "Invalid block scalar.";
-    static const std::string g_ErrorInvalidQuote      = "Invalid quote.";
-    static const std::string g_EmptyString = "";
+    static const std::string g_ErrorInvalidQuote            = "Invalid quote.";
+    static const std::string g_EmptyString                  = "";
     static Yaml::Node        g_NoneNode;
 
     // Global function definitions. Implemented at end of this source file.
@@ -666,7 +667,9 @@ namespace Yaml
         }
     }
 
-    Iterator::Iterator(const Iterator & it)
+    Iterator::Iterator(const Iterator & it) :
+        m_Type(None),
+        m_pImp(nullptr)
     {
         *this = it;
     }
@@ -717,7 +720,7 @@ namespace Yaml
         switch(m_Type)
         {
         case SequenceType:
-            return {"", *(static_cast<SequenceIteratorImp*>(m_pImp)->m_Iterator->second)};
+            return { g_EmptyString, *(static_cast<SequenceIteratorImp*>(m_pImp)->m_Iterator->second)};
             break;
         case MapType:
             return {static_cast<MapIteratorImp*>(m_pImp)->m_Iterator->first,
@@ -728,7 +731,7 @@ namespace Yaml
         }
 
         g_NoneNode.Clear();
-        return {"", g_NoneNode};
+        return { g_EmptyString, g_NoneNode};
     }
 
     Iterator & Iterator::operator ++ (int dummy)
@@ -817,7 +820,9 @@ namespace Yaml
         }
     }
 
-    ConstIterator::ConstIterator(const ConstIterator & it)
+    ConstIterator::ConstIterator(const ConstIterator & it) :
+        m_Type(None),
+        m_pImp(nullptr)
     {
         *this = it;
     }
@@ -868,7 +873,7 @@ namespace Yaml
         switch(m_Type)
         {
         case SequenceType:
-            return {"", *(static_cast<SequenceConstIteratorImp*>(m_pImp)->m_Iterator->second)};
+            return { g_EmptyString, *(static_cast<SequenceConstIteratorImp*>(m_pImp)->m_Iterator->second)};
             break;
         case MapType:
             return {static_cast<MapConstIteratorImp*>(m_pImp)->m_Iterator->first,
@@ -879,7 +884,7 @@ namespace Yaml
         }
 
         g_NoneNode.Clear();
-        return {"", g_NoneNode};
+        return { g_EmptyString, g_NoneNode};
     }
 
     ConstIterator & ConstIterator::operator ++ (int dummy)
