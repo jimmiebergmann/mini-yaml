@@ -1,6 +1,6 @@
 # mini-yaml
 
-![version](https://img.shields.io/badge/version-v0.1.0-blue) [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=master)](https://github.com/jimmiebergmann/mini-yaml#build-status) [![Build status](https://ci.appveyor.com/api/projects/status/xi37d7i9t7m0xsj1/branch/master?svg=true)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/master) [![codecov](https://codecov.io/gh/jimmiebergmann/mini-yaml/branch/master/graph/badge.svg)](https://codecov.io/gh/jimmiebergmann/mini-yaml)  [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
+![version](https://img.shields.io/badge/version-v0.1.0-blue) [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=master)](https://github.com/jimmiebergmann/mini-yaml#build-status) [![Build status](https://ci.appveyor.com/api/projects/status/xi37d7i9t7m0xsj1/branch/master?svg=true)](https://github.com/jimmiebergmann/mini-yaml#build-status) [![codecov](https://codecov.io/gh/jimmiebergmann/mini-yaml/branch/master/graph/badge.svg)](https://codecov.io/gh/jimmiebergmann/mini-yaml)  [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)  
 Single header YAML 1.0 C++11 serializer/deserializer.
 
 ## Quickstart
@@ -58,7 +58,7 @@ Builds are passed if all tests are good and no memory leaks were found.
 | Branch | Linux | Windows |
 | ------ | ------ | ---- |
 | master | [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=master)](https://travis-ci.org/jimmiebergmann/mini-yaml) |  [![Build status](https://ci.appveyor.com/api/projects/status/xi37d7i9t7m0xsj1/branch/master?svg=true)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/master) |
-| dev | [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=dev)](https://travis-ci.org/jimmiebergmann/mini-yaml)|  [![Build status](https://ci.appveyor.com/api/projects/status/xi37d7i9t7m0xsj1/branch/develop?svg=true)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/develop) |
+| develop | [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=dev)](https://travis-ci.org/jimmiebergmann/mini-yaml)|  [![Build status](https://ci.appveyor.com/api/projects/status/xi37d7i9t7m0xsj1/branch/develop?svg=true)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/develop) |
 
 ## ~~Todo~~
 - ~~Parse/serialize tags(!!type).~~
