@@ -1,0 +1,25 @@
+os: Visual Studio 2017
+
+configuration:
+  - Debug
+  - Release
+platform:
+  - Win32
+
+matrix:
+  fast_finish: false
+
+before_build:
+  - git submodule update --init --recursive
+  - mkdir build
+  - cd build
+  - cmake ..
+  - cd ..
+  
+build:
+  parallel: true
+  project: build\mini-yaml.sln
+  verbosity: minimal
+  
+after_build:
+    - bin\mini_yaml_test.exe

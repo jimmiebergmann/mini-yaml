@@ -1,7 +1,7 @@
 /*
 * MIT License
 *
-* Copyright(c) 2018 Jimmie Bergmann
+* Copyright(c) 2019 Jimmie Bergmann
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files(the "Software"), to deal
@@ -23,26 +23,26 @@
 *
 */
 
-#include <Yaml.hpp>
+#include "../yaml/yaml.hpp"
+#include <iostream>
 
-using namespace Yaml;
 
-static void Example1();
-static void Example2();
+static void example_1();
+/*static void Example2();
 static void Example3();
-static void Example4();
+static void Example4();*/
 
 int main()
 {
-    Example1();
-    Example2();
+    example_1();
+    /*Example2();
     Example3();
-    Example4();
+    Example4();*/
 
 	return 0;
 }
 
-void Example1()
+void example_1()
 {
     const std::string data =
 		"data1 : \t | \t \n"
@@ -63,25 +63,27 @@ void Example1()
 		"data6: 123\n"
 		"data7: 123.6\n";
 
-    Node root;
+   // yaml::node root;
     try
     {
-        Parse(root, data);
+        //root = yaml::parse(data);
     }
-    catch (const Exception e)
+    catch (const yaml::exception e)
     {
-        std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
+        std::cout << "Exception " << (int)e.type() << ": " << e.what() << std::endl;
         return;
     }
 
-    std::cout << root["data1"].As<std::string>() << std::endl;
-    std::cout << root["data2"].As<std::string>() << std::endl;
-    std::cout << root["data3"].As<std::string>() << std::endl;
-    std::cout << root["data4"].As<std::string>() << std::endl;
-    std::cout << root["data5"].As<std::string>() << std::endl;
-    std::cout << root["data6"].As<int>(0) << std::endl;
-    std::cout << root["data7"].As<float>(0.0f) << std::endl;
+    /*std::cout << root["data1"].as<std::string>() << std::endl;
+    std::cout << root["data2"].as<std::string>() << std::endl;
+    std::cout << root["data3"].as<std::string>() << std::endl;
+    std::cout << root["data4"].as<std::string>() << std::endl;
+    std::cout << root["data5"].as<std::string>() << std::endl;
+    std::cout << root["data6"].as<int>(0) << std::endl;
+    std::cout << root["data7"].as<float>(0.0f) << std::endl;*/
 }
+
+/*
 
 void Example2()
 {
@@ -182,10 +184,7 @@ void Example4()
             std::cout << " Service " << countS++ << std::endl;
             Node & service = (*itS).second;
 
-           /* for(auto itSS = service.Begin(); itSS != service.End(); itSS++)
-            {
-                std::cout << "  " << (*itSS).first << ":  " << (*itSS).second.As<std::string>() << std::endl;
-            }*/
+    
 
             std::cout << "  enabled:         " << service["enabled"].As<bool>(false) << std::endl;
             std::cout << "  name:            " << service["name"].As<std::string>() << std::endl;
@@ -238,7 +237,6 @@ void Example4()
         std::cin.get();
     }
 
-}
-
+}*/
 
 

@@ -1,0 +1,9 @@
+ignore:
+  - "test"
+  - "example"
+  - "vendor"
+  - "bin"
+coverage:
+  range: 50..80
+  round: down
+  precision: 2

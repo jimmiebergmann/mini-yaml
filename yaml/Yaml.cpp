@@ -1,7 +1,7 @@
 /*
 * MIT License
 *
-* Copyright(c) 2018 Jimmie Bergmann
+* Copyright(c) 2019 Jimmie Bergmann
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files(the "Software"), to deal
@@ -23,7 +23,1099 @@
 *
 */
 
-#include "Yaml.hpp"
+#include "yaml.hpp"
+#include <mutex>
+#include <stack>
+#include <fstream>
+
+static const std::string g_empty_string = "";
+static yaml::node g_dummy_node(yaml::node_type::null);
+static std::mutex g_dummy_mutex;
+
+namespace yaml
+{
+
+    // Private API implementations.
+    namespace priv
+    {
+
+        // default_value definitions.
+        const bool default_value<bool>::value = false;
+        const float default_value<float>::value = 0.0f;
+        const double default_value<double>::value = 0.0f;
+        const int32_t default_value<int32_t>::value = 0;
+        const int64_t default_value<int64_t>::value = 0;
+        const std::string default_value<std::string>::value = "";
+
+
+        //node_impl implementations.
+        node_impl::~node_impl()
+        { }
+
+        const node & node_impl::at(const std::string &) const
+        {
+            return node::null_node;
+        }
+
+        void node_impl::clear()
+        { }
+
+        node_data_type node_impl::data_type() const
+        {
+            return node_data_type::null;
+        }
+
+        size_t node_impl::size() const
+        {
+            return 0;
+        }
+
+        // map_node_impl implementations.
+        const node & map_node_impl::at(const std::string & key) const
+        {
+            auto it = m_nodes.find(key);
+            if (it == m_nodes.end())
+            {
+                return node::null_node;
+            }
+
+            return *it->second;
+        }
+
+        node_map::iterator map_node_impl::begin()
+        {
+            return m_nodes.begin();
+        }
+        node_map::const_iterator map_node_impl::begin() const
+        {
+            return m_nodes.begin();
+        }
+
+        node_map::iterator map_node_impl::end()
+        {
+            return m_nodes.end();
+        }
+        node_map::const_iterator map_node_impl::end() const
+        {
+            return m_nodes.end();
+        }
+
+        void map_node_impl::clear()
+        {
+            m_nodes.clear();
+        }
+
+        bool map_node_impl::erase(const std::string & key)
+        {
+            return m_nodes.erase(key) != 0;
+        }
+
+        bool map_node_impl::exists(const std::string & key) const
+        {
+            return m_nodes.find(key) != m_nodes.end();
+        }
+
+        node & map_node_impl::find_or_insert(const std::string & key)
+        {
+            auto it = m_nodes.find(key);
+            if (it != m_nodes.end())
+            {
+                return *it->second;
+            }
+
+            node * new_node = new node;
+            m_nodes.insert({ key, node_unique_ptr(new_node) });
+            return *new_node;
+        }
+
+        size_t map_node_impl::size() const
+        {
+            return m_nodes.size();
+        }
+
+        // scalar_node_impl implementations.
+        scalar_node_impl::scalar_node_impl(const node_data_type data_type) :
+            m_data_type(data_type)
+        {
+            switch (m_data_type)
+            {
+                case node_data_type::boolean:   m_value.boolean = default_value<bool>::value; break;
+                case node_data_type::float32:   m_value.float32 = default_value<float>::value; break;
+                case node_data_type::float64:   m_value.float64 = default_value<double>::value; break;
+                case node_data_type::int32:     m_value.int32   = default_value<int32_t>::value; break;
+                case node_data_type::int64:     m_value.int64   = default_value<int64_t>::value; break;
+                case node_data_type::string:    m_value.string  = new std::string(default_value<std::string>::value); break;
+                default: break;
+            }
+        }
+
+        scalar_node_impl::scalar_node_impl(const scalar_node_impl & scalar_node) :
+            m_data_type(scalar_node.m_data_type)
+        {
+            switch (m_data_type)
+            {
+                case node_data_type::boolean:   m_value.boolean = scalar_node.m_value.boolean; break;
+                case node_data_type::float32:   m_value.float32 = scalar_node.m_value.float32; break;
+                case node_data_type::float64:   m_value.float64 = scalar_node.m_value.float64; break;
+                case node_data_type::int32:     m_value.int32   = scalar_node.m_value.int32; break;
+                case node_data_type::int64:     m_value.int64   = scalar_node.m_value.int64; break;
+                case node_data_type::string:    m_value.string  = new std::string(*scalar_node.m_value.string); break;
+                default: break;
+            }
+        }
+
+        scalar_node_impl::scalar_node_impl(const bool boolean) :
+            m_data_type(node_data_type::boolean)
+        {
+            m_value.boolean = boolean;
+        }
+        scalar_node_impl::scalar_node_impl(const float float32) :
+            m_data_type(node_data_type::float32)
+        {
+            m_value.float32 = float32;
+        }
+        scalar_node_impl::scalar_node_impl(const double float64) :
+            m_data_type(node_data_type::float64)
+        {
+            m_value.float64 = float64;
+        }
+        scalar_node_impl::scalar_node_impl(const int32_t int32) :
+            m_data_type(node_data_type::int32)
+        {
+            m_value.int32 = int32;
+        }
+        scalar_node_impl::scalar_node_impl(const int64_t int64) :
+            m_data_type(node_data_type::int64)
+        {
+            m_value.int64 = int64;
+        }
+        scalar_node_impl::scalar_node_impl(const std::string & string) :
+            m_data_type(node_data_type::string)
+        {
+            m_value.string = new std::string(string);
+        }
+        scalar_node_impl::scalar_node_impl(const char * string) :
+            m_data_type(node_data_type::string)
+        {
+            m_value.string = new std::string(string);
+        }
+
+        scalar_node_impl::~scalar_node_impl()
+        {
+            if (m_data_type == node_data_type::string)
+            {
+                delete m_value.string;
+            }
+        }
+
+        void scalar_node_impl::clear()
+        {
+            switch (m_data_type)
+            {
+                case node_data_type::boolean:   m_value.boolean = default_value<bool>::value; break;
+                case node_data_type::float32:   m_value.float32 = default_value<float>::value; break;
+                case node_data_type::float64:   m_value.float64 = default_value<double>::value; break;
+                case node_data_type::int32:     m_value.int32   = default_value<int32_t>::value; break;
+                case node_data_type::int64:     m_value.int64   = default_value<int64_t>::value; break;
+                case node_data_type::string:    *m_value.string = default_value<std::string>::value; break;
+                default: break;
+            }
+        }
+
+        node_data_type scalar_node_impl::data_type() const
+        {
+            return m_data_type;
+        }
+
+        void scalar_node_impl::set(const node_data_type data_type)
+        {
+            switch (data_type)
+            {
+                case node_data_type::boolean:
+                {
+                    if (m_data_type == node_data_type::string)
+                    {
+                        delete m_value.string;
+                    }
+                    m_value.boolean = default_value<bool>::value;
+                }
+                break;
+                case node_data_type::float32:
+                {
+                    if (m_data_type == node_data_type::string)
+                    {
+                        delete m_value.string;
+                    }
+                    m_value.boolean = default_value<float>::value;
+                }
+                break;
+                case node_data_type::float64:
+                {
+                    if (m_data_type == node_data_type::string)
+                    {
+                        delete m_value.string;
+                    }
+                    m_value.boolean = default_value<double>::value;
+                }
+                break;
+                case node_data_type::int32:
+                {
+                    if (m_data_type == node_data_type::string)
+                    {
+                        delete m_value.string;
+                    }
+                    m_value.boolean = default_value<int32_t>::value;
+                }
+                break;
+                case node_data_type::int64:
+                {
+                    if (m_data_type == node_data_type::string)
+                    {
+                        delete m_value.string;
+                    }
+                    m_value.boolean = default_value<int64_t>::value;
+                }
+                break;
+                case node_data_type::null:
+                {
+                    if (m_data_type == node_data_type::string)
+                    {
+                        delete m_value.string;
+                    }
+                }
+                break;
+                case node_data_type::string:    
+                {
+                    if (m_data_type == node_data_type::string)
+                    {
+                        *m_value.string = default_value<std::string>::value;
+                        break;
+                    }
+                    m_value.string = new std::string(default_value<std::string>::value);
+                }
+                break;
+                default: break;
+            }
+
+            m_data_type = data_type;
+        }
+
+
+        // sequence_node_impl implementations.
+        node_list::iterator sequence_node_impl::begin()
+        {
+            return m_nodes.begin();
+        }
+        node_list::const_iterator sequence_node_impl::begin() const
+        {
+            return m_nodes.begin();
+        }
+
+        node_list::iterator sequence_node_impl::end()
+        {
+            return m_nodes.end();
+        }
+        node_list::const_iterator sequence_node_impl::end() const
+        {
+            return m_nodes.end();
+        }
+
+        void sequence_node_impl::clear()
+        {
+            m_nodes.clear();
+        }
+
+        node_data_type sequence_node_impl::data_type() const
+        {
+            return node_data_type::null;
+        }
+
+        size_t sequence_node_impl::size() const
+        {
+            return m_nodes.size();
+        }
+
+
+        // iterator_impl implementations.
+        iterator_impl::~iterator_impl()
+        { }
+
+        // const_iterator_impl implementations.
+        const_iterator_impl::~const_iterator_impl()
+        { }
+
+
+        // map_iterator_impl implementations.
+        map_iterator_impl::map_iterator_impl(node_map::iterator it) :
+            it(it)
+        { }
+
+        // map_const_iterator_impl implementations.
+        map_const_iterator_impl::map_const_iterator_impl(node_map::const_iterator it) :
+            it(it)
+        { }
+
+
+        // sequence_iterator_impl implementations.
+        sequence_iterator_impl::sequence_iterator_impl(node_list::iterator it) :
+            it(it)
+        { }
+
+        // sequence_const_iterator_impl implementations.
+        sequence_const_iterator_impl::sequence_const_iterator_impl(node_list::const_iterator it) :
+            it(it)
+        { }
+
+
+        // string_writer implementations.
+        template<typename Writer>
+        string_writer<Writer>::string_writer(Writer & writer) :
+            m_out(writer)
+        { }
+
+        template<typename Writer>
+        void string_writer<Writer>::write(const std::string & out)
+        {
+            m_out << out;
+        }
+
+        template<typename Writer>
+        void string_writer<Writer>::write(const char * out)
+        {
+            m_out << out;
+        }
+    
+        string_writer<std::string>::string_writer(std::string & out) :
+            m_out(out)
+        { }
+
+        void string_writer<std::string>::write(const std::string & out)
+        {
+            m_out += out;
+        }
+
+        void string_writer<std::string>::write(const char * out)
+        {
+            m_out += out;
+        }
+
+
+        // Functions in private API...
+        node_impl * create_impl(const node_type type)
+        {
+            switch (type)
+            {
+            case node_type::map:        return new priv::map_node_impl;
+            case node_type::scalar:     return new priv::scalar_node_impl;
+            case node_type::sequence:   return new priv::sequence_node_impl;
+            default: break;
+            }
+
+            return nullptr;
+        }
+
+
+    }
+
+
+    // Exception implementations.
+    exception::exception(const std::string & message, const exception_type type) :
+        std::runtime_error(message),
+        m_type(type)
+    { }
+
+    exception_type exception::type() const
+    {
+        return m_type;
+    }
+
+    error::error(const std::string & message, const exception_type type) :
+        exception(message, type)
+    { }
+
+    internal_error::internal_error(const std::string & message) :
+        error(message, exception_type::internal_error)
+    { }
+
+    parsing_error::parsing_error(const std::string & message) :
+        error(message, exception_type::parsing_error)
+    { }
+
+    operation_error::operation_error(const std::string & message) :
+        error(message, exception_type::operation_error)
+    { }
+
+
+    // node iterator implementations.
+    node::iterator::iterator() :
+        m_type(iterator_type::null)
+    { }
+
+    node::iterator::iterator(const iterator & it) :
+        m_type(it.m_type),
+        m_impl(nullptr)
+    {
+        switch (m_type)
+        {
+            case iterator_type::map:
+                m_impl = new priv::map_iterator_impl(static_cast<priv::map_iterator_impl &>(*it.m_impl));
+                break;
+            case iterator_type::sequence:
+                m_impl = new priv::sequence_iterator_impl(static_cast<priv::sequence_iterator_impl &>(*it.m_impl));
+                break;
+            default: break;
+        }
+    }
+
+    node::iterator::iterator(node_map::iterator it) :
+        m_type(iterator_type::map),
+        m_impl(new priv::map_iterator_impl(it))
+    { }
+
+    node::iterator::iterator(node_list::iterator it) :
+        m_type(iterator_type::sequence),
+        m_impl(new priv::sequence_iterator_impl(it))
+    { }
+
+    node::iterator::~iterator()
+    {
+        if (m_impl)
+        {
+            delete m_impl;
+        }
+    }
+
+    iterator_type node::iterator::type() const
+    {
+        return m_type;
+    }
+
+    std::pair<const std::string &, node &> node::iterator::operator *()
+    {
+        switch (m_type)
+        {
+            case iterator_type::map:
+            {
+                auto * impl = static_cast<priv::map_iterator_impl *>(m_impl);
+                return { impl->it->first, *impl->it->second.get() };
+            }
+            break;
+            case iterator_type::sequence:
+            {
+                auto * impl = static_cast<priv::sequence_iterator_impl *>(m_impl);
+                return { g_empty_string, *impl->it->get() };
+            }
+            break;
+            default: break;
+        }
+
+        std::lock_guard<std::mutex> lock(g_dummy_mutex);
+        g_dummy_node = yaml::node_type::null;
+        return { g_empty_string, g_dummy_node };
+    }
+
+    node::iterator & node::iterator::operator = (const iterator & it)
+    {
+        m_type = it.m_type;
+
+        if (m_impl)
+        {
+            delete m_impl;
+        }
+  
+        switch (m_type)
+        {
+            case iterator_type::map:
+                m_impl = new priv::map_iterator_impl(static_cast<priv::map_iterator_impl &>(*it.m_impl));
+                break;
+            case iterator_type::sequence:
+                m_impl = new priv::sequence_iterator_impl(static_cast<priv::sequence_iterator_impl &>(*it.m_impl));
+                break;
+            default: break;
+        }
+        
+        return *this;
+    }
+
+    node::iterator node::iterator::operator ++ ()
+    {
+        switch (m_type)
+        {
+            case iterator_type::map:
+                ++static_cast<priv::map_iterator_impl *>(m_impl)->it;
+                break;
+            case iterator_type::sequence:
+                ++static_cast<priv::sequence_iterator_impl *>(m_impl)->it;
+                break;
+            default: break;
+        }
+
+        return *this;
+    }
+
+    node::iterator node::iterator::operator ++ (int)
+    {
+        iterator old = *this;
+
+        switch (m_type)
+        {
+            case iterator_type::map:
+                static_cast<priv::map_iterator_impl *>(m_impl)->it++;
+                break;
+            case iterator_type::sequence:
+                static_cast<priv::sequence_iterator_impl *>(m_impl)->it++;
+                break;
+            default: break;
+        }
+
+        return old;
+    }
+
+    node::iterator node::iterator::operator -- ()
+    {
+        switch (m_type)
+        {
+            case iterator_type::map:
+                --static_cast<priv::map_iterator_impl *>(m_impl)->it;
+                break;
+            case iterator_type::sequence:
+                --static_cast<priv::sequence_iterator_impl *>(m_impl)->it;
+                break;
+            default: break;
+        }
+
+        return *this;
+    }
+
+    node::iterator node::iterator::operator -- (int)
+    {
+        iterator old = *this;
+
+        switch (m_type)
+        {
+            case iterator_type::map:
+                static_cast<priv::map_iterator_impl *>(m_impl)->it--;
+                break;
+            case iterator_type::sequence:
+                static_cast<priv::sequence_iterator_impl *>(m_impl)->it--;
+                break;
+            default: break;
+        }
+
+        return old;
+    }
+
+    bool node::iterator::operator == (const iterator & it)
+    {
+        if (m_type != it.m_type)
+        {
+            return false;
+        }
+
+        switch (m_type)
+        {
+            case iterator_type::map:
+                return static_cast<priv::map_iterator_impl *>(m_impl)->it == static_cast<priv::map_iterator_impl *>(it.m_impl)->it;
+                break;
+            case iterator_type::sequence:
+                return static_cast<priv::sequence_iterator_impl *>(m_impl)->it == static_cast<priv::sequence_iterator_impl *>(it.m_impl)->it;
+                break;
+            default: break;
+        }
+
+        return false;
+    }
+
+    bool node::iterator::operator != (const iterator & it)
+    {
+        return !(*this == it);
+    }
+
+
+    // const_iterator implementations.
+    node::const_iterator::const_iterator() :
+        m_type(iterator_type::null)
+    { }
+
+    node::const_iterator::const_iterator(const const_iterator & it) :
+        m_type(it.m_type),
+        m_impl(nullptr)
+    {
+        switch (m_type)
+        {
+            case iterator_type::map:
+                m_impl = new priv::map_const_iterator_impl(static_cast<priv::map_const_iterator_impl &>(*it.m_impl));
+                break;
+            case iterator_type::sequence:
+                m_impl = new priv::sequence_const_iterator_impl(static_cast<priv::sequence_const_iterator_impl &>(*it.m_impl));
+                break;
+            default: break;
+        }
+    }
+
+    node::const_iterator::const_iterator(node_map::const_iterator it) :
+        m_type(iterator_type::map),
+        m_impl(new priv::map_const_iterator_impl(it))
+    { }
+
+    node::const_iterator::const_iterator(node_list::const_iterator it) :
+        m_type(iterator_type::sequence),
+        m_impl(new priv::sequence_const_iterator_impl(it))
+    { }
+
+    node::const_iterator::~const_iterator()
+    {
+        if (m_impl)
+        {
+            delete m_impl;
+        }
+    }
+
+    iterator_type node::const_iterator::type() const
+    {
+        return m_type;
+    }
+
+    std::pair<const std::string &, const node &> node::const_iterator::operator *()
+    {
+        switch (m_type)
+        {
+            case iterator_type::map:
+            {
+                auto * impl = static_cast<priv::map_const_iterator_impl *>(m_impl);
+                return { impl->it->first, *impl->it->second.get() };
+            }
+            break;
+            case iterator_type::sequence:
+            {
+                auto * impl = static_cast<priv::sequence_const_iterator_impl *>(m_impl);
+                return { g_empty_string, *impl->it->get() };
+            }
+            break;
+            default: break;
+        }
+
+        std::lock_guard<std::mutex> lock(g_dummy_mutex);
+        g_dummy_node = yaml::node_type::null;
+        return { g_empty_string, g_dummy_node };
+    }
+
+    node::const_iterator & node::const_iterator::operator = (const const_iterator & it)
+    {
+        m_type = it.m_type;
+
+        if (m_impl)
+        {
+            delete m_impl;
+        }
+
+        switch (m_type)
+        {
+            case iterator_type::map:
+                m_impl = new priv::map_const_iterator_impl(static_cast<priv::map_const_iterator_impl &>(*it.m_impl));
+                break;
+            case iterator_type::sequence:
+                m_impl = new priv::sequence_const_iterator_impl(static_cast<priv::sequence_const_iterator_impl &>(*it.m_impl));
+                break;
+            default: break;
+        }
+
+        return *this;
+    }
+
+    node::const_iterator node::const_iterator::operator ++ ()
+    {
+        switch (m_type)
+        {
+            case iterator_type::map:
+                ++static_cast<priv::map_const_iterator_impl *>(m_impl)->it;
+                break;
+            case iterator_type::sequence:
+                ++static_cast<priv::sequence_const_iterator_impl *>(m_impl)->it;
+                break;
+            default: break;
+        }
+
+        return *this;
+    }
+
+    node::const_iterator node::const_iterator::operator ++ (int)
+    {
+        const_iterator old = *this;
+
+        switch (m_type)
+        {
+            case iterator_type::map:
+                static_cast<priv::map_const_iterator_impl *>(m_impl)->it++;
+                break;
+            case iterator_type::sequence:
+                static_cast<priv::sequence_const_iterator_impl *>(m_impl)->it++;
+                break;
+            default: break;
+        }
+
+        return old;
+    }
+
+    node::const_iterator node::const_iterator::operator -- ()
+    {
+        switch (m_type)
+        {
+            case iterator_type::map:
+                --static_cast<priv::map_const_iterator_impl *>(m_impl)->it;
+                break;
+            case iterator_type::sequence:
+                --static_cast<priv::sequence_const_iterator_impl *>(m_impl)->it;
+                break;
+            default: break;
+        }
+
+        return *this;
+    }
+
+    node::const_iterator node::const_iterator::operator -- (int)
+    {
+        const_iterator old = *this;
+
+        switch (m_type)
+        {
+            case iterator_type::map:
+                static_cast<priv::map_const_iterator_impl *>(m_impl)->it--;
+                break;
+            case iterator_type::sequence:
+                static_cast<priv::sequence_const_iterator_impl *>(m_impl)->it--;
+                break;
+            default: break;
+        }
+
+        return old;
+    }
+
+    bool node::const_iterator::operator == (const const_iterator & it)
+    {
+        if (m_type != it.m_type)
+        {
+            return false;
+        }
+
+        switch (m_type)
+        {
+            case iterator_type::map:
+                return static_cast<priv::map_const_iterator_impl *>(m_impl)->it == static_cast<priv::map_const_iterator_impl *>(it.m_impl)->it;
+                break;
+            case iterator_type::sequence:
+                return static_cast<priv::sequence_const_iterator_impl *>(m_impl)->it == static_cast<priv::sequence_const_iterator_impl *>(it.m_impl)->it;
+                break;
+            default: break;
+        }
+
+        return false;
+    }
+
+    bool node::const_iterator::operator != (const const_iterator & it)
+    {
+        return !(*this == it);
+    }
+
+
+    // node implementations.
+    const node node::null_node(yaml::node_type::null);
+
+    node::node() :
+        m_type(node_type::null)
+    { }
+
+    node::node(const node_type type) :
+        m_type(type),
+        m_impl(priv::create_impl(type))
+    { }
+
+    node::node(const node_data_type data_type) :
+        m_type(node_type::scalar),
+        m_impl(new priv::scalar_node_impl(data_type))
+    { }
+
+    node::~node()
+    { }
+
+    const node & node::at(const std::string & key) const
+    {
+        if (!m_impl)
+        {
+            return node::null_node;
+        }
+
+        return m_impl->at(key);
+    }
+
+    node::iterator node::begin()
+    {
+        switch (m_type)
+        {
+            case node_type::map:        return static_cast<priv::map_node_impl *>(m_impl.get())->begin();
+            case node_type::sequence:   return static_cast<priv::sequence_node_impl *>(m_impl.get())->begin();
+            default: break;
+        }
+        return iterator();
+    }
+    node::const_iterator node::begin() const
+    {
+        switch (m_type)
+        {
+            case node_type::map:        return static_cast<const priv::map_node_impl *>(m_impl.get())->begin();
+            case node_type::sequence:   return static_cast<const priv::sequence_node_impl *>(m_impl.get())->begin();
+            default: break;
+        }
+        return const_iterator();
+    }
+
+    node::iterator node::end()
+    {
+        switch (m_type)
+        {
+        case node_type::map:        return static_cast<priv::map_node_impl *>(m_impl.get())->end();
+        case node_type::sequence:   return static_cast<priv::sequence_node_impl *>(m_impl.get())->end();
+        default: break;
+        }
+        return iterator();
+    }
+    node::const_iterator node::end() const
+    {
+        switch (m_type)
+        {
+            case node_type::map:        return static_cast<const priv::map_node_impl *>(m_impl.get())->end();
+            case node_type::sequence:   return static_cast<const priv::sequence_node_impl *>(m_impl.get())->end();
+            default: break;
+        }
+        return const_iterator();
+    }
+
+    bool node::exists(const std::string & key) const
+    {
+        if (m_type == node_type::map)
+        {
+            return static_cast<priv::map_node_impl *>(m_impl.get())->exists(key);
+        }
+
+        return false;
+    }
+
+    void node::clear()
+    {
+        if (!m_impl)
+        {
+            return;
+        }
+
+        m_impl->clear();
+    }
+
+    node_data_type node::data_type() const
+    {
+        return m_impl ? m_impl->data_type() : node_data_type::null;
+    }
+
+    bool node::erase(const std::string & key)
+    {
+        if (m_type != node_type::map)
+        {
+            return 0;
+        }
+
+        return static_cast<priv::map_node_impl *>(m_impl.get())->erase(key);
+    }
+
+    bool node::is_map() const
+    {
+        return m_type == node_type::map;
+    }
+
+    bool node::is_null() const
+    {
+        return m_type == node_type::null;
+    }
+
+    bool node::is_scalar() const
+    {
+        return m_type == node_type::scalar;
+    }
+
+    bool node::is_sequence() const
+    {
+        return m_type == node_type::sequence;
+    }
+
+    node_type node::type() const
+    {
+        return m_type;
+    }
+
+    size_t node::size() const
+    {
+        return m_impl ? m_impl->size() : 0;
+    }
+
+    node & node::operator = (const node_type type)
+    {
+        m_type = type;
+        m_impl.reset(priv::create_impl(type));
+        return *this;
+    }
+
+    node & node::operator = (const node_data_type data_type)
+    {
+        if (m_type != node_type::scalar)
+        {
+            m_type = node_type::scalar;
+            m_impl.reset(new priv::scalar_node_impl(data_type));
+            return *this;
+        }
+
+        static_cast<priv::scalar_node_impl *>(m_impl.get())->set(data_type);
+        return *this;
+    }
+
+    node & node::operator [] (const std::string & key)
+    {
+        if (m_type != node_type::map)
+        {
+            m_type = node_type::map;
+            m_impl.reset(new priv::map_node_impl);
+        }
+
+        return static_cast<priv::map_node_impl *>(m_impl.get())->find_or_insert(key);
+    }
+
+
+    // dump_config implementations.
+    dump_config::dump_config(const size_t indentation, const size_t scalar_fold_length) :
+        indentation(indentation),
+        scalar_fold_length(scalar_fold_length)
+    { }
+
+
+    // dump implementations.
+    template<typename Writer>
+    static void dump_node(Writer & writer, const node & root, const dump_config & config)
+    {
+        switch (root.type())
+        {
+            case node_type::scalar: writer.write(root.as<std::string>()); return;
+            case node_type::null:   return;
+            default: break;
+        }
+
+        if (!root.size())
+        {
+            return;
+        }
+
+        std::stack<std::pair<const node &, node::const_iterator> > node_stack;
+        node_stack.push({ root, root.begin() });
+
+        auto process_node = [&](yaml::node::const_iterator & it)
+        {
+            const auto & child_node = (*it).second;
+            switch (child_node.type())
+            {
+                case node_type::map:
+                case node_type::sequence: node_stack.push({ child_node, child_node.begin() }); break;
+                case node_type::scalar:
+                {
+                    writer.write(" ");
+                    switch (child_node.data_type())
+                    {
+                        case node_data_type::null: writer.write("~"); break;
+                        default: writer.write(child_node.as<std::string>()); break;
+                    }
+                }
+                break;
+                default: break;
+            }
+        };
+
+        while (node_stack.size())
+        {
+            auto & current_node = node_stack.top().first;
+            auto & current_it = node_stack.top().second;
+            if (current_it == current_node.end())
+            {
+                node_stack.pop();
+                continue;
+            }
+
+            size_t level = node_stack.size() - 1;
+
+            switch (current_node.type())
+            {
+            case node_type::map:
+            {
+                const auto & current_key = (*current_it).first;
+                writer.write(std::string(config.indentation * level, ' '));
+                writer.write(current_key);
+                writer.write(":");
+
+                process_node(current_it);
+            }
+            break;
+            case node_type::sequence:
+            {
+                writer.write(std::string(config.indentation * level, ' '));
+                writer.write("-");
+
+                process_node(current_it);
+            }
+            break;
+            default:
+                break;
+            }
+
+            writer.write("\n");
+            ++current_it;
+        }
+    }
+
+    std::string dump(const node & root, const dump_config & config)
+    {
+        std::string buffer = "";
+        priv::string_writer<std::string> writer(buffer);
+        dump_node(writer, root, config);
+        return buffer;
+    }
+
+    void dump_file(const node & root, const std::string & filename, const dump_config & config)
+    {
+        std::ofstream fin(filename);
+        if (!fin.is_open())
+        {
+            // ERROR HERE... Exception...
+            return;
+        }
+
+        priv::string_writer<std::ostream> writer(fin);
+        dump_node(writer, root, config);
+    }
+
+    void dump_stream(const node & root, std::ostream & stream, const dump_config & config)
+    {
+        priv::string_writer<std::ostream> writer(stream);
+        dump_node(writer, root, config);
+    }
+
+    void dump_string(const node & root, std::string & string, const dump_config & config)
+    {
+        priv::string_writer<std::string> writer(string);
+        dump_node(writer, root, config);
+    }
+
+}
+
+
+
+
+
+/*
+
 #include <memory>
 #include <fstream>
 #include <sstream>
@@ -1225,19 +2317,19 @@ namespace Yaml
 
 
     // Reader implementations
-    /**
-    * @breif Line information structure.
-    *
-    */
+    //*
+    //* @breif Line information structure.
+    //*
+    // 
     class ReaderLine
     {
 
     public:
 
-        /**
-        * @breif Constructor.
-        *
-        */
+        //*
+        // @breif Constructor.
+        //
+        //
         ReaderLine(const std::string & data = "",
                    const size_t no = 0,
                    const size_t offset = 0,
@@ -1259,55 +2351,33 @@ namespace Yaml
             ScalarNewlineFlag       ///< Scalar ends with a newline.
         };
 
-        /**
-        * @breif Set flag.
-        *
-        */
         void SetFlag(const eFlag flag)
         {
             Flags |= FlagMask[static_cast<size_t>(flag)];
         }
 
-        /**
-        * @breif Set flags by mask value.
-        *
-        */
         void SetFlags(const unsigned char flags)
         {
             Flags |= flags;
         }
 
-        /**
-        * @breif Unset flag.
-        *
-        */
         void UnsetFlag(const eFlag flag)
         {
             Flags &= ~FlagMask[static_cast<size_t>(flag)];
         }
 
-        /**
-        * @breif Unset flags by mask value.
-        *
-        */
+    
         void UnsetFlags(const unsigned char flags)
         {
             Flags &= ~flags;
         }
 
-        /**
-        * @breif Get flag value.
-        *
-        */
         bool GetFlag(const eFlag flag) const
         {
             return Flags & FlagMask[static_cast<size_t>(flag)];
         }
 
-        /**
-        * @breif Copy and replace scalar flags from another ReaderLine.
-        *
-        */
+    
         void CopyScalarFlags(ReaderLine * from)
         {
             if (from == nullptr)
@@ -1335,37 +2405,23 @@ namespace Yaml
     const unsigned char ReaderLine::FlagMask[3] = { 0x01, 0x02, 0x04 };
 
 
-    /**
-    * @breif Implementation class of Yaml parsing.
-    *        Parsing incoming stream and outputs a root node.
-    *
-    */
+
     class ParseImp
     {
 
     public:
 
-        /**
-        * @breif Default constructor.
-        *
-        */
+       
         ParseImp()
         {
         }
 
-        /**
-        * @breif Destructor.
-        *
-        */
+    
         ~ParseImp()
         {
             ClearLines();
         }
 
-        /**
-        * @breif Run full parsing procedure.
-        *
-        */
         void Parse(Node & root, std::iostream & stream)
         {
             try
@@ -1385,23 +2441,13 @@ namespace Yaml
 
     private:
 
-        /**
-        * @breif Copy constructor.
-        *
-        */
+    
         ParseImp(const ParseImp & copy)
         {
 
         }
 
-        /**
-        * @breif Read all lines.
-        *        Ignoring:
-        *           - Empty lines.
-        *           - Comments.
-        *           - Document start/end.
-        *
-        */
+
         void ReadLines(std::iostream & stream)
         {
             std::string     line = "";
@@ -1502,11 +2548,7 @@ namespace Yaml
             }
         }
 
-        /**
-        * @breif Run post-processing on all lines.
-        *        Basically split lines into multiple lines if needed, to follow the parsing algorithm.
-        *
-        */
+  
         void PostProcessLines()
         {
             for (auto it = m_Lines.begin(); it != m_Lines.end();)
@@ -1551,13 +2593,7 @@ namespace Yaml
             }
         }
 
-        /**
-        * @breif Run post-processing and check for sequence.
-        *        Split line into two lines if sequence token is not on it's own line.
-        *
-        * @return true if line is sequence, else false.
-        *
-        */
+  
         bool PostProcessSequenceLine(std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pLine = *it;
@@ -1586,13 +2622,7 @@ namespace Yaml
             return false;
         }
 
-        /**
-        * @breif Run post-processing and check for mapping.
-        *        Split line into two lines if mapping value is not on it's own line.
-        *
-        * @return true if line is mapping, else move on to scalar parsing.
-        *
-        */
+    
         bool PostProcessMappingLine(std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pLine = *it;
@@ -1685,13 +2715,6 @@ namespace Yaml
             return false;
         }
 
-        /**
-        * @breif Run post-processing and check for scalar.
-        *        Checking for multi-line scalars.
-        *
-        * @return true if scalar search should continue, else false.
-        *
-        */
         void PostProcessScalarLine(std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pLine = *it;
@@ -1729,10 +2752,7 @@ namespace Yaml
             ClearTrailingEmptyLines(++lastNotEmpty);
         }
 
-        /**
-        * @breif Process root node and start of document.
-        *
-        */
+     
         void ParseRoot(Node & root)
         {
             // Get first line and start type.
@@ -1767,10 +2787,7 @@ namespace Yaml
 
         }
 
-        /**
-        * @breif Process sequence node.
-        *
-        */
+     
         void ParseSequence(Node & node, std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pNextLine = nullptr;
@@ -1821,10 +2838,7 @@ namespace Yaml
             }
         }
 
-        /**
-        * @breif Process map node.
-        *
-        */
+     
         void ParseMap(Node & node, std::list<ReaderLine *>::iterator & it)
         {
             ReaderLine * pNextLine = nullptr;
@@ -1875,10 +2889,6 @@ namespace Yaml
             }
         }
 
-        /**
-        * @breif Process scalar node.
-        *
-        */
         void ParseScalar(Node & node, std::list<ReaderLine *>::iterator & it)
         {
             std::string data = "";
@@ -2033,10 +3043,7 @@ namespace Yaml
             node = data;
         }
 
-        /**
-        * @breif Debug printing.
-        *
-        */
+     
         void Print()
         {
             for (auto it = m_Lines.begin(); it != m_Lines.end(); it++)
@@ -2126,10 +3133,7 @@ namespace Yaml
             }
         }
 
-        /**
-        * @breif Clear all read lines.
-        *
-        */
+     
         void ClearLines()
         {
             for (auto it = m_Lines.begin(); it != m_Lines.end(); it++)
@@ -2678,16 +3682,16 @@ namespace Yaml
                 //if(foundToken == token)
                 //{
 
-                    /*if(foundToken == token && searchPos == input.size() - 1 && input[searchPos-1] != '\\')
-                    {
-                        return true;
-                        if(searchPos == input.size() - 1)
-                        {
-                            return true;
-                        }
-                        return false;
-                    }
-                    else */
+                    //if(foundToken == token && searchPos == input.size() - 1 && input[searchPos-1] != '\\')
+                    //{
+                   //     return true;
+                    //    if(searchPos == input.size() - 1)
+                    //    {
+                    //        return true;
+                    //    }
+                    //    return false;
+                    //}
+                   // else
                     if(foundToken == token && input[searchPos-1] != '\\')
                     {
                         if(searchPos == input.size() - 1)
@@ -2771,3 +3775,4 @@ namespace Yaml
 
 
 }
+*/

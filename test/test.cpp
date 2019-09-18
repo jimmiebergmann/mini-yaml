@@ -1,27 +1,1831 @@
+/*
+* MIT License
+*
+* Copyright(c) 2019 Jimmie Bergmann
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files(the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions :
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+*/
+
+
 #include "gtest/gtest.h"
-#include "../yaml/Yaml.hpp"
-#include <iostream>
-#include <fstream>
+#include "../yaml/yaml.hpp"
+
+
+TEST(exceptions, throw)
+{
+    { // yaml::exception
+        {
+            bool throwed = false;
+            try
+            {
+                throw yaml::exception("exception message: internal_error", yaml::exception_type::internal_error);
+            }
+            catch (const yaml::exception & e)
+            {
+                throwed = true;
+                EXPECT_EQ(e.type(), yaml::exception_type::internal_error);
+                EXPECT_STREQ(e.what(), "exception message: internal_error");
+            }
+            EXPECT_TRUE(throwed);
+        }
+        {
+            bool throwed = false;
+            try
+            {
+                throw yaml::exception("exception message: parsing_error", yaml::exception_type::parsing_error);
+            }
+            catch (const yaml::exception & e)
+            {
+                throwed = true;
+                EXPECT_EQ(e.type(), yaml::exception_type::parsing_error);
+                EXPECT_STREQ(e.what(), "exception message: parsing_error");
+            }
+            EXPECT_TRUE(throwed);
+        }
+        {
+            bool throwed = false;
+            try
+            {
+                throw yaml::exception("exception message: operation_error", yaml::exception_type::operation_error);
+            }
+            catch (const yaml::exception & e)
+            {
+                throwed = true;
+                EXPECT_EQ(e.type(), yaml::exception_type::operation_error);
+                EXPECT_STREQ(e.what(), "exception message: operation_error");
+            }
+            EXPECT_TRUE(throwed);
+        }
+    }
+    { // yaml::error
+        {
+            bool throwed = false;
+            try
+            {
+                throw yaml::error("exception message: internal_error", yaml::exception_type::internal_error);
+            }
+            catch (const yaml::error & e)
+            {
+                throwed = true;
+                EXPECT_EQ(e.type(), yaml::exception_type::internal_error);
+                EXPECT_STREQ(e.what(), "exception message: internal_error");
+            }
+            EXPECT_TRUE(throwed);
+        }
+        {
+            bool throwed = false;
+            try
+            {
+                throw yaml::error("exception message: parsing_error", yaml::exception_type::parsing_error);
+            }
+            catch (const yaml::error & e)
+            {
+                throwed = true;
+                EXPECT_EQ(e.type(), yaml::exception_type::parsing_error);
+                EXPECT_STREQ(e.what(), "exception message: parsing_error");
+            }
+            EXPECT_TRUE(throwed);
+        }
+        {
+            bool throwed = false;
+            try
+            {
+                throw yaml::error("exception message: operation_error", yaml::exception_type::operation_error);
+            }
+            catch (const yaml::error & e)
+            {
+                throwed = true;
+                EXPECT_EQ(e.type(), yaml::exception_type::operation_error);
+                EXPECT_STREQ(e.what(), "exception message: operation_error");
+            }
+            EXPECT_TRUE(throwed);
+        }
+
+        {
+            bool throwed = false;
+            try
+            {
+                throw yaml::error("throw error, catch exception", yaml::exception_type::operation_error);
+            }
+            catch (const yaml::exception & e)
+            {
+                throwed = true;
+                EXPECT_EQ(e.type(), yaml::exception_type::operation_error);
+                EXPECT_STREQ(e.what(), "throw error, catch exception");
+            }
+            EXPECT_TRUE(throwed);
+        }
+        {
+            bool throwed = false;
+            try
+            {
+                throw yaml::exception("throw exception, catch error", yaml::exception_type::operation_error);
+            }
+            catch (const yaml::error &)
+            {
+            }
+            catch (const yaml::exception &)
+            {
+            }
+            EXPECT_FALSE(throwed);
+        }
+    }
+    { // yaml::internal_error
+        bool throwed = false;
+        try
+        {
+            throw yaml::internal_error("throwing internal error.");
+        }
+        catch (const yaml::internal_error & e)
+        {
+            throwed = true;
+            EXPECT_EQ(e.type(), yaml::exception_type::internal_error);
+            EXPECT_STREQ(e.what(), "throwing internal error.");
+        }
+        EXPECT_TRUE(throwed);
+    }
+    { // yaml::parsing_error
+        bool throwed = false;
+        try
+        {
+            throw yaml::parsing_error("throwing parsing error.");
+        }
+        catch (const yaml::parsing_error & e)
+        {
+            throwed = true;
+            EXPECT_EQ(e.type(), yaml::exception_type::parsing_error);
+            EXPECT_STREQ(e.what(), "throwing parsing error.");
+        }
+        EXPECT_TRUE(throwed);
+    }
+    { // yaml::operation_error
+        bool throwed = false;
+        try
+        {
+            throw yaml::operation_error("throwing operation error.");
+        }
+        catch (const yaml::operation_error & e)
+        {
+            throwed = true;
+            EXPECT_EQ(e.type(), yaml::exception_type::operation_error);
+            EXPECT_STREQ(e.what(), "throwing operation error.");
+        }
+        EXPECT_TRUE(throwed);
+    }
+}
+
+TEST(priv, data_converter)
+{
+    {
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("yes")));
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("Yes")));
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("yeS")));
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("YES")));
+
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("no")));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("foo")));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("")));
+
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("yes", true)));
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("yes", false)));
+
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("no", true)));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("no", false)));
+
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("", true)));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("", false)));
+
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("foo", true)));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("foo", false)));
+    }
+    {
+        EXPECT_EQ((yaml::priv::data_converter<std::string, int32_t>::get("1")), int32_t(1));
+        EXPECT_EQ((yaml::priv::data_converter<std::string, int32_t>::get("0")), int32_t(0));
+        EXPECT_EQ((yaml::priv::data_converter<std::string, int32_t>::get("-1")), int32_t(-1));
+        EXPECT_EQ((yaml::priv::data_converter<std::string, int32_t>::get("123456789")), int32_t(123456789));
+        EXPECT_EQ((yaml::priv::data_converter<std::string, int32_t>::get("-123456789")), int32_t(-123456789));
+    }
+    {
+        EXPECT_STREQ((yaml::priv::data_converter<std::string, std::string>::get("foo bar")).c_str(), "foo bar");
+        EXPECT_STREQ((yaml::priv::data_converter<std::string, std::string>::get("foo", "")).c_str(), "foo");
+        EXPECT_STREQ((yaml::priv::data_converter<std::string, std::string>::get("foo", "bar")).c_str(), "foo");
+        EXPECT_STREQ((yaml::priv::data_converter<std::string, std::string>::get("", "bar")).c_str(), "bar");
+        EXPECT_STREQ((yaml::priv::data_converter<std::string, std::string>::get("", "")).c_str(), "");
+    }
+}
+
+TEST(priv, null_node_impl)
+{
+    {
+        yaml::priv::null_node_impl impl;
+        EXPECT_EQ(impl.data_type(), yaml::node_data_type::null);
+    }
+}
+
+TEST(priv, map_node_impl)
+{
+    {
+        yaml::priv::map_node_impl impl;
+        EXPECT_EQ(impl.data_type(), yaml::node_data_type::null);
+    }
+}
+
+TEST(priv, sequence_node_impl)
+{
+    {
+        yaml::priv::sequence_node_impl impl;
+        EXPECT_EQ(impl.data_type(), yaml::node_data_type::null);
+    }
+}
+
+TEST(priv, scalar_node_impl)
+{
+    {
+        yaml::priv::scalar_node_impl impl_1;
+        EXPECT_EQ(impl_1.data_type(), yaml::node_data_type::null);
+
+        yaml::priv::scalar_node_impl impl_2(yaml::node_data_type::null);
+        EXPECT_EQ(impl_2.data_type(), yaml::node_data_type::null);
+
+        yaml::priv::scalar_node_impl impl_3(yaml::node_data_type::boolean);
+        EXPECT_EQ(impl_3.data_type(), yaml::node_data_type::boolean);
+
+        yaml::priv::scalar_node_impl impl_4(yaml::node_data_type::float32);
+        EXPECT_EQ(impl_4.data_type(), yaml::node_data_type::float32);
+
+        yaml::priv::scalar_node_impl impl_5(yaml::node_data_type::float64);
+        EXPECT_EQ(impl_5.data_type(), yaml::node_data_type::float64);
+
+        yaml::priv::scalar_node_impl impl_6(yaml::node_data_type::int32);
+        EXPECT_EQ(impl_6.data_type(), yaml::node_data_type::int32);
+
+        yaml::priv::scalar_node_impl impl_7(yaml::node_data_type::int64);
+        EXPECT_EQ(impl_7.data_type(), yaml::node_data_type::int64);
+
+        yaml::priv::scalar_node_impl impl_8(yaml::node_data_type::string);
+        EXPECT_EQ(impl_8.data_type(), yaml::node_data_type::string);
+    }
+    {
+        {
+            yaml::priv::scalar_node_impl impl(bool(false));
+            EXPECT_EQ(impl.data_type(), yaml::node_data_type::boolean);
+            EXPECT_EQ(impl.as<bool>(), bool(false));
+            EXPECT_EQ(impl.as<float>(), float(0.0f));
+            EXPECT_EQ(impl.as<double>(), double(0.0f));
+            EXPECT_EQ(impl.as<int32_t>(), int32_t(0));
+            EXPECT_EQ(impl.as<int64_t>(), int64_t(0));
+            EXPECT_STREQ(impl.as<std::string>().c_str(), "false");
+        }
+        {
+            yaml::priv::scalar_node_impl impl(bool(true));
+            EXPECT_EQ(impl.data_type(), yaml::node_data_type::boolean);
+            EXPECT_EQ(impl.as<bool>(), bool(true));
+            EXPECT_EQ(impl.as<float>(), float(1.0f));
+            EXPECT_EQ(impl.as<double>(), double(1.0f));
+            EXPECT_EQ(impl.as<int32_t>(), int32_t(1));
+            EXPECT_EQ(impl.as<int64_t>(), int64_t(1));
+            EXPECT_STREQ(impl.as<std::string>().c_str(), "true");
+        }
+        {
+            {
+                yaml::priv::scalar_node_impl impl(float(3.0f));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::float32);
+                EXPECT_EQ(impl.as<bool>(), bool(true));
+                EXPECT_EQ(impl.as<float>(), float(3.0f));
+                EXPECT_EQ(impl.as<double>(), double(3.0f));
+                EXPECT_EQ(impl.as<int32_t>(), int32_t(3));
+                EXPECT_EQ(impl.as<int64_t>(), int64_t(3));
+                EXPECT_STREQ(impl.as<std::string>().c_str(), "3");
+            }
+            {
+                yaml::priv::scalar_node_impl impl(float(0.0f));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::float32);
+                EXPECT_EQ(impl.as<bool>(), bool(false));
+            }
+            {
+                yaml::priv::scalar_node_impl impl(float(-1.0f));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::float32);
+                EXPECT_EQ(impl.as<bool>(), bool(true));
+            }
+        }
+        {
+            {
+                yaml::priv::scalar_node_impl impl(double(3.0f));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::float64);
+                EXPECT_EQ(impl.as<bool>(), bool(true));
+                EXPECT_EQ(impl.as<float>(), float(3.0f));
+                EXPECT_EQ(impl.as<double>(), double(3.0f));
+                EXPECT_EQ(impl.as<int32_t>(), int32_t(3));
+                EXPECT_EQ(impl.as<int64_t>(), int64_t(3));
+                EXPECT_STREQ(impl.as<std::string>().c_str(), "3");
+            }
+            {
+                yaml::priv::scalar_node_impl impl(double(0.0f));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::float64);
+                EXPECT_EQ(impl.as<bool>(), bool(false));
+            }
+            {
+                yaml::priv::scalar_node_impl impl(double(-1.0f));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::float64);
+                EXPECT_EQ(impl.as<bool>(), bool(true));
+            }
+        }
+        {
+            {
+                yaml::priv::scalar_node_impl impl(int32_t(3));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::int32);
+                EXPECT_EQ(impl.as<bool>(), bool(true));
+                EXPECT_EQ(impl.as<float>(), float(3.0f));
+                EXPECT_EQ(impl.as<double>(), double(3.0f));
+                EXPECT_EQ(impl.as<int32_t>(), int32_t(3));
+                EXPECT_EQ(impl.as<int64_t>(), int64_t(3));
+                EXPECT_STREQ(impl.as<std::string>().c_str(), "3");
+            }
+            {
+                yaml::priv::scalar_node_impl impl(int32_t(0));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::int32);
+                EXPECT_EQ(impl.as<bool>(), bool(false));
+            }
+            {
+                yaml::priv::scalar_node_impl impl(int32_t(-1));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::int32);
+                EXPECT_EQ(impl.as<bool>(), bool(true));
+            }
+        }
+        {
+            {
+                yaml::priv::scalar_node_impl impl(int64_t(3));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::int64);
+                EXPECT_EQ(impl.as<bool>(), bool(true));
+                EXPECT_EQ(impl.as<float>(), float(3.0f));
+                EXPECT_EQ(impl.as<double>(), double(3.0f));
+                EXPECT_EQ(impl.as<int32_t>(), int32_t(3));
+                EXPECT_EQ(impl.as<int64_t>(), int64_t(3));
+                EXPECT_STREQ(impl.as<std::string>().c_str(), "3");
+            }
+            {
+                yaml::priv::scalar_node_impl impl(int64_t(0));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::int64);
+                EXPECT_EQ(impl.as<bool>(), bool(false));
+            }
+            {
+                yaml::priv::scalar_node_impl impl(int64_t(-1));
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::int64);
+                EXPECT_EQ(impl.as<bool>(), bool(true));
+            }
+        }
+        {
+            {
+                yaml::priv::scalar_node_impl impl("foo bar");
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::string);
+                EXPECT_EQ(impl.as<bool>(), bool(false));
+                EXPECT_EQ(impl.as<float>(), float(0.0f));
+                EXPECT_EQ(impl.as<double>(), double(0.0f));
+                EXPECT_EQ(impl.as<int32_t>(), int32_t(0));
+                EXPECT_EQ(impl.as<int64_t>(), int64_t(0));
+                EXPECT_STREQ(impl.as<std::string>().c_str(), "foo bar");
+            }
+            {
+                yaml::priv::scalar_node_impl impl("true");
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::string);
+                EXPECT_EQ(impl.as<bool>(), bool(true));
+                EXPECT_EQ(impl.as<float>(), float(0.0f));
+                EXPECT_EQ(impl.as<double>(), double(0.0f));
+                EXPECT_EQ(impl.as<int32_t>(), int32_t(0));
+                EXPECT_EQ(impl.as<int64_t>(), int64_t(0));
+                EXPECT_STREQ(impl.as<std::string>().c_str(), "true");
+            }
+            {
+                yaml::priv::scalar_node_impl impl("false");
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::string);
+                EXPECT_EQ(impl.as<bool>(), bool(false));
+                EXPECT_EQ(impl.as<float>(), float(0.0f));
+                EXPECT_EQ(impl.as<double>(), double(0.0f));
+                EXPECT_EQ(impl.as<int32_t>(), int32_t(0));
+                EXPECT_EQ(impl.as<int64_t>(), int64_t(0));
+                EXPECT_STREQ(impl.as<std::string>().c_str(), "false");
+            }
+            {
+                yaml::priv::scalar_node_impl impl("-128");
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::string);
+                EXPECT_EQ(impl.as<bool>(), bool(false));
+                EXPECT_EQ(impl.as<float>(), float(-128.0f));
+                EXPECT_EQ(impl.as<double>(), double(-128.0f));
+                EXPECT_EQ(impl.as<int32_t>(), int32_t(-128));
+                EXPECT_EQ(impl.as<int64_t>(), int64_t(-128));
+                EXPECT_STREQ(impl.as<std::string>().c_str(), "-128");
+            }
+            {
+                yaml::priv::scalar_node_impl impl("64.5");
+                EXPECT_EQ(impl.data_type(), yaml::node_data_type::string);
+                EXPECT_EQ(impl.as<bool>(), bool(false));
+                EXPECT_EQ(impl.as<float>(), float(64.5));
+                EXPECT_EQ(impl.as<double>(), double(64.5f));
+                EXPECT_EQ(impl.as<int32_t>(), int32_t(64));
+                EXPECT_EQ(impl.as<int64_t>(), int64_t(64));
+                EXPECT_STREQ(impl.as<std::string>().c_str(), "64.5");
+            }
+        }
+    }
+}
+
+TEST(node, constructor)
+{
+    {
+        yaml::node node;
+        EXPECT_EQ(node.type(), yaml::node_type::null);
+        EXPECT_TRUE(node.is_null());
+        EXPECT_FALSE(node.is_scalar());
+        EXPECT_FALSE(node.is_map());
+        EXPECT_FALSE(node.is_sequence());
+        EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+    }
+}
+
+TEST(node, constructor_scalar)
+{
+    {
+        yaml::node node1(bool(true));
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::boolean);
+        EXPECT_EQ(node1.as<bool>(), bool(true));
+
+        yaml::node node2(bool(false));
+        EXPECT_EQ(node2.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node2.is_scalar());
+        EXPECT_FALSE(node2.is_null());
+        EXPECT_FALSE(node2.is_map());
+        EXPECT_FALSE(node2.is_sequence());
+        EXPECT_EQ(node2.data_type(), yaml::node_data_type::boolean);
+        EXPECT_EQ(node2.as<bool>(), bool(false));
+    }
+    {
+        yaml::node node1(float(3.5f));
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::float32);
+        EXPECT_EQ(node1.as<float>(), float(3.5f));
+
+        yaml::node node2(float(-5.0f));
+        EXPECT_EQ(node2.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node2.is_scalar());
+        EXPECT_FALSE(node2.is_null());
+        EXPECT_FALSE(node2.is_map());
+        EXPECT_FALSE(node2.is_sequence());
+        EXPECT_EQ(node2.data_type(), yaml::node_data_type::float32);
+        EXPECT_EQ(node2.as<float>(), float(-5.0f));
+    }
+    {
+        yaml::node node1(double(7.5f));
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::float64);
+        EXPECT_EQ(node1.as<double>(), double(7.5f));
+
+        yaml::node node2(double(-6.0f));
+        EXPECT_EQ(node2.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node2.is_scalar());
+        EXPECT_FALSE(node2.is_null());
+        EXPECT_FALSE(node2.is_map());
+        EXPECT_FALSE(node2.is_sequence());
+        EXPECT_EQ(node2.data_type(), yaml::node_data_type::float64);
+        EXPECT_EQ(node2.as<double>(), double(-6.0f));
+    }
+    {
+        yaml::node node1(int32_t(12345));
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::int32);
+        EXPECT_EQ(node1.as<int32_t>(), int32_t(12345));
+
+        yaml::node node2(int64_t(-4345));
+        EXPECT_EQ(node2.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node2.is_scalar());
+        EXPECT_FALSE(node2.is_null());
+        EXPECT_FALSE(node2.is_map());
+        EXPECT_FALSE(node2.is_sequence());
+        EXPECT_EQ(node2.data_type(), yaml::node_data_type::int64);
+        EXPECT_EQ(node2.as<int64_t>(), int64_t(-4345));
+    }
+    {
+        yaml::node node1(std::string("coolio"));
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::string);
+        EXPECT_STREQ(node1.as<std::string>().c_str(), "coolio");
+
+        yaml::node node2(std::string("o'rly?"));
+        EXPECT_EQ(node2.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node2.is_scalar());
+        EXPECT_FALSE(node2.is_null());
+        EXPECT_FALSE(node2.is_map());
+        EXPECT_FALSE(node2.is_sequence());
+        EXPECT_EQ(node2.data_type(), yaml::node_data_type::string);
+        EXPECT_STREQ(node2.as<std::string>().c_str(), "o'rly?");
+    }
+    {
+        const char str_value_1[] = "test";
+        const char str_value_2[] = "foo bar";
+
+        yaml::node node1(str_value_1);
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::string);
+        EXPECT_STREQ(node1.as<std::string>().c_str(), "test");
+
+        yaml::node node2(str_value_2);
+        EXPECT_EQ(node2.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node2.is_scalar());
+        EXPECT_FALSE(node2.is_null());
+        EXPECT_FALSE(node2.is_map());
+        EXPECT_FALSE(node2.is_sequence());
+        EXPECT_EQ(node2.data_type(), yaml::node_data_type::string);
+        EXPECT_STREQ(node2.as<std::string>().c_str(), "foo bar");
+    }
+
+}
+
+TEST(node, constructor_node_type)
+{
+    {
+        yaml::node node1(yaml::node_type::null);
+        EXPECT_EQ(node1.type(), yaml::node_type::null);
+        EXPECT_FALSE(node1.is_scalar());
+        EXPECT_TRUE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::null);
+    }
+    {
+        yaml::node node1(yaml::node_type::map);
+        EXPECT_EQ(node1.type(), yaml::node_type::map);
+        EXPECT_FALSE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_TRUE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::null);
+    }
+    {
+        yaml::node node1(yaml::node_type::scalar);
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::null);
+    }
+    {
+        yaml::node node1(yaml::node_type::sequence);
+        EXPECT_EQ(node1.type(), yaml::node_type::sequence);
+        EXPECT_FALSE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_TRUE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::null);
+    }
+}
+
+TEST(node, constructor_node_data_type)
+{
+    {
+        yaml::node node1(yaml::node_data_type::null);
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::null);
+    }
+    {
+        yaml::node node1(yaml::node_data_type::boolean);
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::boolean);
+    }
+    {
+        yaml::node node1(yaml::node_data_type::float32);
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::float32);
+    }
+    {
+        yaml::node node1(yaml::node_data_type::float64);
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::float64);
+    }
+    {
+        yaml::node node1(yaml::node_data_type::int32);
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::int32);
+    }
+    {
+        yaml::node node1(yaml::node_data_type::int64);
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::int64);
+    }
+    {
+        yaml::node node1(yaml::node_data_type::string);
+        EXPECT_EQ(node1.type(), yaml::node_type::scalar);
+        EXPECT_TRUE(node1.is_scalar());
+        EXPECT_FALSE(node1.is_null());
+        EXPECT_FALSE(node1.is_map());
+        EXPECT_FALSE(node1.is_sequence());
+        EXPECT_EQ(node1.data_type(), yaml::node_data_type::string);
+    }
+}
+
+TEST(node, assign_scalar_value)
+{
+    yaml::node node;
+
+    EXPECT_FALSE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::null);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+    EXPECT_NO_THROW(node = bool(true));
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::boolean);
+    EXPECT_EQ(node.as<bool>(), bool(true));
+    EXPECT_STREQ(node.as<std::string>().c_str(), "true");
+
+    EXPECT_NO_THROW(node = bool(false));
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::boolean);
+    EXPECT_EQ(node.as<bool>(), bool(false));
+    EXPECT_STREQ(node.as<std::string>().c_str(), "false");
+
+    EXPECT_NO_THROW(node = float(-2.0f));
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::float32);
+    EXPECT_EQ(node.as<float>(), float(-2.0f));
+
+    EXPECT_NO_THROW(node = double(-2.0f));
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::float64);
+    EXPECT_EQ(node.as<double>(), double(-2.0f));
+
+    EXPECT_NO_THROW(node = int32_t(1234567));
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::int32);
+    EXPECT_EQ(node.as<int32_t>(), int32_t(1234567));
+
+    EXPECT_NO_THROW(node = int64_t(123456789012LL));
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::int64);
+    EXPECT_EQ(node.as<int64_t>(), int64_t(123456789012LL));
+
+    EXPECT_NO_THROW(node = "cool kid.");
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::string);
+    EXPECT_STREQ(node.as<std::string>().c_str(), "cool kid.");
+   
+    EXPECT_NO_THROW(node.clear());
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::string);
+    EXPECT_STREQ(node.as<std::string>().c_str(), "");
+    
+    EXPECT_NO_THROW(node = std::string("cool kid."));
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::string);
+    EXPECT_STREQ(node.as<std::string>().c_str(), "cool kid.");
+
+    std::string my_string = "new string";
+    EXPECT_NO_THROW(node = my_string);
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::string);
+    EXPECT_STREQ(node.as<std::string>().c_str(), "new string");
+}
+
+TEST(node, assign_node_data_type)
+{
+    yaml::node node;
+
+    EXPECT_NO_THROW(node = yaml::node_data_type::boolean);
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::boolean);
+
+    EXPECT_NO_THROW(node = yaml::node_data_type::float32);
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::float32);
+
+    EXPECT_NO_THROW(node = yaml::node_data_type::float64);
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::float64);
+
+    EXPECT_NO_THROW(node = yaml::node_data_type::int32);
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::int32);
+
+    EXPECT_NO_THROW(node = yaml::node_data_type::int64);
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::int64);
+
+    EXPECT_NO_THROW(node = yaml::node_data_type::null);
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+    EXPECT_NO_THROW(node = yaml::node_data_type::string);
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_EQ(node.type(), yaml::node_type::scalar);
+    EXPECT_EQ(node.data_type(), yaml::node_data_type::string);
+}
+
+TEST(node, as_default)
+{
+    {
+        yaml::node node1(std::string("foo"));
+        EXPECT_TRUE(node1.as<bool>(true));
+        EXPECT_FALSE(node1.as<bool>(false));
+
+        yaml::node node2(std::string("bar"));
+        EXPECT_TRUE(node2.as<bool>(true));
+        EXPECT_FALSE(node2.as<bool>(false));
+
+        yaml::node node3(std::string("true"));
+        EXPECT_TRUE(node3.as<bool>(true));
+        EXPECT_TRUE(node3.as<bool>(false));
+
+        yaml::node node4(std::string("0"));
+        EXPECT_FALSE(node4.as<bool>(true));
+        EXPECT_FALSE(node4.as<bool>(false));
+    }
+    {
+        yaml::node node1(std::string("128.5"));
+        EXPECT_EQ(node1.as<float>(64.0f), float(128.5f));
+        EXPECT_EQ(node1.as<float>(32.0f), float(128.5f));
+
+        yaml::node node2(std::string("cool"));
+        EXPECT_EQ(node2.as<float>(100.0f), float(100.0f));
+        EXPECT_EQ(node2.as<float>(200.0f), float(200.0f));
+    }
+    {
+        yaml::node node1(std::string("64.5"));
+        EXPECT_EQ(node1.as<double>(5.0f), double(64.5f));
+        EXPECT_EQ(node1.as<double>(10.0f), double(64.5f));
+
+        yaml::node node2(std::string("cool"));
+        EXPECT_EQ(node2.as<double>(300.0f), double(300.0f));
+        EXPECT_EQ(node2.as<double>(400.0f), double(400.0f));
+    }
+    {
+        yaml::node node1(std::string("64.5"));
+        EXPECT_EQ(node1.as<int32_t>(5), int32_t(64));
+        EXPECT_EQ(node1.as<int32_t>(10), int32_t(64));
+
+        yaml::node node2(std::string("cool"));
+        EXPECT_EQ(node2.as<int32_t>(500), int32_t(500));
+        EXPECT_EQ(node2.as<int32_t>(600), int32_t(600));
+
+        yaml::node node3(std::string("87678"));
+        EXPECT_EQ(node3.as<int32_t>(500), int32_t(87678));
+        EXPECT_EQ(node3.as<int32_t>(400), int32_t(87678));
+    }
+    {
+        yaml::node node1(std::string("512.5"));
+        EXPECT_EQ(node1.as<int64_t>(50), int64_t(512));
+        EXPECT_EQ(node1.as<int64_t>(100), int64_t(512));
+
+        yaml::node node2(std::string("cool"));
+        EXPECT_EQ(node2.as<int64_t>(500000), int64_t(500000));
+        EXPECT_EQ(node2.as<int64_t>(600000), int64_t(600000));
+
+        yaml::node node3(std::string("87678909876"));
+        EXPECT_EQ(node3.as<int64_t>(500), int64_t(87678909876));
+        EXPECT_EQ(node3.as<int64_t>(400), int64_t(87678909876));
+    }
+    {
+        yaml::node node1(std::string("The quick brown fox jumps over the lazy dog"));
+        EXPECT_STREQ(node1.as<std::string>("").c_str(), "The quick brown fox jumps over the lazy dog");
+        EXPECT_STREQ(node1.as<std::string>("Some random text").c_str(), "The quick brown fox jumps over the lazy dog");
+
+        yaml::node node2(std::string(""));
+        EXPECT_STREQ(node2.as<std::string>("").c_str(), "");
+        EXPECT_STREQ(node2.as<std::string>("Some random text").c_str(), "");
+    }
+}
+
+TEST(node, exists)
+{
+    {
+        {
+            yaml::node node = yaml::node_type::null;
+            EXPECT_TRUE(node.is_null());
+            EXPECT_FALSE(node.exists(""));
+            EXPECT_FALSE(node.exists("empty"));
+            EXPECT_FALSE(node.exists("foo bar"));
+            EXPECT_FALSE(node.exists("The quick brown fox jumps over the lazy dog"));
+        }
+        {
+            yaml::node node = yaml::node_type::map;
+            EXPECT_TRUE(node.is_map());
+            EXPECT_FALSE(node.exists(""));
+            EXPECT_FALSE(node.exists("empty"));
+            EXPECT_FALSE(node.exists("foo bar"));
+            EXPECT_FALSE(node.exists("The quick brown fox jumps over the lazy dog"));
+        }
+        {
+            yaml::node node = yaml::node_type::scalar;
+            EXPECT_TRUE(node.is_scalar());
+            EXPECT_FALSE(node.exists(""));
+            EXPECT_FALSE(node.exists("empty"));
+            EXPECT_FALSE(node.exists("foo bar"));
+            EXPECT_FALSE(node.exists("The quick brown fox jumps over the lazy dog"));
+        }
+        {
+            yaml::node node = yaml::node_type::sequence;
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_FALSE(node.exists(""));
+            EXPECT_FALSE(node.exists("empty"));
+            EXPECT_FALSE(node.exists("foo bar"));
+            EXPECT_FALSE(node.exists("The quick brown fox jumps over the lazy dog"));
+        }
+    }
+    {
+        yaml::node node = yaml::node_type::map;
+        EXPECT_TRUE(node.is_map());
+        
+        EXPECT_FALSE(node.exists("my_key_1"));
+        EXPECT_FALSE(node.exists("my_key_2"));
+        EXPECT_FALSE(node.exists("my_key_3"));
+        EXPECT_FALSE(node.exists("my_key_4"));
+
+        EXPECT_NO_THROW(node.insert("my_key_1", yaml::node_type::sequence));
+        EXPECT_TRUE(node.exists("my_key_1"));
+        EXPECT_FALSE(node.exists("my_key_2"));
+        EXPECT_FALSE(node.exists("my_key_3"));
+        EXPECT_FALSE(node.exists("my_key_4"));
+
+        EXPECT_NO_THROW(node.insert("my_key_2", yaml::node_data_type::string));
+        EXPECT_TRUE(node.exists("my_key_1"));
+        EXPECT_TRUE(node.exists("my_key_2"));
+        EXPECT_FALSE(node.exists("my_key_3"));
+        EXPECT_FALSE(node.exists("my_key_4"));
+
+        EXPECT_NO_THROW(node.insert("my_key_3", int32_t(10)));
+        EXPECT_TRUE(node.exists("my_key_1"));
+        EXPECT_TRUE(node.exists("my_key_2"));
+        EXPECT_TRUE(node.exists("my_key_3"));
+        EXPECT_FALSE(node.exists("my_key_4"));
+    }
+}
+
+TEST(node, insert)
+{
+    { // By scalar value.
+
+        { // Update existing.     
+            yaml::node node;
+            
+            EXPECT_FALSE(node.exists("my_key"));
+            EXPECT_EQ(node.size(), size_t(0));
+
+            EXPECT_NO_THROW(node.insert("my_key", yaml::node_type::scalar));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.exists("my_key"));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            EXPECT_EQ(node.size(), size_t(1));
+            auto & at_1 = node.at("my_key");
+            EXPECT_TRUE(at_1.is_scalar());
+            EXPECT_EQ(at_1.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("my_key", float(100.0f)));
+            EXPECT_TRUE(node.exists("my_key"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            auto & at_2 = node.at("my_key");
+            EXPECT_TRUE(at_2.is_scalar());
+            EXPECT_EQ(at_2.data_type(), yaml::node_data_type::float32);
+
+            EXPECT_NO_THROW(node.insert("my_key", double(200.0f)));
+            EXPECT_TRUE(node.exists("my_key"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            auto & at_3 = node.at("my_key");
+            EXPECT_TRUE(at_3.is_scalar());
+            EXPECT_EQ(at_3.data_type(), yaml::node_data_type::float64);
+
+            EXPECT_NO_THROW(node.insert("my_key", int32_t(1001)));
+            EXPECT_TRUE(node.exists("my_key"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            auto & at_4 = node.at("my_key");
+            EXPECT_TRUE(at_4.is_scalar());
+            EXPECT_EQ(at_4.data_type(), yaml::node_data_type::int32);
+
+            EXPECT_NO_THROW(node.insert("my_key", int64_t(2001)));
+            EXPECT_TRUE(node.exists("my_key"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            auto & at_5 = node.at("my_key");
+            EXPECT_TRUE(at_5.is_scalar());
+            EXPECT_EQ(at_5.data_type(), yaml::node_data_type::int64);
+
+            std::string tmp_string = "test";
+            EXPECT_NO_THROW(node.insert("my_key", std::string("lol")));
+            EXPECT_TRUE(node.exists("my_key"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            auto & at_6 = node.at("my_key");
+            EXPECT_TRUE(at_6.is_scalar());
+            EXPECT_EQ(at_6.data_type(), yaml::node_data_type::string);
+
+            EXPECT_NO_THROW(node.insert("my_key", tmp_string));
+            EXPECT_TRUE(node.exists("my_key"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            auto & at_7 = node.at("my_key");
+            EXPECT_TRUE(at_7.is_scalar());
+            EXPECT_EQ(at_7.data_type(), yaml::node_data_type::string);
+        }
+        { // Insert new.
+            yaml::node node;
+
+            EXPECT_FALSE(node.exists("my_key_1"));
+            EXPECT_FALSE(node.exists("my_key_1"));
+            EXPECT_FALSE(node.exists("my_key_2"));
+            EXPECT_FALSE(node.exists("my_key_3"));
+            EXPECT_FALSE(node.exists("my_key_4"));
+            EXPECT_FALSE(node.exists("my_key_5"));
+            EXPECT_FALSE(node.exists("my_key_6"));
+            EXPECT_FALSE(node.exists("my_key_7"));
+            EXPECT_EQ(node.size(), size_t(0));
+            EXPECT_TRUE(node.at("my_key_1").is_null());
+            EXPECT_TRUE(node.at("my_key_2").is_null());
+            EXPECT_TRUE(node.at("my_key_3").is_null());
+            EXPECT_TRUE(node.at("my_key_4").is_null());
+            EXPECT_TRUE(node.at("my_key_5").is_null());
+            EXPECT_TRUE(node.at("my_key_6").is_null());
+            EXPECT_TRUE(node.at("my_key_7").is_null());
+
+            EXPECT_NO_THROW(node.insert("my_key_1", yaml::node_type::scalar));     
+            EXPECT_TRUE(node.exists("my_key_1"));
+            EXPECT_FALSE(node.exists("my_key_2"));
+            EXPECT_FALSE(node.exists("my_key_3"));
+            EXPECT_FALSE(node.exists("my_key_4"));
+            EXPECT_FALSE(node.exists("my_key_5"));
+            EXPECT_FALSE(node.exists("my_key_6"));
+            EXPECT_FALSE(node.exists("my_key_7"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            EXPECT_EQ(node.size(), size_t(1));
+
+            EXPECT_NO_THROW(node.insert("my_key_2", float(100.0f)));
+            EXPECT_TRUE(node.exists("my_key_1"));
+            EXPECT_TRUE(node.exists("my_key_2"));
+            EXPECT_FALSE(node.exists("my_key_3"));
+            EXPECT_FALSE(node.exists("my_key_4"));
+            EXPECT_FALSE(node.exists("my_key_5"));
+            EXPECT_FALSE(node.exists("my_key_6"));
+            EXPECT_FALSE(node.exists("my_key_7"));
+            EXPECT_EQ(node.size(), size_t(2));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("my_key_3", double(200.0f)));
+            EXPECT_TRUE(node.exists("my_key_1"));
+            EXPECT_TRUE(node.exists("my_key_2"));
+            EXPECT_TRUE(node.exists("my_key_3"));
+            EXPECT_FALSE(node.exists("my_key_4"));
+            EXPECT_FALSE(node.exists("my_key_5"));
+            EXPECT_FALSE(node.exists("my_key_6"));
+            EXPECT_FALSE(node.exists("my_key_7"));
+            EXPECT_EQ(node.size(), size_t(3));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("my_key_4", int32_t(1001)));
+            EXPECT_TRUE(node.exists("my_key_1"));
+            EXPECT_TRUE(node.exists("my_key_2"));
+            EXPECT_TRUE(node.exists("my_key_3"));
+            EXPECT_TRUE(node.exists("my_key_4"));
+            EXPECT_FALSE(node.exists("my_key_5"));
+            EXPECT_FALSE(node.exists("my_key_6"));
+            EXPECT_FALSE(node.exists("my_key_7"));
+            EXPECT_EQ(node.size(), size_t(4));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("my_key_5", int64_t(2001)));
+            EXPECT_TRUE(node.exists("my_key_1"));
+            EXPECT_TRUE(node.exists("my_key_2"));
+            EXPECT_TRUE(node.exists("my_key_3"));
+            EXPECT_TRUE(node.exists("my_key_4"));
+            EXPECT_TRUE(node.exists("my_key_5"));
+            EXPECT_FALSE(node.exists("my_key_6"));
+            EXPECT_FALSE(node.exists("my_key_7"));
+            EXPECT_EQ(node.size(), size_t(5));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            
+            EXPECT_NO_THROW(node.insert("my_key_6", std::string("lol")));
+            EXPECT_TRUE(node.exists("my_key_1"));
+            EXPECT_TRUE(node.exists("my_key_2"));
+            EXPECT_TRUE(node.exists("my_key_3"));
+            EXPECT_TRUE(node.exists("my_key_4"));
+            EXPECT_TRUE(node.exists("my_key_5"));
+            EXPECT_TRUE(node.exists("my_key_6"));
+            EXPECT_FALSE(node.exists("my_key_7"));
+            EXPECT_EQ(node.size(), size_t(6));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            std::string tmp_string = "test_7";
+            EXPECT_NO_THROW(node.insert("my_key_7", tmp_string));
+            EXPECT_TRUE(node.exists("my_key_1"));
+            EXPECT_TRUE(node.exists("my_key_2"));
+            EXPECT_TRUE(node.exists("my_key_3"));
+            EXPECT_TRUE(node.exists("my_key_4"));
+            EXPECT_TRUE(node.exists("my_key_5"));
+            EXPECT_TRUE(node.exists("my_key_6"));
+            EXPECT_TRUE(node.exists("my_key_7"));
+            EXPECT_EQ(node.size(), size_t(7));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_TRUE(node.at("my_key_1").is_scalar());
+            EXPECT_TRUE(node.at("my_key_2").is_scalar());
+            EXPECT_TRUE(node.at("my_key_3").is_scalar());
+            EXPECT_TRUE(node.at("my_key_4").is_scalar());
+            EXPECT_TRUE(node.at("my_key_5").is_scalar());
+            EXPECT_TRUE(node.at("my_key_6").is_scalar());
+            EXPECT_TRUE(node.at("my_key_7").is_scalar());
+
+            EXPECT_EQ(node.at("my_key_1").data_type(), yaml::node_data_type::null);
+            EXPECT_EQ(node.at("my_key_2").data_type(), yaml::node_data_type::float32);
+            EXPECT_EQ(node.at("my_key_3").data_type(), yaml::node_data_type::float64);
+            EXPECT_EQ(node.at("my_key_4").data_type(), yaml::node_data_type::int32);
+            EXPECT_EQ(node.at("my_key_5").data_type(), yaml::node_data_type::int64);
+            EXPECT_EQ(node.at("my_key_6").data_type(), yaml::node_data_type::string);
+            EXPECT_EQ(node.at("my_key_7").data_type(), yaml::node_data_type::string);
+
+            EXPECT_STREQ(node.at("my_key_1").as<std::string>().c_str(), "" );
+            EXPECT_EQ(node.at("my_key_2").as<float>(), float(100.0f));
+            EXPECT_EQ(node.at("my_key_3").as<double>(), double(200.0f));
+            EXPECT_EQ(node.at("my_key_4").as<int32_t>(), int32_t(1001));
+            EXPECT_EQ(node.at("my_key_5").as<int64_t>(), int64_t(2001));
+            EXPECT_STREQ(node.at("my_key_6").as<std::string>().c_str(), "lol");
+            EXPECT_STREQ(node.at("my_key_7").as<std::string>().c_str(), "test_7");
+        }
+    }
+    { // By node type value.
+
+        { // Update existing.  
+            yaml::node node;
+
+            EXPECT_FALSE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(0));
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_type::null));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            EXPECT_EQ(node.size(), size_t(1));
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_type::map));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_type::scalar));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_type::sequence));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+        }
+        { // Insert new.
+            yaml::node node;
+
+            EXPECT_FALSE(node.exists("foo_bar_1"));
+            EXPECT_FALSE(node.exists("foo_bar_2"));
+            EXPECT_FALSE(node.exists("foo_bar_3"));
+            EXPECT_FALSE(node.exists("foo_bar_4"));
+            EXPECT_EQ(node.size(), size_t(0));
+
+            EXPECT_NO_THROW(node.insert("foo_bar_1", yaml::node_type::scalar));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_FALSE(node.exists("foo_bar_2"));
+            EXPECT_FALSE(node.exists("foo_bar_3"));
+            EXPECT_FALSE(node.exists("foo_bar_4"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            EXPECT_EQ(node.size(), size_t(1));
+
+            EXPECT_NO_THROW(node.insert("foo_bar_2", yaml::node_type::scalar));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_TRUE(node.exists("foo_bar_2"));
+            EXPECT_FALSE(node.exists("foo_bar_3"));
+            EXPECT_FALSE(node.exists("foo_bar_4"));
+            EXPECT_EQ(node.size(), size_t(2));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar_3", yaml::node_type::scalar));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_TRUE(node.exists("foo_bar_2"));
+            EXPECT_TRUE(node.exists("foo_bar_3"));
+            EXPECT_FALSE(node.exists("foo_bar_4"));
+            EXPECT_EQ(node.size(), size_t(3));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar_4", yaml::node_type::scalar));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_TRUE(node.exists("foo_bar_2"));
+            EXPECT_TRUE(node.exists("foo_bar_3"));
+            EXPECT_TRUE(node.exists("foo_bar_4"));
+            EXPECT_EQ(node.size(), size_t(4));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+        }
+    }
+    { // By node data type value.
+
+        { // Update existing.  
+            yaml::node node;
+
+            EXPECT_FALSE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(0));
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_data_type::null));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            EXPECT_EQ(node.size(), size_t(1));
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_data_type::boolean));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_data_type::float32));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_data_type::float64));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_data_type::int32));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_data_type::int64));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar", yaml::node_data_type::string));
+            EXPECT_TRUE(node.exists("foo_bar"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+        }
+        { // Insert new.
+            yaml::node node;
+
+            EXPECT_FALSE(node.exists("foo_bar_1"));
+            EXPECT_FALSE(node.exists("foo_bar_2"));
+            EXPECT_FALSE(node.exists("foo_bar_3"));
+            EXPECT_FALSE(node.exists("foo_bar_4"));
+            EXPECT_FALSE(node.exists("foo_bar_5"));
+            EXPECT_FALSE(node.exists("foo_bar_6"));
+            EXPECT_FALSE(node.exists("foo_bar_7"));
+            EXPECT_EQ(node.size(), size_t(0));
+
+            EXPECT_NO_THROW(node.insert("foo_bar_1", yaml::node_data_type::boolean));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_FALSE(node.exists("foo_bar_2"));
+            EXPECT_FALSE(node.exists("foo_bar_3"));
+            EXPECT_FALSE(node.exists("foo_bar_4"));
+            EXPECT_FALSE(node.exists("foo_bar_5"));
+            EXPECT_FALSE(node.exists("foo_bar_6"));
+            EXPECT_FALSE(node.exists("foo_bar_7"));
+            EXPECT_EQ(node.size(), size_t(1));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+            EXPECT_EQ(node.size(), size_t(1));
+
+            EXPECT_NO_THROW(node.insert("foo_bar_2", yaml::node_data_type::float32));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_TRUE(node.exists("foo_bar_2"));
+            EXPECT_FALSE(node.exists("foo_bar_3"));
+            EXPECT_FALSE(node.exists("foo_bar_4"));
+            EXPECT_FALSE(node.exists("foo_bar_5"));
+            EXPECT_FALSE(node.exists("foo_bar_6"));
+            EXPECT_FALSE(node.exists("foo_bar_7"));
+            EXPECT_EQ(node.size(), size_t(2));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar_3", yaml::node_data_type::float64));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_TRUE(node.exists("foo_bar_2"));
+            EXPECT_TRUE(node.exists("foo_bar_3"));
+            EXPECT_FALSE(node.exists("foo_bar_4"));
+            EXPECT_FALSE(node.exists("foo_bar_5"));
+            EXPECT_FALSE(node.exists("foo_bar_6"));
+            EXPECT_FALSE(node.exists("foo_bar_7"));
+            EXPECT_EQ(node.size(), size_t(3));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar_4", yaml::node_data_type::int32));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_TRUE(node.exists("foo_bar_2"));
+            EXPECT_TRUE(node.exists("foo_bar_3"));
+            EXPECT_TRUE(node.exists("foo_bar_4"));
+            EXPECT_FALSE(node.exists("foo_bar_5"));
+            EXPECT_FALSE(node.exists("foo_bar_6"));
+            EXPECT_FALSE(node.exists("foo_bar_7"));
+            EXPECT_EQ(node.size(), size_t(4));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar_5", yaml::node_data_type::int64));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_TRUE(node.exists("foo_bar_2"));
+            EXPECT_TRUE(node.exists("foo_bar_3"));
+            EXPECT_TRUE(node.exists("foo_bar_4"));
+            EXPECT_TRUE(node.exists("foo_bar_5"));
+            EXPECT_FALSE(node.exists("foo_bar_6"));
+            EXPECT_FALSE(node.exists("foo_bar_7"));
+            EXPECT_EQ(node.size(), size_t(5));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar_6", yaml::node_data_type::null));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_TRUE(node.exists("foo_bar_2"));
+            EXPECT_TRUE(node.exists("foo_bar_3"));
+            EXPECT_TRUE(node.exists("foo_bar_4"));
+            EXPECT_TRUE(node.exists("foo_bar_5"));
+            EXPECT_TRUE(node.exists("foo_bar_6"));
+            EXPECT_FALSE(node.exists("foo_bar_7"));
+            EXPECT_EQ(node.size(), size_t(6));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+
+            EXPECT_NO_THROW(node.insert("foo_bar_7", yaml::node_data_type::string));
+            EXPECT_TRUE(node.exists("foo_bar_1"));
+            EXPECT_TRUE(node.exists("foo_bar_2"));
+            EXPECT_TRUE(node.exists("foo_bar_3"));
+            EXPECT_TRUE(node.exists("foo_bar_4"));
+            EXPECT_TRUE(node.exists("foo_bar_5"));
+            EXPECT_TRUE(node.exists("foo_bar_6"));
+            EXPECT_TRUE(node.exists("foo_bar_7"));
+            EXPECT_EQ(node.size(), size_t(7));
+            EXPECT_TRUE(node.is_map());
+            EXPECT_EQ(node.data_type(), yaml::node_data_type::null);
+        }
+    }
+    { // By copy constructor.
+
+        { // Update existing.  
+
+        }
+        { // Insert new.
+
+        }
+    }
+}
+
+TEST(node, push_back)
+{
+    {
+        yaml::node node;
+        EXPECT_FALSE(node.is_sequence());
+        EXPECT_EQ(node.size(), size_t(0));
+
+        {
+            EXPECT_NO_THROW(node.push_back(yaml::node_type::null));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(1));
+
+            EXPECT_NO_THROW(node.push_back(yaml::node_type::map));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(2));
+
+            EXPECT_NO_THROW(node.push_back(yaml::node_type::scalar));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(3));
+
+            EXPECT_NO_THROW(node.push_back(yaml::node_type::sequence));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(4));
+        }
+        {
+            EXPECT_NO_THROW(node.push_back(yaml::node_data_type::null));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(5));
+
+            EXPECT_NO_THROW(node.push_back(yaml::node_data_type::boolean));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(6));
+
+            EXPECT_NO_THROW(node.push_back(yaml::node_data_type::float32));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(7));
+
+            EXPECT_NO_THROW(node.push_back(yaml::node_data_type::float64));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(8));
+
+            EXPECT_NO_THROW(node.push_back(yaml::node_data_type::int32));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(9));
+
+            EXPECT_NO_THROW(node.push_back(yaml::node_data_type::int64));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(10));
+
+            EXPECT_NO_THROW(node.push_back(yaml::node_data_type::string));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(11));
+        }
+        {
+            EXPECT_NO_THROW(node.push_back(bool(false)));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(12));
+
+            EXPECT_NO_THROW(node.push_back(float(123.0f)));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(13));
+
+            EXPECT_NO_THROW(node.push_back(double(456.0f)));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(14));
+
+            EXPECT_NO_THROW(node.push_back(int32_t(123456)));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(15));
+
+            EXPECT_NO_THROW(node.push_back(int64_t(987654321)));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(16));
+
+            EXPECT_NO_THROW(node.push_back(std::string("test")));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(17));
+
+            EXPECT_NO_THROW(node.push_back(std::string("test")));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(18));
+
+            EXPECT_NO_THROW(node.push_back("hello world"));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(19));
+        }
+    }
+}
+
+TEST(node, push_front)
+{
+    {
+        yaml::node node;
+        EXPECT_FALSE(node.is_sequence());
+        EXPECT_EQ(node.size(), size_t(0));
+
+        {
+            EXPECT_NO_THROW(node.push_front(yaml::node_type::null));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(1));
+
+            EXPECT_NO_THROW(node.push_front(yaml::node_type::map));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(2));
+
+            EXPECT_NO_THROW(node.push_front(yaml::node_type::scalar));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(3));
+
+            EXPECT_NO_THROW(node.push_front(yaml::node_type::sequence));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(4));
+        }
+        {
+            EXPECT_NO_THROW(node.push_front(yaml::node_data_type::null));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(5));
+
+            EXPECT_NO_THROW(node.push_front(yaml::node_data_type::boolean));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(6));
+
+            EXPECT_NO_THROW(node.push_front(yaml::node_data_type::float32));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(7));
+
+            EXPECT_NO_THROW(node.push_front(yaml::node_data_type::float64));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(8));
+
+            EXPECT_NO_THROW(node.push_front(yaml::node_data_type::int32));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(9));
+
+            EXPECT_NO_THROW(node.push_front(yaml::node_data_type::int64));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(10));
+
+            EXPECT_NO_THROW(node.push_front(yaml::node_data_type::string));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(11));
+        }
+        {
+            EXPECT_NO_THROW(node.push_front(bool(false)));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(12));
+
+            EXPECT_NO_THROW(node.push_front(float(123.0f)));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(13));
+
+            EXPECT_NO_THROW(node.push_front(double(456.0f)));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(14));
+
+            EXPECT_NO_THROW(node.push_front(int32_t(123456)));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(15));
+
+            EXPECT_NO_THROW(node.push_front(int64_t(987654321)));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(16));
+
+            EXPECT_NO_THROW(node.push_front(std::string("test")));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(17));
+
+            EXPECT_NO_THROW(node.push_front(std::string("test")));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(18));
+
+            EXPECT_NO_THROW(node.push_front("hello world"));
+            EXPECT_TRUE(node.is_sequence());
+            EXPECT_EQ(node.size(), size_t(19));
+        }
+    }
+}
+
+TEST(node, map_operator)
+{
+    {
+        yaml::node node;
+
+        node["foo"]["bar"] = int32_t(123);
+
+        auto & foo = node.at("foo");
+        EXPECT_TRUE(foo.is_map());
+        EXPECT_EQ(foo.size(), size_t(1));
+
+        auto & bar = foo.at("bar");
+        EXPECT_TRUE(bar.is_scalar());
+        EXPECT_EQ(bar.data_type(), yaml::node_data_type::int32);
+        EXPECT_EQ(bar.as<int32_t>(), int32_t(123));
+    }
+    {
+        yaml::node node;
+
+        node["foo"]["bar"] = int32_t(123);
+        node["foo"]["hello"]["world 1"] = "text here";
+        node["foo"]["hello"]["world 2"] = float(128.0f);
+        node["foo"]["hello"]["world 3"] = int64_t(1234567890);
+
+        auto & foo = node.at("foo");
+        EXPECT_TRUE(foo.is_map());
+        EXPECT_EQ(foo.size(), size_t(2));
+
+        auto & bar = foo.at("bar");
+        EXPECT_TRUE(bar.is_scalar());
+        EXPECT_EQ(bar.data_type(), yaml::node_data_type::int32);
+        EXPECT_EQ(bar.as<int32_t>(), int32_t(123));
+
+        auto & hello = foo.at("hello");
+        EXPECT_TRUE(hello.is_map());
+        EXPECT_EQ(hello.size(), size_t(3));
+
+        auto & world_1 = hello.at("world 1");
+        EXPECT_TRUE(world_1.is_scalar());
+        EXPECT_EQ(world_1.data_type(), yaml::node_data_type::string);
+        EXPECT_STREQ(world_1.as<std::string>().c_str(), "text here");
+
+        auto & world_2 = hello.at("world 2");
+        EXPECT_TRUE(world_2.is_scalar());
+        EXPECT_EQ(world_2.data_type(), yaml::node_data_type::float32);
+        EXPECT_EQ(world_2.as<float>(), float(128.0f));
+
+        auto & world_3 = hello.at("world 3");
+        EXPECT_TRUE(world_3.is_scalar());
+        EXPECT_EQ(world_3.data_type(), yaml::node_data_type::int64);
+        EXPECT_EQ(world_3.as<int64_t>(), int64_t(1234567890));
+    }
+}
+
+TEST(node, erase)
+{
+    {
+        yaml::node node;
+
+        node["foo"]["bar"] = int32_t(123);
+        node["foo"]["hello"]["world 1"] = "text here";
+        node["foo"]["hello"]["world 2"] = float(128.0f);
+        node["foo"]["hello"]["world 3"] = int64_t(1234567890);
+
+        auto & foo_hello = node["foo"]["hello"];
+        EXPECT_EQ(foo_hello.size(), size_t(3));
+        foo_hello.erase("random");
+        EXPECT_EQ(foo_hello.size(), size_t(3));
+        foo_hello.erase("world 2");
+        EXPECT_EQ(foo_hello.size(), size_t(2));
+        foo_hello.erase("world 2");
+        EXPECT_EQ(foo_hello.size(), size_t(2));
+        foo_hello.erase("world 3");
+        EXPECT_EQ(foo_hello.size(), size_t(1));
+        foo_hello.erase("world 1");
+        EXPECT_EQ(foo_hello.size(), size_t(0));
+
+        auto & foo = node["foo"];
+        EXPECT_EQ(foo.size(), size_t(2));
+        foo.erase("hello");
+        EXPECT_EQ(foo.size(), size_t(1));
+        foo.erase("bar");
+        EXPECT_EQ(foo.size(), size_t(0));
+
+        EXPECT_EQ(node.size(), size_t(1));
+        node.erase("foo");
+        EXPECT_EQ(node.size(), size_t(0));
+    }
+}
+
+template<typename T>
+static void iterator_test_map_1(T & node)
+{
+    EXPECT_EQ(node.size(), size_t(4));
+
+    bool ok[4] = { false, false, false, false };
+
+    for (auto it = node.begin(); it != node.end(); it++)
+    {
+        auto & key = (*it).first;
+        if (key == "foo")
+        {
+            ok[0] = true;
+            EXPECT_STREQ((*it).first.c_str(), "foo");
+            EXPECT_TRUE((*it).second.is_scalar());
+            EXPECT_EQ((*it).second.as<int32_t>(), int32_t(100));
+        }
+        else if (key == "bar")
+        {
+            ok[1] = true;
+            EXPECT_STREQ((*it).first.c_str(), "bar");
+            EXPECT_TRUE((*it).second.is_scalar());
+            EXPECT_EQ((*it).second.as<int32_t>(), int32_t(200));
+        }
+        else if (key == "hello")
+        {
+            ok[2] = true;
+            EXPECT_STREQ((*it).first.c_str(), "hello");
+            EXPECT_TRUE((*it).second.is_scalar());
+            EXPECT_EQ((*it).second.as<int32_t>(), int32_t(300));
+        }
+        else if (key == "world")
+        {
+            ok[3] = true;
+            EXPECT_STREQ((*it).first.c_str(), "world");
+            EXPECT_TRUE((*it).second.is_scalar());
+            EXPECT_EQ((*it).second.as<int32_t>(), int32_t(400));
+        }
+    }
+
+    EXPECT_TRUE(ok[0]);
+    EXPECT_TRUE(ok[1]);
+    EXPECT_TRUE(ok[2]);
+    EXPECT_TRUE(ok[3]);
+}
+
+template<typename T>
+static void iterator_test_sequence_1(T & node)
+{
+    EXPECT_EQ(node.size(), size_t(100));
+
+    int32_t index = 0;
+    for (auto it = node.begin(); it != node.end(); it++)
+    {
+        EXPECT_STREQ((*it).first.c_str(), "");
+        EXPECT_EQ((*it).second.as<int32_t>(), index * 100);
+        index++;
+    }
+    EXPECT_EQ(index, int32_t(100));
+}
+
+TEST(node, iterator)
+{
+    {
+        yaml::node node;
+        node["foo"] = int32_t(100);
+        node["bar"] = int32_t(200);
+        node["hello"] = int32_t(300);
+        node["world"] = int32_t(400);
+
+        iterator_test_map_1<yaml::node>(node);
+        iterator_test_map_1<const yaml::node>(node);
+    }
+    {
+        yaml::node node;
+
+        for (int32_t i = 0; i < 100; i++)
+        {
+            node.push_back(i * 100);
+        }
+
+        iterator_test_sequence_1<yaml::node>(node);
+        iterator_test_sequence_1<const yaml::node>(node);
+    }
+}
+
+TEST(dump, string)
+{
+    {
+        yaml::node node;
+        node["header"] = "Hello world.";
+        node["key"]["another_key"] = int32_t(123);
+        node["key"]["another_nested_map"]["key 1"] = "text here";
+        node["key"]["another_nested_map"]["key 2"] = float(1.25f);
+        node["key"]["another_nested_map"]["key 3"] = double(1.125f);
+        node["key"]["another_nested_map"]["key 4"] = int32_t(123456);
+        node["key"]["another_nested_map"]["key 5"] = int64_t(1234567890);
+        node["key"]["another_nested_map"]["key 6"] = bool(true);
+        node["key"]["another_nested_map"]["key 7"] = bool(false);
+        node["key"]["another_nested_map"]["key 8"] = yaml::node_data_type::null;
+
+        auto & people = node["people"];
+
+        auto & jimmie = people.push_back(yaml::node_type::map);
+        jimmie["name"] = "Jimmie";
+        jimmie["age"] = 27;
+        auto & bosse = people.push_back(yaml::node_type::map);
+        bosse["name"] = "Bosse";
+        bosse["age"] = 4;
+
+        auto & places = node["places"];
+        places.push_back("Sweden");
+        places.push_back("Norway");
+        places.push_back("Denmark");
+        places.push_back("Iceland");
+
+        auto data = yaml::dump(node);
+
+        const std::string expected_dump =
+            "header: Hello world."  + std::string("\n") +
+            "key:"                  + std::string("\n") +
+            "  another_key: 123"    + std::string("\n") +
+            "  another_nested_map:" + std::string("\n") +
+            "    key 1: text here"  + std::string("\n") +
+            "    key 2: 1.25"       + std::string("\n") +
+            "    key 3: 1.125"      + std::string("\n") +
+            "    key 4: 123456"     + std::string("\n") +
+            "    key 5: 1234567890" + std::string("\n") +
+            "    key 6: true"       + std::string("\n") +
+            "    key 7: false"      + std::string("\n") +
+            "    key 8: ~"          + std::string("\n") +
+            "people:"               + std::string("\n") +
+            "  -"                   + std::string("\n") +
+            "    age: 27"           + std::string("\n") +
+            "    name: Jimmie"      + std::string("\n") +
+            "  -"                   + std::string("\n") +
+            "    age: 4"            + std::string("\n") +
+            "    name: Bosse"       + std::string("\n") +
+            "places:"               + std::string("\n") +
+            "  - Sweden"            + std::string("\n") +
+            "  - Norway"            + std::string("\n") +
+            "  - Denmark"           + std::string("\n") +
+            "  - Iceland"           + std::string("\n");
+   
+        EXPECT_STREQ(data.c_str(), expected_dump.c_str());
+    }
+
+}
+
+
 
 /*
 Yaml 1.0 spec notes:
 
 *   Multi-line scalars with no token"|(+-) <(+-)" has not newline in end or after each row(uses spaces).
-    |   token = 1 newline.
-    |-  token = 0 newlines.
-    |+  token = 2 newlines.
-    >   token, same as | but with spaces instead of newlines after each row.
+|   token = 1 newline.
+|-  token = 0 newlines.
+|+  token = 2 newlines.
+>   token, same as | but with spaces instead of newlines after each row.
 
 * An escaped newline is ignored. \ = last character of line.
 
 */
 
+
+
+/*
 TEST(Exception, throw)
 {
     {
         try
         {
-            throw Yaml::InternalException("internal");
+            throw yaml::internal_exception("internal");
         }
         catch(const Yaml::Exception & e)
         {
@@ -755,7 +2559,7 @@ TEST(Serialize, Serialize)
         EXPECT_NO_THROW(Yaml::Parse(learn_yaml, data));
         Parse_File_learnyaml(learn_yaml);
     }
-}
+}*/
 
 
 int main(int argc, char **argv)
