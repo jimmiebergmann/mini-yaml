@@ -39,13 +39,13 @@ namespace yaml
     namespace priv
     {
 
-        // default_value definitions.
-        const bool default_value<bool>::value = false;
-        const float default_value<float>::value = 0.0f;
-        const double default_value<double>::value = 0.0f;
-        const int32_t default_value<int32_t>::value = 0;
-        const int64_t default_value<int64_t>::value = 0;
-        const std::string default_value<std::string>::value = "";
+        // scalar_default_value definitions.
+        const bool scalar_default_value<bool>::value = false;
+        const float scalar_default_value<float>::value = 0.0f;
+        const double scalar_default_value<double>::value = 0.0f;
+        const int32_t scalar_default_value<int32_t>::value = 0;
+        const int64_t scalar_default_value<int64_t>::value = 0;
+        const std::string scalar_default_value<std::string>::value = "";
 
 
         //node_impl implementations.
@@ -139,12 +139,12 @@ namespace yaml
         {
             switch (m_data_type)
             {
-                case node_data_type::boolean:   m_value.boolean = default_value<bool>::value; break;
-                case node_data_type::float32:   m_value.float32 = default_value<float>::value; break;
-                case node_data_type::float64:   m_value.float64 = default_value<double>::value; break;
-                case node_data_type::int32:     m_value.int32   = default_value<int32_t>::value; break;
-                case node_data_type::int64:     m_value.int64   = default_value<int64_t>::value; break;
-                case node_data_type::string:    m_value.string  = new std::string(default_value<std::string>::value); break;
+                case node_data_type::boolean:   m_value.boolean = scalar_default_value<bool>::value; break;
+                case node_data_type::float32:   m_value.float32 = scalar_default_value<float>::value; break;
+                case node_data_type::float64:   m_value.float64 = scalar_default_value<double>::value; break;
+                case node_data_type::int32:     m_value.int32   = scalar_default_value<int32_t>::value; break;
+                case node_data_type::int64:     m_value.int64   = scalar_default_value<int64_t>::value; break;
+                case node_data_type::string:    m_value.string  = new std::string(scalar_default_value<std::string>::value); break;
                 default: break;
             }
         }
@@ -212,12 +212,12 @@ namespace yaml
         {
             switch (m_data_type)
             {
-                case node_data_type::boolean:   m_value.boolean = default_value<bool>::value; break;
-                case node_data_type::float32:   m_value.float32 = default_value<float>::value; break;
-                case node_data_type::float64:   m_value.float64 = default_value<double>::value; break;
-                case node_data_type::int32:     m_value.int32   = default_value<int32_t>::value; break;
-                case node_data_type::int64:     m_value.int64   = default_value<int64_t>::value; break;
-                case node_data_type::string:    *m_value.string = default_value<std::string>::value; break;
+                case node_data_type::boolean:   m_value.boolean = scalar_default_value<bool>::value; break;
+                case node_data_type::float32:   m_value.float32 = scalar_default_value<float>::value; break;
+                case node_data_type::float64:   m_value.float64 = scalar_default_value<double>::value; break;
+                case node_data_type::int32:     m_value.int32   = scalar_default_value<int32_t>::value; break;
+                case node_data_type::int64:     m_value.int64   = scalar_default_value<int64_t>::value; break;
+                case node_data_type::string:    *m_value.string = scalar_default_value<std::string>::value; break;
                 default: break;
             }
         }
@@ -237,7 +237,7 @@ namespace yaml
                     {
                         delete m_value.string;
                     }
-                    m_value.boolean = default_value<bool>::value;
+                    m_value.boolean = scalar_default_value<bool>::value;
                 }
                 break;
                 case node_data_type::float32:
@@ -246,7 +246,7 @@ namespace yaml
                     {
                         delete m_value.string;
                     }
-                    m_value.boolean = default_value<float>::value;
+                    m_value.boolean = scalar_default_value<float>::value;
                 }
                 break;
                 case node_data_type::float64:
@@ -255,7 +255,7 @@ namespace yaml
                     {
                         delete m_value.string;
                     }
-                    m_value.boolean = default_value<double>::value;
+                    m_value.boolean = scalar_default_value<double>::value;
                 }
                 break;
                 case node_data_type::int32:
@@ -264,7 +264,7 @@ namespace yaml
                     {
                         delete m_value.string;
                     }
-                    m_value.boolean = default_value<int32_t>::value;
+                    m_value.boolean = scalar_default_value<int32_t>::value;
                 }
                 break;
                 case node_data_type::int64:
@@ -273,7 +273,7 @@ namespace yaml
                     {
                         delete m_value.string;
                     }
-                    m_value.boolean = default_value<int64_t>::value;
+                    m_value.boolean = scalar_default_value<int64_t>::value;
                 }
                 break;
                 case node_data_type::null:
@@ -288,10 +288,10 @@ namespace yaml
                 {
                     if (m_data_type == node_data_type::string)
                     {
-                        *m_value.string = default_value<std::string>::value;
+                        *m_value.string = scalar_default_value<std::string>::value;
                         break;
                     }
-                    m_value.string = new std::string(default_value<std::string>::value);
+                    m_value.string = new std::string(scalar_default_value<std::string>::value);
                 }
                 break;
                 default: break;
@@ -405,10 +405,10 @@ namespace yaml
         {
             switch (type)
             {
-            case node_type::map:        return new priv::map_node_impl;
-            case node_type::scalar:     return new priv::scalar_node_impl;
-            case node_type::sequence:   return new priv::sequence_node_impl;
-            default: break;
+                case node_type::map:        return new priv::map_node_impl;
+                case node_type::scalar:     return new priv::scalar_node_impl;
+                case node_type::sequence:   return new priv::sequence_node_impl;
+                default: break;
             }
 
             return nullptr;
@@ -2317,16 +2317,16 @@ namespace Yaml
 
 
     // Reader implementations
-    //*
-    //* @breif Line information structure.
-    //*
+    //
+    // @breif Line information structure.
+    //
     // 
     class ReaderLine
     {
 
     public:
 
-        //*
+        //
         // @breif Constructor.
         //
         //

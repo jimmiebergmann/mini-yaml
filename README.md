@@ -17,18 +17,18 @@ list:
 auto root = yaml::parse_file("file.txt");
 
 // Get scalar values.
-root["key"].as<std::string>(); // "foo bar"
-root["list"][0].as<std::string>(); // "hello world"
-root["list"][1]["integer"].as<int>(); // 123
-root["list"][1]["boolean"].as<bool>(); // true
-root["list"][1]["boolean"].as<std::string>(); // "true"
+root["key"].as<std::string>();                 // "foo bar"
+root["list"][0].as<std::string>();             // "hello world"
+root["list"][1]["integer"].as<int>();          // 123
+root["list"][1]["boolean"].as<bool>();         // true
+root["list"][1]["boolean"].as<std::string>();  // "true"
 
 // Iterate second sequence item.
-auto & item = root[1];
+auto & item = root["list"][1];
 for(auto it = item.begin(); it != item.end(); it++)
 {
-    (*it).first; // "integer" / "boolean"
-    (*it).second.as<string>(); // "123" / "true"
+    (*it).first;                // "integer" / "boolean"
+    (*it).second.as<string>();  // "123" / "true"
 }
 ```
 
@@ -58,7 +58,7 @@ Builds are passed if all tests are good and no memory leaks were found.
 | Branch | Linux | Windows |
 | ------ | ------ | ---- |
 | master | [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=master)](https://travis-ci.org/jimmiebergmann/mini-yaml) |  [![Build status](https://ci.appveyor.com/api/projects/status/xi37d7i9t7m0xsj1/branch/master?svg=true)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/master) |
-| develop | [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=dev)](https://travis-ci.org/jimmiebergmann/mini-yaml)|  [![Build status](https://ci.appveyor.com/api/projects/status/xi37d7i9t7m0xsj1/branch/develop?svg=true)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/develop) |
+| develop | [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=develop)](https://travis-ci.org/jimmiebergmann/mini-yaml) |  [![Build status](https://ci.appveyor.com/api/projects/status/xi37d7i9t7m0xsj1/branch/develop?svg=true)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/develop) |
 
 ## ~~Todo~~
 - ~~Parse/serialize tags(!!type).~~

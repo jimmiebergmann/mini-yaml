@@ -877,7 +877,7 @@ TEST(node, exists)
 {
     {
         {
-            yaml::node node = yaml::node_type::null;
+            yaml::node node;
             EXPECT_TRUE(node.is_null());
             EXPECT_FALSE(node.exists(""));
             EXPECT_FALSE(node.exists("empty"));
@@ -885,7 +885,7 @@ TEST(node, exists)
             EXPECT_FALSE(node.exists("The quick brown fox jumps over the lazy dog"));
         }
         {
-            yaml::node node = yaml::node_type::map;
+            yaml::node node(yaml::node_type::map);
             EXPECT_TRUE(node.is_map());
             EXPECT_FALSE(node.exists(""));
             EXPECT_FALSE(node.exists("empty"));
@@ -893,7 +893,7 @@ TEST(node, exists)
             EXPECT_FALSE(node.exists("The quick brown fox jumps over the lazy dog"));
         }
         {
-            yaml::node node = yaml::node_type::scalar;
+            yaml::node node(yaml::node_type::scalar);
             EXPECT_TRUE(node.is_scalar());
             EXPECT_FALSE(node.exists(""));
             EXPECT_FALSE(node.exists("empty"));
@@ -901,7 +901,7 @@ TEST(node, exists)
             EXPECT_FALSE(node.exists("The quick brown fox jumps over the lazy dog"));
         }
         {
-            yaml::node node = yaml::node_type::sequence;
+            yaml::node node(yaml::node_type::sequence);
             EXPECT_TRUE(node.is_sequence());
             EXPECT_FALSE(node.exists(""));
             EXPECT_FALSE(node.exists("empty"));
@@ -910,7 +910,7 @@ TEST(node, exists)
         }
     }
     {
-        yaml::node node = yaml::node_type::map;
+        yaml::node node(yaml::node_type::map);
         EXPECT_TRUE(node.is_map());
         
         EXPECT_FALSE(node.exists("my_key_1"));
@@ -1660,36 +1660,40 @@ static void iterator_test_map_1(T & node)
 
     bool ok[4] = { false, false, false, false };
 
-    for (auto it = node.begin(); it != node.end(); it++)
+    for (auto it = node.template begin(); it != node.template end(); it++)
     {
         auto & key = (*it).first;
         if (key == "foo")
         {
             ok[0] = true;
             EXPECT_STREQ((*it).first.c_str(), "foo");
-            EXPECT_TRUE((*it).second.is_scalar());
-            EXPECT_EQ((*it).second.as<int32_t>(), int32_t(100));
+            T & n = (*it).second;     
+            EXPECT_TRUE(n.is_scalar());
+            EXPECT_EQ(n.template as<int32_t>(), int32_t(100));
         }
         else if (key == "bar")
         {
             ok[1] = true;
             EXPECT_STREQ((*it).first.c_str(), "bar");
-            EXPECT_TRUE((*it).second.is_scalar());
-            EXPECT_EQ((*it).second.as<int32_t>(), int32_t(200));
+            T & n = (*it).second;  
+            EXPECT_TRUE(n.is_scalar());           
+            EXPECT_EQ(n.template as<int32_t>(), int32_t(200));
         }
         else if (key == "hello")
         {
             ok[2] = true;
             EXPECT_STREQ((*it).first.c_str(), "hello");
-            EXPECT_TRUE((*it).second.is_scalar());
-            EXPECT_EQ((*it).second.as<int32_t>(), int32_t(300));
+            T & n = (*it).second;  
+            EXPECT_TRUE(n.is_scalar());
+            EXPECT_EQ(n.template as<int32_t>(), int32_t(300));
         }
         else if (key == "world")
         {
             ok[3] = true;
             EXPECT_STREQ((*it).first.c_str(), "world");
-            EXPECT_TRUE((*it).second.is_scalar());
-            EXPECT_EQ((*it).second.as<int32_t>(), int32_t(400));
+            T & n = (*it).second;
+            EXPECT_TRUE(n.is_scalar());
+            EXPECT_EQ(n.template as<int32_t>(), int32_t(400));
         }
     }
 
@@ -1708,7 +1712,8 @@ static void iterator_test_sequence_1(T & node)
     for (auto it = node.begin(); it != node.end(); it++)
     {
         EXPECT_STREQ((*it).first.c_str(), "");
-        EXPECT_EQ((*it).second.as<int32_t>(), index * 100);
+        T & n = (*it).second;
+        EXPECT_EQ(n.template as<int32_t>(), index * 100);
         index++;
     }
     EXPECT_EQ(index, int32_t(100));
@@ -1723,8 +1728,9 @@ TEST(node, iterator)
         node["hello"] = int32_t(300);
         node["world"] = int32_t(400);
 
+        const yaml::node & const_node = node;
         iterator_test_map_1<yaml::node>(node);
-        iterator_test_map_1<const yaml::node>(node);
+        iterator_test_map_1<const yaml::node>(const_node);
     }
     {
         yaml::node node;
@@ -1734,8 +1740,9 @@ TEST(node, iterator)
             node.push_back(i * 100);
         }
 
+        const yaml::node & const_node = node;
         iterator_test_sequence_1<yaml::node>(node);
-        iterator_test_sequence_1<const yaml::node>(node);
+        iterator_test_sequence_1<const yaml::node>(const_node);
     }
 }
 

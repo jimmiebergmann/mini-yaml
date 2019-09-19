@@ -42,6 +42,7 @@ https://www.codeproject.com/Articles/28720/YAML-Parser-in-C
 #include <sstream>
 #include <map>
 #include <list>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -125,36 +126,36 @@ namespace yaml
         *
         */
         template<typename Type>
-        struct default_value
+        struct scalar_default_value
         {
         };
         template<>
-        struct default_value<bool>
+        struct scalar_default_value<bool>
         {
             static const bool value;
         };
         template<>
-        struct default_value<float>
+        struct scalar_default_value<float>
         {
             static const float value;
         };
         template<>
-        struct default_value<double>
+        struct scalar_default_value<double>
         {
             static const double value;
         };
         template<>
-        struct default_value<int32_t>
+        struct scalar_default_value<int32_t>
         {
             static const int32_t value;
         };
         template<>
-        struct default_value<int64_t>
+        struct scalar_default_value<int64_t>
         {
             static const int64_t value;
         };
         template<>
-        struct default_value<std::string>
+        struct scalar_default_value<std::string>
         {
             static const std::string value;
         };
@@ -181,19 +182,19 @@ namespace yaml
         struct data_converter<std::string, To>
         {
             static To get(const std::string & data);
-            static To get(const std::string & data, const To default);
+            static To get(const std::string & data, const To default_value);
         };
         template<typename From>
         struct data_converter<From, std::string>
         {
             static std::string get(const From data);
-            static std::string get(const From data, const std::string & default);
+            static std::string get(const From data, const std::string & default_value);
         };
         template<>
         struct data_converter<std::string, bool>
         {
             static bool get(const std::string & data);
-            static bool get(const std::string & data, const bool default);
+            static bool get(const std::string & data, const bool default_value);
         };
         template<>
         struct data_converter<bool, std::string>
@@ -288,7 +289,7 @@ namespace yaml
             T as() const;
 
             template<typename T>
-            T as(const T & default) const;
+            T as(const T & default_value) const;
 
             void clear();
 
@@ -448,7 +449,7 @@ namespace yaml
 
 
         // Helper functions.
-        static node_impl * create_impl(const node_type type);
+        node_impl * create_impl(const node_type type);
 
     }
 
@@ -791,12 +792,6 @@ namespace yaml
         node();
 
         /**
-        * @breif Copy constructor.
-        *
-        */
-        node(const node & node) = delete;
-
-        /**
         * @breif Constructs node of given type.
         *        Default data type value of given type is set.
         *
@@ -834,11 +829,11 @@ namespace yaml
         /**
         * @breif Get node as given template type.
         *
-        * @param default Returned if conversion between current data type and T fails.
+        * @param default_value Returned if conversion between current data type and T fails.
         *
         */
         template<typename T>
-        T as(const T & default) const;
+        T as(const T & default_value) const;
 
         /**
         * @breif Get child node by key value.
@@ -986,6 +981,14 @@ namespace yaml
 
     private:
 
+
+        /**
+        * @breif Deleted copy constructor.
+        *        Will be available in later versions of the API.
+        *
+        */
+        node(const node & node) = delete;
+
         node_type                           m_type; ///< Type of node..
         std::unique_ptr<priv::node_impl>    m_impl; ///< Implementation class.
 
@@ -1086,11 +1089,11 @@ namespace yaml
         {
             return data;
         }
-        inline const std::string & data_converter<std::string, std::string>::get(const std::string & data, const std::string & default)
+        inline const std::string & data_converter<std::string, std::string>::get(const std::string & data, const std::string & default_value)
         {
             if (data.size() == 0)
             {
-                return default;
+                return default_value;
             }
             return data;
         }
@@ -1108,14 +1111,14 @@ namespace yaml
             return type;
         }
         template<typename To>
-        inline To data_converter<std::string, To>::get(const std::string & data, const To default)
+        inline To data_converter<std::string, To>::get(const std::string & data, const To default_value)
         {
             To type;
             std::stringstream ss(data);
             ss >> type;
             if (ss.fail())
             {
-                return default;
+                return default_value;
             }
             return type;
         }
@@ -1132,13 +1135,13 @@ namespace yaml
             return ss.str();
         }
         template<typename From>
-        inline std::string data_converter<From, std::string>::get(const From data, const std::string & default)
+        inline std::string data_converter<From, std::string>::get(const From data, const std::string & default_value)
         {
             std::stringstream ss;
             ss << data;
             if (ss.fail())
             {
-                return default;
+                return default_value;
             }
             return ss.str();
         }
@@ -1151,7 +1154,7 @@ namespace yaml
             }
 
             std::string tmp_data = data;
-            std::transform(tmp_data.begin(), tmp_data.end(), tmp_data.begin(), [](auto c)
+            std::transform(tmp_data.begin(), tmp_data.end(), tmp_data.begin(), [](const std::string::value_type c)
             {
                 return static_cast<const char>(::tolower(static_cast<int>(c)));
             });
@@ -1171,22 +1174,22 @@ namespace yaml
 
             return false;
         }
-        inline bool data_converter<std::string, bool>::get(const std::string & data, const bool default)
+        inline bool data_converter<std::string, bool>::get(const std::string & data, const bool default_value)
         {
             if (data.size() > 5)
             {
-                return default;
+                return default_value;
             }
 
             std::string tmp_data = data;
-            std::transform(tmp_data.begin(), tmp_data.end(), tmp_data.begin(), [](auto c)
+            std::transform(tmp_data.begin(), tmp_data.end(), tmp_data.begin(), [](const std::string::value_type c)
             {
                 return static_cast<const char>(::tolower(static_cast<int>(c)));
             });
 
             if (!data.size())
             {
-                return default;
+                return default_value;
             }
 
             switch (tmp_data[0])
@@ -1200,7 +1203,7 @@ namespace yaml
                 default: break;
             }
 
-            return default;
+            return default_value;
         }
         
         inline std::string data_converter<bool, std::string>::get(const bool data)
@@ -1237,8 +1240,8 @@ namespace yaml
                 return { it, false };
             }
 
-            node * new_node = new node(value);
-            return m_nodes.insert({ key, node_unique_ptr(new_node) });
+            node * new_node = new node(pair.second);
+            return m_nodes.insert({ pair.first, node_unique_ptr(new_node) });
         }
 
 
@@ -1257,7 +1260,7 @@ namespace yaml
                 case node_data_type::string:    return data_converter<std::string, T>::get(*m_value.string);
                 default: break;
             }
-            return default_value<T>::value;
+            return scalar_default_value<T>::value;
         }
         template<>
         inline std::string scalar_node_impl::as<std::string>() const
@@ -1273,11 +1276,11 @@ namespace yaml
                 case node_data_type::string:    return *m_value.string;
                 default: break;
             }
-            return default_value<std::string>::value;
+            return scalar_default_value<std::string>::value;
         }
 
         template<typename T>
-        inline T scalar_node_impl::as(const T & default) const
+        inline T scalar_node_impl::as(const T & default_value) const
         {
             switch (m_data_type)
             {
@@ -1287,13 +1290,13 @@ namespace yaml
                 case node_data_type::int32:     return static_cast<T>(m_value.int32);
                 case node_data_type::int64:     return static_cast<T>(m_value.int64);
                 case node_data_type::null:      break;
-                case node_data_type::string:    return data_converter<std::string, T>::get(*m_value.string, default);
+                case node_data_type::string:    return data_converter<std::string, T>::get(*m_value.string, default_value);
                 default: break;
             }
-            return default;
+            return default_value;
         }
         template<>
-        inline std::string scalar_node_impl::as<std::string>(const std::string & default) const
+        inline std::string scalar_node_impl::as<std::string>(const std::string & default_value) const
         {
             switch (m_data_type)
             {
@@ -1306,7 +1309,7 @@ namespace yaml
                 case node_data_type::string:    return *m_value.string;
                 default: break;
             }
-            return default;
+            return default_value;
         }
 
         template<>
@@ -1415,28 +1418,22 @@ namespace yaml
         switch (m_type)
         {
             case node_type::scalar: if (m_impl) { return static_cast<priv::scalar_node_impl *>(m_impl.get())->as<T>(); }
-            case node_type::map:
-            case node_type::null:
-            case node_type::sequence:
             default: break;
         }
 
-        return priv::default_value<T>::value;
+        return priv::scalar_default_value<T>::value;
     }
 
     template<typename T>
-    inline T node::as(const T & default) const
+    inline T node::as(const T & default_value) const
     {
         switch (m_type)
         {
-            case node_type::scalar: if (m_impl) { return static_cast<priv::scalar_node_impl *>(m_impl.get())->as<T>(default); }
-            case node_type::map:
-            case node_type::null:
-            case node_type::sequence:
+            case node_type::scalar: if (m_impl) { return static_cast<priv::scalar_node_impl *>(m_impl.get())->as<T>(default_value); }
             default: break;
         }
 
-        return default;
+        return default_value;
     }
 
     template<typename T>
