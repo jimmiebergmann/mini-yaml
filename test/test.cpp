@@ -1660,7 +1660,7 @@ static void iterator_test_map_1(T & node)
 
     bool ok[4] = { false, false, false, false };
 
-    for (auto it = node.template begin(); it != node.template end(); it++)
+    for (auto it = node.begin(); it != node.end(); it++)
     {
         auto & key = (*it).first;
         if (key == "foo")
