@@ -41,10 +41,10 @@ script:
   # Run test
   - valgrind --leak-check=full --track-origins=yes --error-exitcode=1 ./../bin/mini_yaml_test
   
-#after_success:
-#  - lcov --directory ./CMakeFiles/mini_yaml_test.dir --capture --output-file coverage.info #Or remove '*/test/*'
-#  - lcov --remove coverage.info '/usr/*' "${HOME}"'/.cache/*' '*/test/*' '*/googletest/*' --output-file coverage.info
-#  - lcov --list coverage.info
+after_success:
+  - lcov --directory ./CMakeFiles/mini_yaml_test.dir --capture --output-file coverage.info #Or remove '*/test/*'
+  - lcov --remove coverage.info '/usr/*' "${HOME}"'/.cache/*' '*/test/*' '*/googletest/*' --output-file coverage.info
+  - lcov --list coverage.info
 #  - bash <(curl -s https://codecov.io/bash)
 
 notifications:
