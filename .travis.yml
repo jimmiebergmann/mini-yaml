@@ -17,9 +17,16 @@ addons:
      
      
 before_install:
-  # C++14, even C++17
+  # C++11, C++14, even C++17...
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-  - sudo apt-get update -qq 
+  - sudo apt-get update -qq
+
+install: 
+  # C++11
+  - sudo apt-get install -qq gcc-4.8 g++-4.8
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 90
+  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
+  - sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-4.8 90
 
 script:
   # Checks
@@ -35,8 +42,8 @@ script:
   - valgrind --leak-check=full --track-origins=yes --error-exitcode=1 ./../bin/mini_yaml_test
   
 #after_success:
-#  - lcov --directory ./CMakeFiles/mini_yaml.dir --capture --output-file coverage.info #Or remove '*/tests/*'
-#  - lcov --remove coverage.info '/usr/*' "${HOME}"'/.cache/*' --output-file coverage.info
+#  - lcov --directory ./CMakeFiles/mini_yaml_test.dir --capture --output-file coverage.info #Or remove '*/test/*'
+#  - lcov --remove coverage.info '/usr/*' "${HOME}"'/.cache/*' '*/test/*' '*/googletest/*' --output-file coverage.info
 #  - lcov --list coverage.info
 #  - bash <(curl -s https://codecov.io/bash)
 

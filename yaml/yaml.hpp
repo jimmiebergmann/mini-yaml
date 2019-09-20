@@ -1225,7 +1225,9 @@ namespace yaml
             }
 
             node * new_node = new node(value);
-            m_nodes.insert({ key, node_unique_ptr(new_node) });
+            node_map::value_type node_pair{key, node_unique_ptr(new_node)};
+            m_nodes.insert(std::move(node_pair));
+
             return *new_node;
         }
 
@@ -1241,7 +1243,8 @@ namespace yaml
             }
 
             node * new_node = new node(pair.second);
-            return m_nodes.insert({ pair.first, node_unique_ptr(new_node) });
+            node_map::value_type node_pair{pair.first, node_unique_ptr(new_node)};
+            return m_nodes.insert(std::move(node_pair));
         }
 
 

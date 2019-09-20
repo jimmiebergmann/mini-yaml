@@ -123,8 +123,14 @@ namespace yaml
                 return *it->second;
             }
 
+            /*
+            using node_unique_ptr = std::unique_ptr<node>;
+            using node_map = std::map<std::string, node_unique_ptr>;
+            */
+
             node * new_node = new node;
-            m_nodes.insert({ key, node_unique_ptr(new_node) });
+            node_map::value_type node_pair{key, node_unique_ptr(new_node)};
+            m_nodes.insert(std::move(node_pair));
             return *new_node;
         }
 
