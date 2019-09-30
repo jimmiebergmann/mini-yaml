@@ -1617,8 +1617,49 @@ TEST(node, map_operator)
     }
 }
 
-TEST(node, erase)
+TEST(node, map_find)
 {
+    yaml::node node;
+
+    node["foo"]["bar"] = int32_t(123);
+    node["foo"]["hello"]["world 1"] = "text here";
+    node["foo"]["hello"]["world 2"] = float(128.0f);
+    node["foo"]["hello"]["world 3"] = int64_t(1234567890);
+
+    {
+        auto foo_it = node.find("foo");
+        EXPECT_EQ(foo_it.type(), yaml::node::iterator_type::map);
+        EXPECT_EQ(foo_it, node.begin());
+        EXPECT_NE(foo_it, node.end());
+        auto & foo_node = (*foo_it).second;
+        EXPECT_STREQ((*foo_it).first.c_str(), "foo");
+        EXPECT_TRUE(foo_node.is_map());
+
+        auto bar_it = foo_node.find("bar");
+        EXPECT_EQ(bar_it.type(), yaml::node::iterator_type::map);
+        auto & bar_node = (*bar_it).second;
+        EXPECT_STREQ((*bar_it).first.c_str(), "bar");
+        EXPECT_TRUE(bar_node.is_scalar());
+        EXPECT_EQ(bar_node.data_type(), yaml::node_data_type::int32);
+
+        auto hello_it = foo_node.find("hello");
+        EXPECT_EQ(hello_it.type(), yaml::node::iterator_type::map);
+        auto & hello_node = (*hello_it).second;
+        EXPECT_STREQ((*hello_it).first.c_str(), "hello");
+        EXPECT_TRUE(hello_node.is_map());
+    }
+    {
+        auto what_it = node.find("what");
+        EXPECT_EQ(what_it.type(), yaml::node::iterator_type::map);
+        EXPECT_NE(what_it, node.begin());
+        EXPECT_EQ(what_it, node.end());
+
+    }
+}
+
+TEST(node, map_erase)
+{
+    // by string
     {
         yaml::node node;
 
@@ -1650,6 +1691,17 @@ TEST(node, erase)
         EXPECT_EQ(node.size(), size_t(1));
         node.erase("foo");
         EXPECT_EQ(node.size(), size_t(0));
+    }
+    // by iterator.
+    {
+       /* yaml::node node;
+
+        node["foo"]["bar"] = int32_t(123);
+        node["foo"]["hello"]["world 1"] = "text here";
+        node["foo"]["hello"]["world 2"] = float(128.0f);
+        node["foo"]["hello"]["world 3"] = int64_t(1234567890);
+        */
+
     }
 }
 

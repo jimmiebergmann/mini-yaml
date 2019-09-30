@@ -98,17 +98,6 @@ namespace yaml
         string
     };
 
-    /**
-    * @breif Enumeration of iterator types.
-    *
-    */
-    enum class iterator_type
-    {
-        map,
-        null,
-        sequence
-    };
-
     using node_unique_ptr = std::unique_ptr<node>;
     using node_map = std::map<std::string, node_unique_ptr>;
     using node_list = std::list<node_unique_ptr>;
@@ -247,8 +236,13 @@ namespace yaml
             void clear();
 
             bool erase(const std::string & key);
+            node_map::iterator erase(node_map::iterator & it);
+            node_map::const_iterator erase(node_map::const_iterator & it);
 
             bool exists(const std::string & key) const;
+
+            node_map::iterator find(const std::string & key);
+            node_map::const_iterator find(const std::string & key) const;
 
             node & find_or_insert(const std::string & key);
 
@@ -258,7 +252,6 @@ namespace yaml
             template<typename T>
             std::pair<node_map::iterator, bool> insert(const std::pair<const std::string &, const T> & pair);
    
-
             size_t size() const;
 
         private:
@@ -331,7 +324,8 @@ namespace yaml
 
             void clear();
 
-            node_data_type data_type() const;
+            node_list::iterator erase(node_list::iterator & it);
+            node_list::const_iterator erase(node_list::const_iterator & it);
 
             template<typename T>
             node & push_back(const T value);
@@ -580,6 +574,17 @@ namespace yaml
     public:
 
         /**
+        * @breif Enumeration of iterator types.
+        *
+        */
+        enum class iterator_type
+        {
+            map,
+            null,
+            sequence
+        };
+
+        /**
         * @breif Iterator class.
         *
         */
@@ -665,18 +670,20 @@ namespace yaml
             * @breif Check if iterator is equal to other iterator.
             *
             */
-            bool operator == (const iterator & it);
+            bool operator == (const iterator & it) const;
 
             /**
             * @breif Check if iterator is not equal to other iterator.
             *
             */
-            bool operator != (const iterator & it);
+            bool operator != (const iterator & it) const;
 
         private:
 
             iterator_type           m_type; ///< Type of iterator. 
             priv::iterator_impl *   m_impl; ///< Pointer of implementation class.
+
+            friend class node;
 
         };
 
@@ -767,18 +774,20 @@ namespace yaml
             * @breif Check if iterator is equal to other iterator.
             *
             */
-            bool operator == (const const_iterator & it);
+            bool operator == (const const_iterator & it) const;
 
             /**
             * @breif Check if iterator is not equal to other iterator.
             *
             */
-            bool operator != (const const_iterator & it);
+            bool operator != (const const_iterator & it) const;
 
         private:
 
             iterator_type               m_type; ///< Type of iterator. 
             priv::const_iterator_impl * m_impl; ///< Pointer of implementation class.
+
+            friend class node;
 
         };
 
@@ -878,10 +887,22 @@ namespace yaml
         * @breif Erase map item.
         *        No action node type != map.
         *
+        * @param key Only available if node type is map.
+        * @param it iterator of map or sequence node.
+        *
         * @return true if key is found and erased, else false.
         *
         */
         bool erase(const std::string & key);
+        iterator erase(iterator it);
+        const_iterator erase(const_iterator it);
+
+        /*
+        * @brief Find node item by key.
+        *
+        */
+        iterator find(const std::string & key);
+        const_iterator find(const std::string & key) const;
 
         /**
         * @breif Checks if map item exists, by key value.

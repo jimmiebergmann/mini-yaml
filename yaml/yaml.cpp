@@ -110,9 +110,28 @@ namespace yaml
             return m_nodes.erase(key) != 0;
         }
 
+        node_map::iterator map_node_impl::erase(node_map::iterator & it)
+        {
+            return m_nodes.erase(it);
+        }
+
+        node_map::const_iterator map_node_impl::erase(node_map::const_iterator & it)
+        {
+            return m_nodes.erase(it);
+        }
+
         bool map_node_impl::exists(const std::string & key) const
         {
             return m_nodes.find(key) != m_nodes.end();
+        }
+
+        node_map::iterator map_node_impl::find(const std::string & key)
+        {
+            return m_nodes.find(key);
+        }
+        node_map::const_iterator map_node_impl::find(const std::string & key) const
+        {
+            return m_nodes.find(key);
         }
 
         node & map_node_impl::find_or_insert(const std::string & key)
@@ -122,11 +141,6 @@ namespace yaml
             {
                 return *it->second;
             }
-
-            /*
-            using node_unique_ptr = std::unique_ptr<node>;
-            using node_map = std::map<std::string, node_unique_ptr>;
-            */
 
             node * new_node = new node;
             node_map::value_type node_pair{key, node_unique_ptr(new_node)};
@@ -331,9 +345,14 @@ namespace yaml
             m_nodes.clear();
         }
 
-        node_data_type sequence_node_impl::data_type() const
+        node_list::iterator sequence_node_impl::erase(node_list::iterator & it)
         {
-            return node_data_type::null;
+            return m_nodes.erase(it);
+        }
+
+        node_list::const_iterator sequence_node_impl::erase(node_list::const_iterator & it)
+        {
+            return m_nodes.erase(it);
         }
 
         size_t sequence_node_impl::size() const
@@ -491,7 +510,7 @@ namespace yaml
         }
     }
 
-    iterator_type node::iterator::type() const
+    node::iterator_type node::iterator::type() const
     {
         return m_type;
     }
@@ -611,7 +630,7 @@ namespace yaml
         return old;
     }
 
-    bool node::iterator::operator == (const iterator & it)
+    bool node::iterator::operator == (const iterator & it) const
     {
         if (m_type != it.m_type)
         {
@@ -632,7 +651,7 @@ namespace yaml
         return false;
     }
 
-    bool node::iterator::operator != (const iterator & it)
+    bool node::iterator::operator != (const iterator & it) const
     {
         return !(*this == it);
     }
@@ -677,7 +696,7 @@ namespace yaml
         }
     }
 
-    iterator_type node::const_iterator::type() const
+    node::iterator_type node::const_iterator::type() const
     {
         return m_type;
     }
@@ -797,7 +816,7 @@ namespace yaml
         return old;
     }
 
-    bool node::const_iterator::operator == (const const_iterator & it)
+    bool node::const_iterator::operator == (const const_iterator & it) const
     {
         if (m_type != it.m_type)
         {
@@ -818,7 +837,7 @@ namespace yaml
         return false;
     }
 
-    bool node::const_iterator::operator != (const const_iterator & it)
+    bool node::const_iterator::operator != (const const_iterator & it) const
     {
         return !(*this == it);
     }
@@ -879,9 +898,9 @@ namespace yaml
     {
         switch (m_type)
         {
-        case node_type::map:        return static_cast<priv::map_node_impl *>(m_impl.get())->end();
-        case node_type::sequence:   return static_cast<priv::sequence_node_impl *>(m_impl.get())->end();
-        default: break;
+            case node_type::map:        return static_cast<priv::map_node_impl *>(m_impl.get())->end();
+            case node_type::sequence:   return static_cast<priv::sequence_node_impl *>(m_impl.get())->end();
+            default: break;
         }
         return iterator();
     }
@@ -894,16 +913,6 @@ namespace yaml
             default: break;
         }
         return const_iterator();
-    }
-
-    bool node::exists(const std::string & key) const
-    {
-        if (m_type == node_type::map)
-        {
-            return static_cast<priv::map_node_impl *>(m_impl.get())->exists(key);
-        }
-
-        return false;
     }
 
     void node::clear()
@@ -929,6 +938,106 @@ namespace yaml
         }
 
         return static_cast<priv::map_node_impl *>(m_impl.get())->erase(key);
+    }
+
+    node::iterator node::erase(iterator it)
+    {
+        switch (m_type)
+        {
+            case node_type::map:
+            {
+                if (it.type() != iterator_type::map)
+                {
+                    break;
+                }
+
+                auto & it_impl = static_cast<priv::map_iterator_impl *>(it.m_impl)->it;
+                auto node_impl = static_cast<priv::map_node_impl *>(m_impl.get());
+                return node_impl->erase(it_impl);
+            }
+            break;
+            case node_type::sequence:
+            {
+                if (it.type() != iterator_type::sequence)
+                {
+                    break;
+                }
+
+                auto & it_impl = static_cast<priv::sequence_iterator_impl *>(it.m_impl)->it;
+                auto node_impl = static_cast<priv::sequence_node_impl *>(m_impl.get());
+                return node_impl->erase(it_impl);
+            }
+            break;
+            default: break;
+        }
+
+        return end();
+    }
+
+    node::const_iterator node::erase(const_iterator it)
+    {
+        switch (m_type)
+        {
+            case node_type::map:
+            {
+                if (it.type() != iterator_type::map)
+                {
+                    break;
+                }
+
+                auto & it_impl = static_cast<priv::map_const_iterator_impl *>(it.m_impl)->it;
+                auto node_impl = static_cast<priv::map_node_impl *>(m_impl.get());
+                return node_impl->erase(it_impl);
+            }
+            break;
+            case node_type::sequence:
+            {
+                if (it.type() != iterator_type::sequence)
+                {
+                    break;
+                }
+
+                auto & it_impl = static_cast<priv::sequence_const_iterator_impl *>(it.m_impl)->it;
+                auto node_impl = static_cast<priv::sequence_node_impl *>(m_impl.get());
+                return node_impl->erase(it_impl);
+            }
+            break;
+            default: break;
+        }
+
+        return static_cast<const node *>(this)->end();
+    }
+
+    node::iterator node::find(const std::string & key)
+    {
+        if (m_type == node_type::map)
+        {
+            auto node_impl = static_cast<priv::map_node_impl *>(m_impl.get());
+            return node_impl->find(key);
+        }
+
+        return end();
+    }
+
+    node::const_iterator node::find(const std::string & key) const
+    {
+        if (m_type == node_type::map)
+        {
+            auto node_impl = static_cast<priv::map_node_impl *>(m_impl.get());
+            return node_impl->find(key);
+        }
+
+        return static_cast<const node *>(this)->end();
+    }
+
+    bool node::exists(const std::string & key) const
+    {
+        if (m_type == node_type::map)
+        {
+            return static_cast<priv::map_node_impl *>(m_impl.get())->exists(key);
+        }
+
+        return false;
     }
 
     bool node::is_map() const
