@@ -30,6 +30,7 @@
 
 TEST(exceptions, throw)
 {
+
     { // yaml::exception
         {
             bool throwed = false;

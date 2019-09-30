@@ -1013,7 +1013,7 @@ namespace yaml
         if (m_type == node_type::map)
         {
             auto node_impl = static_cast<priv::map_node_impl *>(m_impl.get());
-            return node_impl->find(key);
+            return iterator(node_impl->find(key));
         }
 
         return end();
@@ -1024,7 +1024,7 @@ namespace yaml
         if (m_type == node_type::map)
         {
             auto node_impl = static_cast<priv::map_node_impl *>(m_impl.get());
-            return node_impl->find(key);
+            return const_iterator(node_impl->find(key));
         }
 
         return static_cast<const node *>(this)->end();
