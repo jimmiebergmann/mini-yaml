@@ -29,7 +29,6 @@
 #include <fstream>
 #include <memory>
 
-
 TEST(exceptions, throw)
 {
 
