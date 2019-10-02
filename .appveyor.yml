@@ -22,4 +22,5 @@ build:
   verbosity: minimal
   
 after_build:
-    - bin\mini_yaml_test.exe
+   - cd bin
+   - mini_yaml_test.exe

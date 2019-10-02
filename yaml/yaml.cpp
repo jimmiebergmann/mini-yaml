@@ -1113,6 +1113,8 @@ namespace yaml
     template<typename Writer>
     static void dump_node(Writer & writer, const node & root, const dump_config & config)
     {
+        size_t indentation = config.indentation ? config.indentation : 2;
+
         switch (root.type())
         {
             case node_type::scalar: writer.write(root.as<std::string>()); return;
@@ -1166,7 +1168,7 @@ namespace yaml
             case node_type::map:
             {
                 const auto & current_key = (*current_it).first;
-                writer.write(std::string(config.indentation * level, ' '));
+                writer.write(std::string(indentation * level, ' '));
                 writer.write(current_key);
                 writer.write(":");
 
@@ -1175,7 +1177,7 @@ namespace yaml
             break;
             case node_type::sequence:
             {
-                writer.write(std::string(config.indentation * level, ' '));
+                writer.write(std::string(indentation * level, ' '));
                 writer.write("-");
 
                 process_node(current_it);
@@ -1200,7 +1202,7 @@ namespace yaml
 
     void dump_file(const node & root, const std::string & filename, const dump_config & config)
     {
-        std::ofstream fin(filename);
+        std::ofstream fin(filename, std::ofstream::binary);
         if (!fin.is_open())
         {
             // ERROR HERE... Exception...

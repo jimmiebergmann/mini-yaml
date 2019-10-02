@@ -39,7 +39,9 @@ script:
   - cmake -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug ..
   - cmake --build . --config Debug
   # Run test
-  - valgrind --leak-check=full --track-origins=yes --error-exitcode=1 ./../bin/mini_yaml_test
+  - cd ../bin
+  - valgrind --leak-check=full --track-origins=yes --error-exitcode=1 ./mini_yaml_test
+  - cd ../build
   
 after_success:
   - lcov --directory ./CMakeFiles/mini_yaml_test.dir --capture --output-file coverage.info

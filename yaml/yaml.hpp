@@ -1065,7 +1065,7 @@ namespace yaml
     /**
     * @breif Dump/serialization functions.
     *
-    * Indentation is set to default value, 2, if dump_config::indentation is 0.
+    * Indentation is set to default value: 2, if dump_config::indentation is 0.
     *
     * @param root       Root node to serialize.
     * @param filename   Path of output file.

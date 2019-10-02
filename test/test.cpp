@@ -26,6 +26,8 @@
 
 #include "gtest/gtest.h"
 #include "../yaml/yaml.hpp"
+#include <fstream>
+#include <memory>
 
 
 TEST(exceptions, throw)
@@ -1799,6 +1801,24 @@ TEST(node, iterator)
     }
 }
 
+TEST(dump, config)
+{
+    {
+        yaml::dump_config config;
+        EXPECT_EQ(config.indentation, size_t(2));
+    }
+    {
+        yaml::dump_config config(3);
+        EXPECT_EQ(config.indentation, size_t(3));
+    }
+    {
+        yaml::dump_config config(7, 100);
+        EXPECT_EQ(config.indentation, size_t(7));
+        EXPECT_EQ(config.scalar_fold_length, size_t(100));
+    }
+    
+}
+
 TEST(dump, string)
 {
     {
@@ -1829,9 +1849,7 @@ TEST(dump, string)
         places.push_back("Denmark");
         places.push_back("Iceland");
 
-        auto data = yaml::dump(node);
-
-        const std::string expected_dump =
+        const std::string expected_dump_indent_2 =
             "header: Hello world."  + std::string("\n") +
             "key:"                  + std::string("\n") +
             "  another_key: 123"    + std::string("\n") +
@@ -1856,10 +1874,125 @@ TEST(dump, string)
             "  - Norway"            + std::string("\n") +
             "  - Denmark"           + std::string("\n") +
             "  - Iceland"           + std::string("\n");
-   
-        EXPECT_STREQ(data.c_str(), expected_dump.c_str());
-    }
 
+        const std::string expected_dump_indent_5 =
+            "header: Hello world." + std::string("\n") +
+            "key:" + std::string("\n") +
+            "     another_key: 123" + std::string("\n") +
+            "     another_nested_map:" + std::string("\n") +
+            "          key 1: text here" + std::string("\n") +
+            "          key 2: 1.25" + std::string("\n") +
+            "          key 3: 1.125" + std::string("\n") +
+            "          key 4: 123456" + std::string("\n") +
+            "          key 5: 1234567890" + std::string("\n") +
+            "          key 6: true" + std::string("\n") +
+            "          key 7: false" + std::string("\n") +
+            "          key 8: ~" + std::string("\n") +
+            "people:" + std::string("\n") +
+            "     -" + std::string("\n") +
+            "          age: 27" + std::string("\n") +
+            "          name: Jimmie" + std::string("\n") +
+            "     -" + std::string("\n") +
+            "          age: 4" + std::string("\n") +
+            "          name: Bosse" + std::string("\n") +
+            "places:" + std::string("\n") +
+            "     - Sweden" + std::string("\n") +
+            "     - Norway" + std::string("\n") +
+            "     - Denmark" + std::string("\n") +
+            "     - Iceland" + std::string("\n");
+   
+        auto data = yaml::dump(node);
+        EXPECT_STREQ(data.c_str(), expected_dump_indent_2.c_str());
+
+        data = yaml::dump(node, { 5 });
+        EXPECT_STREQ(data.c_str(), expected_dump_indent_5.c_str());
+
+        data = yaml::dump(node, { 0 });
+        EXPECT_STREQ(data.c_str(), expected_dump_indent_2.c_str());
+    }
+}
+
+TEST(dump, file)
+{
+    {
+        yaml::node node;
+        node["header"] = "Hello world.";
+        node["key"]["another_key"] = int32_t(123);
+        node["key"]["another_nested_map"]["key 1"] = "text here";
+        node["key"]["another_nested_map"]["key 2"] = float(1.25f);
+        node["key"]["another_nested_map"]["key 3"] = double(1.125f);
+        node["key"]["another_nested_map"]["key 4"] = int32_t(123456);
+        node["key"]["another_nested_map"]["key 5"] = int64_t(1234567890);
+        node["key"]["another_nested_map"]["key 6"] = bool(true);
+        node["key"]["another_nested_map"]["key 7"] = bool(false);
+        node["key"]["another_nested_map"]["key 8"] = yaml::node_data_type::null;
+
+        auto & people = node["people"];
+
+        auto & jimmie = people.push_back(yaml::node_type::map);
+        jimmie["name"] = "Jimmie";
+        jimmie["age"] = 27;
+        auto & bosse = people.push_back(yaml::node_type::map);
+        bosse["name"] = "Bosse";
+        bosse["age"] = 4;
+
+        auto & places = node["places"];
+        places.push_back("Sweden");
+        places.push_back("Norway");
+        places.push_back("Denmark");
+        places.push_back("Iceland");
+
+        const std::string expected_dump_indent_2 =
+            "header: Hello world." + std::string("\n") +
+            "key:" + std::string("\n") +
+            "  another_key: 123" + std::string("\n") +
+            "  another_nested_map:" + std::string("\n") +
+            "    key 1: text here" + std::string("\n") +
+            "    key 2: 1.25" + std::string("\n") +
+            "    key 3: 1.125" + std::string("\n") +
+            "    key 4: 123456" + std::string("\n") +
+            "    key 5: 1234567890" + std::string("\n") +
+            "    key 6: true" + std::string("\n") +
+            "    key 7: false" + std::string("\n") +
+            "    key 8: ~" + std::string("\n") +
+            "people:" + std::string("\n") +
+            "  -" + std::string("\n") +
+            "    age: 27" + std::string("\n") +
+            "    name: Jimmie" + std::string("\n") +
+            "  -" + std::string("\n") +
+            "    age: 4" + std::string("\n") +
+            "    name: Bosse" + std::string("\n") +
+            "places:" + std::string("\n") +
+            "  - Sweden" + std::string("\n") +
+            "  - Norway" + std::string("\n") +
+            "  - Denmark" + std::string("\n") +
+            "  - Iceland" + std::string("\n");
+
+        EXPECT_NO_THROW(yaml::dump_file(node, "test_dump_file.txt"));
+
+        {
+            std::ifstream fin("test_dump_file.txt", std::ifstream::binary);
+            EXPECT_TRUE(fin.is_open());
+            if (fin.is_open())
+            {
+                fin.seekg(0, fin.end);
+                std::streampos pos = fin.tellg();
+                EXPECT_GT(pos, std::streampos(0));
+                fin.seekg(0, fin.beg);
+
+                if (pos)
+                {
+                    size_t buffer_size = static_cast<size_t>(pos);
+                    std::unique_ptr<char[]> buffer(new char[buffer_size + 1]);
+                    buffer.get()[buffer_size] = 0;
+
+                    fin.read(buffer.get(), pos);
+                    EXPECT_STREQ(buffer.get(), expected_dump_indent_2.c_str());
+                }             
+            }
+        }
+
+    }
 }
 
 
