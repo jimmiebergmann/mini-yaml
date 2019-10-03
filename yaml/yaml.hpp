@@ -1280,7 +1280,6 @@ namespace yaml
                 case node_data_type::float64:   return static_cast<T>(m_value.float64);
                 case node_data_type::int32:     return static_cast<T>(m_value.int32);
                 case node_data_type::int64:     return static_cast<T>(m_value.int64);
-                case node_data_type::null:      break;
                 case node_data_type::string:    return data_converter<std::string, T>::get(*m_value.string);
                 default: break;
             }
@@ -1296,7 +1295,6 @@ namespace yaml
                 case node_data_type::float64:   return data_converter<double, std::string>::get(m_value.float64);
                 case node_data_type::int32:     return data_converter<int32_t, std::string>::get(m_value.int32);
                 case node_data_type::int64:     return data_converter<int64_t, std::string>::get(m_value.int64);
-                case node_data_type::null:      break;
                 case node_data_type::string:    return *m_value.string;
                 default: break;
             }
@@ -1313,7 +1311,6 @@ namespace yaml
                 case node_data_type::float64:   return static_cast<T>(m_value.float64);
                 case node_data_type::int32:     return static_cast<T>(m_value.int32);
                 case node_data_type::int64:     return static_cast<T>(m_value.int64);
-                case node_data_type::null:      break;
                 case node_data_type::string:    return data_converter<std::string, T>::get(*m_value.string, default_value);
                 default: break;
             }
@@ -1329,7 +1326,6 @@ namespace yaml
                 case node_data_type::float64:   return data_converter<double, std::string>::get(m_value.float64);
                 case node_data_type::int32:     return data_converter<int32_t, std::string>::get(m_value.int32);
                 case node_data_type::int64:     return data_converter<int64_t, std::string>::get(m_value.int64);
-                case node_data_type::null:      break;
                 case node_data_type::string:    return *m_value.string;
                 default: break;
             }

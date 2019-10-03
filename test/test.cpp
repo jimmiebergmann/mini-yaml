@@ -200,22 +200,36 @@ TEST(priv, data_converter)
         EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("Yes")));
         EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("yeS")));
         EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("YES")));
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("1")));
 
         EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("no")));
         EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("foo")));
         EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("")));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("0")));
 
         EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("yes", true)));
         EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("yes", false)));
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("yeS", true)));
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("yeS", false)));
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("1", true)));
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("1", false)));
 
         EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("no", true)));
         EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("no", false)));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("nO", true)));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("nO", false)));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("0", true)));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("0", false)));
 
         EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("", true)));
         EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("", false)));
 
         EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("foo", true)));
         EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("foo", false)));
+
+        EXPECT_TRUE((yaml::priv::data_converter<std::string, bool>::get("hello world, this is such a long string.", true)));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("hello world, this is such a long string.", false)));
+        EXPECT_FALSE((yaml::priv::data_converter<std::string, bool>::get("hello world, this is such a long string.")));
     }
     {
         EXPECT_EQ((yaml::priv::data_converter<std::string, int32_t>::get("1")), int32_t(1));
@@ -230,6 +244,14 @@ TEST(priv, data_converter)
         EXPECT_STREQ((yaml::priv::data_converter<std::string, std::string>::get("foo", "bar")).c_str(), "foo");
         EXPECT_STREQ((yaml::priv::data_converter<std::string, std::string>::get("", "bar")).c_str(), "bar");
         EXPECT_STREQ((yaml::priv::data_converter<std::string, std::string>::get("", "")).c_str(), "");
+    }
+    {
+        /*sstruct test_struct
+        {
+            int value;
+        } test;
+
+        EXPECT_STREQ((yaml::priv::data_converter<test_struct, std::string>::get(test)).c_str(), "");*/
     }
 }
 
@@ -803,75 +825,110 @@ TEST(node, assign_node_data_type)
 
 TEST(node, as_default)
 {
+    // From boolean scalar.
     {
-        yaml::node node1(std::string("foo"));
-        EXPECT_TRUE(node1.as<bool>(true));
-        EXPECT_FALSE(node1.as<bool>(false));
 
-        yaml::node node2(std::string("bar"));
-        EXPECT_TRUE(node2.as<bool>(true));
-        EXPECT_FALSE(node2.as<bool>(false));
-
-        yaml::node node3(std::string("true"));
-        EXPECT_TRUE(node3.as<bool>(true));
-        EXPECT_TRUE(node3.as<bool>(false));
-
-        yaml::node node4(std::string("0"));
-        EXPECT_FALSE(node4.as<bool>(true));
-        EXPECT_FALSE(node4.as<bool>(false));
     }
+    // From float32 scalar.
     {
-        yaml::node node1(std::string("128.5"));
-        EXPECT_EQ(node1.as<float>(64.0f), float(128.5f));
-        EXPECT_EQ(node1.as<float>(32.0f), float(128.5f));
 
-        yaml::node node2(std::string("cool"));
-        EXPECT_EQ(node2.as<float>(100.0f), float(100.0f));
-        EXPECT_EQ(node2.as<float>(200.0f), float(200.0f));
     }
+    // From float64 scalar.
     {
-        yaml::node node1(std::string("64.5"));
-        EXPECT_EQ(node1.as<double>(5.0f), double(64.5f));
-        EXPECT_EQ(node1.as<double>(10.0f), double(64.5f));
 
-        yaml::node node2(std::string("cool"));
-        EXPECT_EQ(node2.as<double>(300.0f), double(300.0f));
-        EXPECT_EQ(node2.as<double>(400.0f), double(400.0f));
     }
+    // From int32 scalar.
     {
-        yaml::node node1(std::string("64.5"));
-        EXPECT_EQ(node1.as<int32_t>(5), int32_t(64));
-        EXPECT_EQ(node1.as<int32_t>(10), int32_t(64));
 
-        yaml::node node2(std::string("cool"));
-        EXPECT_EQ(node2.as<int32_t>(500), int32_t(500));
-        EXPECT_EQ(node2.as<int32_t>(600), int32_t(600));
-
-        yaml::node node3(std::string("87678"));
-        EXPECT_EQ(node3.as<int32_t>(500), int32_t(87678));
-        EXPECT_EQ(node3.as<int32_t>(400), int32_t(87678));
     }
+    // From int64 scalar.
     {
-        yaml::node node1(std::string("512.5"));
-        EXPECT_EQ(node1.as<int64_t>(50), int64_t(512));
-        EXPECT_EQ(node1.as<int64_t>(100), int64_t(512));
 
-        yaml::node node2(std::string("cool"));
-        EXPECT_EQ(node2.as<int64_t>(500000), int64_t(500000));
-        EXPECT_EQ(node2.as<int64_t>(600000), int64_t(600000));
-
-        yaml::node node3(std::string("87678909876"));
-        EXPECT_EQ(node3.as<int64_t>(500), int64_t(87678909876));
-        EXPECT_EQ(node3.as<int64_t>(400), int64_t(87678909876));
     }
+    // From null scalar.
     {
-        yaml::node node1(std::string("The quick brown fox jumps over the lazy dog"));
-        EXPECT_STREQ(node1.as<std::string>("").c_str(), "The quick brown fox jumps over the lazy dog");
-        EXPECT_STREQ(node1.as<std::string>("Some random text").c_str(), "The quick brown fox jumps over the lazy dog");
 
-        yaml::node node2(std::string(""));
-        EXPECT_STREQ(node2.as<std::string>("").c_str(), "");
-        EXPECT_STREQ(node2.as<std::string>("Some random text").c_str(), "");
+    }
+    // From string scalar.
+    {
+        {
+            yaml::node node1(std::string("foo"));
+            EXPECT_TRUE(node1.as<bool>(true));
+            EXPECT_FALSE(node1.as<bool>(false));
+
+            yaml::node node2(std::string("bar"));
+            EXPECT_TRUE(node2.as<bool>(true));
+            EXPECT_FALSE(node2.as<bool>(false));
+
+            yaml::node node3(std::string("true"));
+            EXPECT_TRUE(node3.as<bool>(true));
+            EXPECT_TRUE(node3.as<bool>(false));
+
+            yaml::node node4(std::string("false"));
+            EXPECT_FALSE(node4.as<bool>(true));
+            EXPECT_FALSE(node4.as<bool>(false));
+
+            yaml::node node5(std::string("1"));
+            EXPECT_TRUE(node5.as<bool>(true));
+            EXPECT_TRUE(node5.as<bool>(false));
+
+            yaml::node node6(std::string("0"));
+            EXPECT_FALSE(node6.as<bool>(true));
+            EXPECT_FALSE(node6.as<bool>(false));
+        }
+        {
+            yaml::node node1(std::string("128.5"));
+            EXPECT_EQ(node1.as<float>(64.0f), float(128.5f));
+            EXPECT_EQ(node1.as<float>(32.0f), float(128.5f));
+
+            yaml::node node2(std::string("cool"));
+            EXPECT_EQ(node2.as<float>(100.0f), float(100.0f));
+            EXPECT_EQ(node2.as<float>(200.0f), float(200.0f));
+        }
+        {
+            yaml::node node1(std::string("64.5"));
+            EXPECT_EQ(node1.as<double>(5.0f), double(64.5f));
+            EXPECT_EQ(node1.as<double>(10.0f), double(64.5f));
+
+            yaml::node node2(std::string("cool"));
+            EXPECT_EQ(node2.as<double>(300.0f), double(300.0f));
+            EXPECT_EQ(node2.as<double>(400.0f), double(400.0f));
+        }
+        {
+            yaml::node node1(std::string("64.5"));
+            EXPECT_EQ(node1.as<int32_t>(5), int32_t(64));
+            EXPECT_EQ(node1.as<int32_t>(10), int32_t(64));
+
+            yaml::node node2(std::string("cool"));
+            EXPECT_EQ(node2.as<int32_t>(500), int32_t(500));
+            EXPECT_EQ(node2.as<int32_t>(600), int32_t(600));
+
+            yaml::node node3(std::string("87678"));
+            EXPECT_EQ(node3.as<int32_t>(500), int32_t(87678));
+            EXPECT_EQ(node3.as<int32_t>(400), int32_t(87678));
+        }
+        {
+            yaml::node node1(std::string("512.5"));
+            EXPECT_EQ(node1.as<int64_t>(50), int64_t(512));
+            EXPECT_EQ(node1.as<int64_t>(100), int64_t(512));
+
+            yaml::node node2(std::string("cool"));
+            EXPECT_EQ(node2.as<int64_t>(500000), int64_t(500000));
+            EXPECT_EQ(node2.as<int64_t>(600000), int64_t(600000));
+
+            yaml::node node3(std::string("87678909876"));
+            EXPECT_EQ(node3.as<int64_t>(500), int64_t(87678909876));
+            EXPECT_EQ(node3.as<int64_t>(400), int64_t(87678909876));
+        }
+        {
+            yaml::node node1(std::string("The quick brown fox jumps over the lazy dog"));
+            EXPECT_STREQ(node1.as<std::string>("").c_str(), "The quick brown fox jumps over the lazy dog");
+            EXPECT_STREQ(node1.as<std::string>("Some random text").c_str(), "The quick brown fox jumps over the lazy dog");
+
+            yaml::node node2(std::string(""));
+            EXPECT_STREQ(node2.as<std::string>("").c_str(), "");
+            EXPECT_STREQ(node2.as<std::string>("Some random text").c_str(), "");
+        }
     }
 }
 
@@ -1711,50 +1768,149 @@ template<typename T>
 static void iterator_test_map_1(T & node)
 {
     EXPECT_EQ(node.size(), size_t(4));
+    EXPECT_EQ(node.begin().type(), yaml::node::iterator_type::map);
+    EXPECT_EQ(node.end().type(), yaml::node::iterator_type::map);
 
-    bool ok[4] = { false, false, false, false };
-
-    for (auto it = node.begin(); it != node.end(); it++)
     {
-        auto & key = (*it).first;
-        if (key == "foo")
-        {
-            ok[0] = true;
-            EXPECT_STREQ((*it).first.c_str(), "foo");
-            T & n = (*it).second;     
-            EXPECT_TRUE(n.is_scalar());
-            EXPECT_EQ(n.template as<int32_t>(), int32_t(100));
-        }
-        else if (key == "bar")
-        {
-            ok[1] = true;
-            EXPECT_STREQ((*it).first.c_str(), "bar");
-            T & n = (*it).second;  
-            EXPECT_TRUE(n.is_scalar());           
-            EXPECT_EQ(n.template as<int32_t>(), int32_t(200));
-        }
-        else if (key == "hello")
-        {
-            ok[2] = true;
-            EXPECT_STREQ((*it).first.c_str(), "hello");
-            T & n = (*it).second;  
-            EXPECT_TRUE(n.is_scalar());
-            EXPECT_EQ(n.template as<int32_t>(), int32_t(300));
-        }
-        else if (key == "world")
-        {
-            ok[3] = true;
-            EXPECT_STREQ((*it).first.c_str(), "world");
-            T & n = (*it).second;
-            EXPECT_TRUE(n.is_scalar());
-            EXPECT_EQ(n.template as<int32_t>(), int32_t(400));
-        }
-    }
+        bool ok[4] = { false, false, false, false };
 
-    EXPECT_TRUE(ok[0]);
-    EXPECT_TRUE(ok[1]);
-    EXPECT_TRUE(ok[2]);
-    EXPECT_TRUE(ok[3]);
+        for (auto it = node.begin(); it != node.end(); it++)
+        {
+            auto & key = (*it).first;
+            if (key == "foo")
+            {
+                ok[0] = true;
+                EXPECT_STREQ((*it).first.c_str(), "foo");
+                T & n = (*it).second;
+                EXPECT_TRUE(n.is_scalar());
+                EXPECT_EQ(n.template as<int32_t>(), int32_t(100));
+            }
+            else if (key == "bar")
+            {
+                ok[1] = true;
+                EXPECT_STREQ((*it).first.c_str(), "bar");
+                T & n = (*it).second;
+                EXPECT_TRUE(n.is_scalar());
+                EXPECT_EQ(n.template as<int32_t>(), int32_t(200));
+            }
+            else if (key == "hello")
+            {
+                ok[2] = true;
+                EXPECT_STREQ((*it).first.c_str(), "hello");
+                T & n = (*it).second;
+                EXPECT_TRUE(n.is_scalar());
+                EXPECT_EQ(n.template as<int32_t>(), int32_t(300));
+            }
+            else if (key == "world")
+            {
+                ok[3] = true;
+                EXPECT_STREQ((*it).first.c_str(), "world");
+                T & n = (*it).second;
+                EXPECT_TRUE(n.is_scalar());
+                EXPECT_EQ(n.template as<int32_t>(), int32_t(400));
+            }
+        }
+
+        EXPECT_TRUE(ok[0]);
+        EXPECT_TRUE(ok[1]);
+        EXPECT_TRUE(ok[2]);
+        EXPECT_TRUE(ok[3]);
+    }
+    {
+        bool ok[4] = { false, false, false, false };
+
+        auto check_func = [&ok](decltype(node.begin()) it)
+        {
+            auto & key = (*it).first;
+            if (key == "foo")
+            {
+                ok[0] = true;
+                EXPECT_STREQ((*it).first.c_str(), "foo");
+                T & n = (*it).second;
+                EXPECT_TRUE(n.is_scalar());
+                EXPECT_EQ(n.template as<int32_t>(), int32_t(100));
+            }
+            else if (key == "bar")
+            {
+                ok[1] = true;
+                EXPECT_STREQ((*it).first.c_str(), "bar");
+                T & n = (*it).second;
+                EXPECT_TRUE(n.is_scalar());
+                EXPECT_EQ(n.template as<int32_t>(), int32_t(200));
+            }
+            else if (key == "hello")
+            {
+                ok[2] = true;
+                EXPECT_STREQ((*it).first.c_str(), "hello");
+                T & n = (*it).second;
+                EXPECT_TRUE(n.is_scalar());
+                EXPECT_EQ(n.template as<int32_t>(), int32_t(300));
+            }
+            else if (key == "world")
+            {
+                ok[3] = true;
+                EXPECT_STREQ((*it).first.c_str(), "world");
+                T & n = (*it).second;
+                EXPECT_TRUE(n.is_scalar());
+                EXPECT_EQ(n.template as<int32_t>(), int32_t(400));
+            }
+        };
+
+        auto it = node.begin();
+        check_func(it);
+        check_func(++it);
+        check_func(++it);
+        check_func(++it);
+        ++it;
+        EXPECT_EQ(it, node.end());
+        EXPECT_TRUE(ok[0]);
+        EXPECT_TRUE(ok[1]);
+        EXPECT_TRUE(ok[2]);
+        EXPECT_TRUE(ok[3]);
+
+        ok[0] = ok[1] = ok[2] = ok[3] = false;
+        it = node.begin();
+        it++;
+        it++;
+        it++;
+        check_func(it);
+        check_func(--it);
+        check_func(--it);
+        check_func(--it);
+        EXPECT_EQ(it, node.begin());
+        EXPECT_TRUE(ok[0]);
+        EXPECT_TRUE(ok[1]);
+        EXPECT_TRUE(ok[2]);
+        EXPECT_TRUE(ok[3]);
+
+        ok[0] = ok[1] = ok[2] = ok[3] = false;
+        it = node.begin();
+        check_func(it++);
+        check_func(it++);
+        check_func(it++);
+        check_func(it++);
+        EXPECT_EQ(it, node.end());
+        EXPECT_TRUE(ok[0]);
+        EXPECT_TRUE(ok[1]);
+        EXPECT_TRUE(ok[2]);
+        EXPECT_TRUE(ok[3]);
+
+        ok[0] = ok[1] = ok[2] = ok[3] = false;
+        it = node.begin();
+        it++;
+        it++;
+        it++;
+        check_func(it--);
+        check_func(it--);
+        check_func(it--);
+        check_func(it);
+        EXPECT_EQ(it, node.begin());
+        EXPECT_TRUE(ok[0]);
+        EXPECT_TRUE(ok[1]);
+        EXPECT_TRUE(ok[2]);
+        EXPECT_TRUE(ok[3]);
+
+    }
 }
 
 template<typename T>
@@ -1762,15 +1918,64 @@ static void iterator_test_sequence_1(T & node)
 {
     EXPECT_EQ(node.size(), size_t(100));
 
-    int32_t index = 0;
-    for (auto it = node.begin(); it != node.end(); it++)
     {
-        EXPECT_STREQ((*it).first.c_str(), "");
-        T & n = (*it).second;
-        EXPECT_EQ(n.template as<int32_t>(), index * 100);
-        index++;
+        int32_t index = 0;
+        for (auto it = node.begin(); it != node.end(); it++)
+        {
+            EXPECT_STREQ((*it).first.c_str(), "");
+            T & n = (*it).second;
+            EXPECT_EQ(n.template as<int32_t>(), index * 100);
+            index++;
+        }
+        EXPECT_EQ(index, int32_t(100));
     }
-    EXPECT_EQ(index, int32_t(100));
+    {
+        auto it = node.begin();
+        for (int32_t i = 0; i < 100; i++)
+        {        
+            T & n = (*it).second;
+            int32_t val = i * 100;
+            EXPECT_EQ(n.template as<int32_t>(), val);
+            it++;
+        }
+        EXPECT_EQ(it, node.end());
+        it = node.begin();
+        for (int32_t i = 0; i < 100; i++)
+        {
+            T & n = (*it).second;
+            int32_t val = i * 100;
+            EXPECT_EQ(n.template as<int32_t>(), val);
+            ++it;
+        }
+        EXPECT_EQ(it, node.end());
+    }
+    {
+        auto it = node.begin();
+        for (int32_t i = 0; i < 99; i++)
+        {
+            ++it;
+        }
+        EXPECT_NE(it, node.end());
+
+        for (int32_t i = 0; i < 99; i++)
+        {
+            --it;
+        }
+        EXPECT_EQ(it, node.begin());
+
+        it = node.begin();
+        for (int32_t i = 0; i < 99; i++)
+        {
+            it++;
+        }
+        EXPECT_NE(it, node.end());
+
+        for (int32_t i = 0; i < 99; i++)
+        {
+            it--;
+        }
+        EXPECT_EQ(it, node.begin());
+    }
 }
 
 TEST(node, iterator)
