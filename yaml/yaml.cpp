@@ -38,6 +38,20 @@ namespace yaml
     // Private API implementations.
     namespace priv
     {
+        // Functions in private API...
+        static node_impl * create_impl(const node_type type)
+        {
+            switch (type)
+            {
+                case node_type::map:        return new priv::map_node_impl;
+                case node_type::scalar:     return new priv::scalar_node_impl;
+                case node_type::sequence:   return new priv::sequence_node_impl;
+                default: break;
+            }
+
+            return nullptr;
+        }
+
 
         // scalar_default_value definitions.
         const bool scalar_default_value<bool>::value = false;
@@ -46,6 +60,7 @@ namespace yaml
         const int32_t scalar_default_value<int32_t>::value = 0;
         const int64_t scalar_default_value<int64_t>::value = 0;
         const std::string scalar_default_value<std::string>::value = "";
+
 
 
         //node_impl implementations.
@@ -390,54 +405,6 @@ namespace yaml
         sequence_const_iterator_impl::sequence_const_iterator_impl(node_list::const_iterator it) :
             it(it)
         { }
-
-
-        // string_writer implementations.
-        template<typename Writer>
-        string_writer<Writer>::string_writer(Writer & writer) :
-            m_out(writer)
-        { }
-
-        template<typename Writer>
-        void string_writer<Writer>::write(const std::string & out)
-        {
-            m_out << out;
-        }
-
-        template<typename Writer>
-        void string_writer<Writer>::write(const char * out)
-        {
-            m_out << out;
-        }
-    
-        string_writer<std::string>::string_writer(std::string & out) :
-            m_out(out)
-        { }
-
-        void string_writer<std::string>::write(const std::string & out)
-        {
-            m_out += out;
-        }
-
-        void string_writer<std::string>::write(const char * out)
-        {
-            m_out += out;
-        }
-
-
-        // Functions in private API...
-        node_impl * create_impl(const node_type type)
-        {
-            switch (type)
-            {
-                case node_type::map:        return new priv::map_node_impl;
-                case node_type::scalar:     return new priv::scalar_node_impl;
-                case node_type::sequence:   return new priv::sequence_node_impl;
-                default: break;
-            }
-
-            return nullptr;
-        }
 
 
     }
