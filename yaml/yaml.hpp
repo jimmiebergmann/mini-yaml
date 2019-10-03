@@ -821,151 +821,37 @@ namespace yaml
         template<typename From, typename To>
         struct data_converter
         {
-            static To get(const From data)
-            {
-                return static_cast<To>(data);
-            }
-            static To get(const From data, const To)
-            {
-                return static_cast<To>(data);
-            }          
+            static To get(const From data);
+            static To get(const From data, const To);
         };
         template<>
         struct data_converter<std::string, std::string>
         {
-            static const std::string & get(const std::string & data)
-            {
-                return data;
-            }
-            static const std::string & get(const std::string & data, const std::string & default_value)
-            {
-                if (data.size() == 0)
-                {
-                    return default_value;
-                }
-                return data;
-            }
+            static const std::string & get(const std::string & data);
+            static const std::string & get(const std::string & data, const std::string & defaultValue);
         };
         template<typename To>
         struct data_converter<std::string, To>
         {
-            static To get(const std::string & data)
-            {
-                To type;
-                std::stringstream ss(data);
-                ss >> type;
-                if (ss.fail())
-                {
-                    return static_cast<To>(0);
-                }
-                return type;
-            }
-            static To get(const std::string & data, const To default_value)
-            {
-                To type;
-                std::stringstream ss(data);
-                ss >> type;
-                if (ss.fail())
-                {
-                    return default_value;
-                }
-                return type;
-            }         
+            static To get(const std::string & data);
+            static To get(const std::string & data, const To default_value);
         };
         template<typename From>
         struct data_converter<From, std::string>
         {
-            static std::string get(const From data)
-            {
-                std::stringstream ss;
-                ss << data;
-                if (ss.fail())
-                {
-                    return "";
-                }
-                return ss.str();
-            }
-            static std::string get(const From data, const std::string & default_value)
-            {
-                std::stringstream ss;
-                ss << data;
-                if (ss.fail())
-                {
-                    return default_value;
-                }
-                return ss.str();
-            }
+            static std::string get(const From data);
+            static std::string get(const From data, const std::string & default_value);
         };
         template<>
         struct data_converter<std::string, bool>
         {
-            static bool get(const std::string & data)
-            {
-                if (data.size() > 4)
-                {
-                    return false;
-                }
-
-                std::string tmp_data = data;
-                std::transform(tmp_data.begin(), tmp_data.end(), tmp_data.begin(), [](const std::string::value_type c)
-                {
-                    return static_cast<const char>(::tolower(static_cast<int>(c)));
-                });
-
-                if (!data.size())
-                {
-                    return false;
-                }
-
-                switch (tmp_data[0])
-                {
-                    case 't': return data.size() == 4 && strcmp(&tmp_data[1], "rue") == 0;
-                    case 'y': return data.size() == 3 && strcmp(&tmp_data[1], "es") == 0;
-                    case '1': return data.size() == 1;
-                    default: break;
-                }
-
-                return false;
-            }
-            static bool get(const std::string & data, const bool default_value)
-            {
-                if (data.size() > 5)
-                {
-                    return default_value;
-                }
-
-                std::string tmp_data = data;
-                std::transform(tmp_data.begin(), tmp_data.end(), tmp_data.begin(), [](const std::string::value_type c)
-                {
-                    return static_cast<const char>(::tolower(static_cast<int>(c)));
-                });
-
-                if (!data.size())
-                {
-                    return default_value;
-                }
-
-                switch (tmp_data[0])
-                {
-                    case 't': if (data.size() == 4 && strcmp(&tmp_data[1], "rue") == 0) { return true; } break;
-                    case 'y': if (data.size() == 3 && strcmp(&tmp_data[1], "es") == 0) { return true; } break;
-                    case '1': if (data.size() == 1) { return true; } break;
-                    case 'f': if (data.size() == 5 && strcmp(&tmp_data[1], "alse") == 0) { return false; } break;
-                    case 'n': if (data.size() == 2 && strcmp(&tmp_data[1], "o") == 0) { return false; } break;
-                    case '0': if (data.size() == 1) { return false; } break;
-                    default: break;
-                }
-
-                return default_value;
-            }            
+            static bool get(const std::string & data);
+            static bool get(const std::string & data, const bool default_value);
         };
         template<>
         struct data_converter<bool, std::string>
         {
-            static std::string get(const bool data)
-            {
-                return data ? "true" : "false";
-            }
+            static std::string get(const bool data);
         };
 
 
@@ -1024,38 +910,10 @@ namespace yaml
             node & find_or_insert(const std::string & key);
 
             template<typename T>
-            node & insert(const std::string & key, const T value)
-            {
-                auto it = m_nodes.find(key);
-                if (it != m_nodes.end())
-                {
-                    node & old_node = *it->second;
-                    old_node = value;
-                    return old_node;
-                }
-
-                node * new_node = new node(value);
-                node_map::value_type node_pair{ key, node_unique_ptr(new_node) };
-                m_nodes.insert(std::move(node_pair));
-
-                return *new_node;
-            }
+            node & insert(const std::string & key, const T value);
 
             template<typename T>
-            std::pair<node_map::iterator, bool> insert(const std::pair<const std::string &, const T> & pair)
-            {
-                auto it = m_nodes.find(pair.first);
-                if (it != m_nodes.end())
-                {
-                    node & old_node = *it->second;
-                    old_node = pair.second;
-                    return { it, false };
-                }
-
-                node * new_node = new node(pair.second);
-                node_map::value_type node_pair{ pair.first, node_unique_ptr(new_node) };
-                return m_nodes.insert(std::move(node_pair));
-            }
+            std::pair<node_map::iterator, bool> insert(const std::pair<const std::string &, const T> & pair);
 
             size_t size() const;
 
@@ -1084,66 +942,10 @@ namespace yaml
             ~scalar_node_impl();
 
             template<typename T>
-            T as() const
-            {
-                switch (m_data_type)
-                {
-                    case node_data_type::boolean:   return static_cast<T>(m_value.boolean);
-                    case node_data_type::float32:   return static_cast<T>(m_value.float32);
-                    case node_data_type::float64:   return static_cast<T>(m_value.float64);
-                    case node_data_type::int32:     return static_cast<T>(m_value.int32);
-                    case node_data_type::int64:     return static_cast<T>(m_value.int64);
-                    case node_data_type::string:    return data_converter<std::string, T>::get(*m_value.string);
-                    default: break;
-                }
-                return scalar_default_value<T>::value;
-            }
-            template<>
-            inline std::string scalar_node_impl::as<std::string>() const
-            {
-                switch (m_data_type)
-                {
-                    case node_data_type::boolean:   return data_converter<bool, std::string>::get(m_value.boolean);
-                    case node_data_type::float32:   return data_converter<float, std::string>::get(m_value.float32);
-                    case node_data_type::float64:   return data_converter<double, std::string>::get(m_value.float64);
-                    case node_data_type::int32:     return data_converter<int32_t, std::string>::get(m_value.int32);
-                    case node_data_type::int64:     return data_converter<int64_t, std::string>::get(m_value.int64);
-                    case node_data_type::string:    return *m_value.string;
-                    default: break;
-                }
-                return scalar_default_value<std::string>::value;
-            }
+            T as() const;
 
             template<typename T>
-            T as(const T & default_value) const
-            {
-                switch (m_data_type)
-                {
-                    case node_data_type::boolean:   return static_cast<T>(m_value.boolean);
-                    case node_data_type::float32:   return static_cast<T>(m_value.float32);
-                    case node_data_type::float64:   return static_cast<T>(m_value.float64);
-                    case node_data_type::int32:     return static_cast<T>(m_value.int32);
-                    case node_data_type::int64:     return static_cast<T>(m_value.int64);
-                    case node_data_type::string:    return data_converter<std::string, T>::get(*m_value.string, default_value);
-                    default: break;
-                }
-                return default_value;
-            }
-            template<>
-            std::string scalar_node_impl::as<std::string>(const std::string & default_value) const
-            {
-                switch (m_data_type)
-                {
-                    case node_data_type::boolean:   return data_converter<bool, std::string>::get(m_value.boolean);
-                    case node_data_type::float32:   return data_converter<float, std::string>::get(m_value.float32);
-                    case node_data_type::float64:   return data_converter<double, std::string>::get(m_value.float64);
-                    case node_data_type::int32:     return data_converter<int32_t, std::string>::get(m_value.int32);
-                    case node_data_type::int64:     return data_converter<int64_t, std::string>::get(m_value.int64);
-                    case node_data_type::string:    return *m_value.string;
-                    default: break;
-                }
-                return default_value;
-            }
+            T as(const T & default_value) const;
 
             void clear();
 
@@ -1152,77 +954,8 @@ namespace yaml
             void set(const node_data_type data_type);
 
             template<typename T>
-            void set(const T value);
-            template<>
-            void scalar_node_impl::set<bool>(const bool value)
-            {
-                if (m_data_type == node_data_type::string)
-                {
-                    delete m_value.string;
-                }
-                m_data_type = node_data_type::boolean;
-                m_value.boolean = value;
-            }
-            template<>
-            void scalar_node_impl::set<float>(const float value)
-            {
-                if (m_data_type == node_data_type::string)
-                {
-                    delete m_value.string;
-                }
-                m_data_type = node_data_type::float32;
-                m_value.float32 = value;
-            }
-            template<>
-            void scalar_node_impl::set<double>(const double value)
-            {
-                if (m_data_type == node_data_type::string)
-                {
-                    delete m_value.string;
-                }
-                m_data_type = node_data_type::float64;
-                m_value.float64 = value;
-            }
-            template<>
-            void scalar_node_impl::set<int32_t>(const int32_t value)
-            {
-                if (m_data_type == node_data_type::string)
-                {
-                    delete m_value.string;
-                }
-                m_data_type = node_data_type::int32;
-                m_value.int32 = value;
-            }
-            template<>
-            void scalar_node_impl::set<int64_t>(const int64_t value)
-            {
-                if (m_data_type == node_data_type::string)
-                {
-                    delete m_value.string;
-                }
-                m_data_type = node_data_type::int64;
-                m_value.int64 = value;
-            }
-            template<>
-            void scalar_node_impl::set<const char *>(const char * value)
-            {
-                if (m_data_type != node_data_type::string)
-                {
-                    m_value.string = new std::string;
-                }
-                m_data_type = node_data_type::string;
-                *m_value.string = value;
-            }
-
-            void scalar_node_impl::set(const std::string & value)
-            {
-                if (m_data_type != node_data_type::string)
-                {
-                    m_value.string = new std::string;
-                }
-                m_data_type = node_data_type::string;
-                *m_value.string = value;
-            }
+            void set(T value);
+            void set(const std::string &);
 
         private:
 
@@ -1258,20 +991,10 @@ namespace yaml
             node_list::const_iterator erase(node_list::const_iterator & it);
 
             template<typename T>
-            node & push_back(const T value)
-            {
-                node * new_node = new node(value);
-                m_nodes.push_back(node_unique_ptr(new_node));
-                return *new_node;
-            }
+            node & push_back(const T value);
 
             template<typename T>
-            node & push_front(const T value)
-            {
-                node * new_node = new node(value);
-                m_nodes.push_front(node_unique_ptr(new_node));
-                return *new_node;
-            }
+            node & push_front(const T value);
 
             size_t size() const;
 
@@ -1397,10 +1120,339 @@ namespace yaml
 
         };
 
+
+        // data_converter implementations.
+        template<typename From, typename To>
+        inline To data_converter<From, To>::get(const From data)
+        {
+            return static_cast<To>(data);
+        }
+        template<typename From, typename To>
+        inline To data_converter<From, To>::get(const From data, const To)
+        {
+            return static_cast<To>(data);
+        }
+
+        inline const std::string & data_converter<std::string, std::string>::get(const std::string & data)
+        {
+            return data;
+        }
+        inline const std::string & data_converter<std::string, std::string>::get(const std::string & data, const std::string & default_value)
+        {
+            if (data.size() == 0)
+            {
+                return default_value;
+            }
+            return data;
+        }
+        
+        template<typename To>
+        inline To data_converter<std::string, To>::get(const std::string & data)
+        {
+            To type;
+            std::stringstream ss(data);
+            ss >> type;
+            if (ss.fail())
+            {
+                return static_cast<To>(0);
+            }
+            return type;
+        }
+        template<typename To>
+        inline To data_converter<std::string, To>::get(const std::string & data, const To default_value)
+        {
+            To type;
+            std::stringstream ss(data);
+            ss >> type;
+            if (ss.fail())
+            {
+                return default_value;
+            }
+            return type;
+        }
+        
+        template<typename From>
+        inline std::string data_converter<From, std::string>::get(const From data)
+        {
+            std::stringstream ss;
+            ss << data;
+            if (ss.fail())
+            {
+                return "";
+            }
+            return ss.str();
+        }
+        template<typename From>
+        inline std::string data_converter<From, std::string>::get(const From data, const std::string & default_value)
+        {
+            std::stringstream ss;
+            ss << data;
+            if (ss.fail())
+            {
+                return default_value;
+            }
+            return ss.str();
+        }
+        
+        inline bool data_converter<std::string, bool>::get(const std::string & data)
+        {
+            if (data.size() > 4)
+            {
+                return false;
+            }
+
+            std::string tmp_data = data;
+            std::transform(tmp_data.begin(), tmp_data.end(), tmp_data.begin(), [](const std::string::value_type c)
+            {
+                return static_cast<const char>(::tolower(static_cast<int>(c)));
+            });
+
+            if (!data.size())
+            {
+                return false;
+            }
+
+            switch (tmp_data[0])
+            {
+                case 't': return data.size() == 4 && strcmp(&tmp_data[1], "rue") == 0;
+                case 'y': return data.size() == 3 && strcmp(&tmp_data[1], "es") == 0;
+                case '1': return data.size() == 1;
+                default: break;
+            }
+
+            return false;
+        }
+        inline bool data_converter<std::string, bool>::get(const std::string & data, const bool default_value)
+        {
+            if (data.size() > 5)
+            {
+                return default_value;
+            }
+
+            std::string tmp_data = data;
+            std::transform(tmp_data.begin(), tmp_data.end(), tmp_data.begin(), [](const std::string::value_type c)
+            {
+                return static_cast<const char>(::tolower(static_cast<int>(c)));
+            });
+
+            if (!data.size())
+            {
+                return default_value;
+            }
+
+            switch (tmp_data[0])
+            {
+                case 't': if (data.size() == 4 && strcmp(&tmp_data[1], "rue") == 0) { return true; } break;
+                case 'y': if (data.size() == 3 && strcmp(&tmp_data[1], "es") == 0) { return true; } break;
+                case '1': if (data.size() == 1) { return true; } break;
+                case 'f': if (data.size() == 5 && strcmp(&tmp_data[1], "alse") == 0) { return false; } break;
+                case 'n': if (data.size() == 2 && strcmp(&tmp_data[1], "o") == 0) { return false; } break;
+                case '0': if (data.size() == 1) { return false; } break;
+                default: break;
+            }
+
+            return default_value;
+        }
+        
+        inline std::string data_converter<bool, std::string>::get(const bool data)
+        {
+            return data ? "true" : "false";
+        }
+
+
+        // map_node_impl implementations.
+        template<typename T>
+        node & map_node_impl::insert(const std::string & key, const T value)
+        {
+            auto it = m_nodes.find(key);
+            if (it != m_nodes.end())
+            {
+                node & old_node = *it->second;
+                old_node = value;
+                return old_node;
+            }
+
+            node * new_node = new node(value);
+            node_map::value_type node_pair{key, node_unique_ptr(new_node)};
+            m_nodes.insert(std::move(node_pair));
+
+            return *new_node;
+        }
+
+        template<typename T>
+        std::pair<node_map::iterator, bool> map_node_impl::insert(const std::pair<const std::string &, const T> & pair)
+        {
+            auto it = m_nodes.find(pair.first);
+            if (it != m_nodes.end())
+            {
+                node & old_node = *it->second;
+                old_node = pair.second;
+                return { it, false };
+            }
+
+            node * new_node = new node(pair.second);
+            node_map::value_type node_pair{pair.first, node_unique_ptr(new_node)};
+            return m_nodes.insert(std::move(node_pair));
+        }
+
+
+        // scalar_node_impl implementations.
+        template<typename T>
+        inline T scalar_node_impl::as() const
+        {
+            switch (m_data_type)
+            {
+                case node_data_type::boolean:   return static_cast<T>(m_value.boolean);
+                case node_data_type::float32:   return static_cast<T>(m_value.float32);
+                case node_data_type::float64:   return static_cast<T>(m_value.float64);
+                case node_data_type::int32:     return static_cast<T>(m_value.int32);
+                case node_data_type::int64:     return static_cast<T>(m_value.int64);
+                case node_data_type::string:    return data_converter<std::string, T>::get(*m_value.string);
+                default: break;
+            }
+            return scalar_default_value<T>::value;
+        }
+        template<>
+        inline std::string scalar_node_impl::as<std::string>() const
+        {
+            switch (m_data_type)
+            {
+                case node_data_type::boolean:   return data_converter<bool, std::string>::get(m_value.boolean);
+                case node_data_type::float32:   return data_converter<float, std::string>::get(m_value.float32);
+                case node_data_type::float64:   return data_converter<double, std::string>::get(m_value.float64);
+                case node_data_type::int32:     return data_converter<int32_t, std::string>::get(m_value.int32);
+                case node_data_type::int64:     return data_converter<int64_t, std::string>::get(m_value.int64);
+                case node_data_type::string:    return *m_value.string;
+                default: break;
+            }
+            return scalar_default_value<std::string>::value;
+        }
+
+        template<typename T>
+        inline T scalar_node_impl::as(const T & default_value) const
+        {
+            switch (m_data_type)
+            {
+                case node_data_type::boolean:   return static_cast<T>(m_value.boolean);
+                case node_data_type::float32:   return static_cast<T>(m_value.float32);
+                case node_data_type::float64:   return static_cast<T>(m_value.float64);
+                case node_data_type::int32:     return static_cast<T>(m_value.int32);
+                case node_data_type::int64:     return static_cast<T>(m_value.int64);
+                case node_data_type::string:    return data_converter<std::string, T>::get(*m_value.string, default_value);
+                default: break;
+            }
+            return default_value;
+        }
+        template<>
+        inline std::string scalar_node_impl::as<std::string>(const std::string & default_value) const
+        {
+            switch (m_data_type)
+            {
+                case node_data_type::boolean:   return data_converter<bool, std::string>::get(m_value.boolean);
+                case node_data_type::float32:   return data_converter<float, std::string>::get(m_value.float32);
+                case node_data_type::float64:   return data_converter<double, std::string>::get(m_value.float64);
+                case node_data_type::int32:     return data_converter<int32_t, std::string>::get(m_value.int32);
+                case node_data_type::int64:     return data_converter<int64_t, std::string>::get(m_value.int64);
+                case node_data_type::string:    return *m_value.string;
+                default: break;
+            }
+            return default_value;
+        }
+
+        template<>
+        inline void scalar_node_impl::set<bool>(const bool value)
+        {
+            if (m_data_type == node_data_type::string)
+            {
+                delete m_value.string;
+            }
+            m_data_type = node_data_type::boolean;
+            m_value.boolean = value;
+        }
+        template<>
+        inline void scalar_node_impl::set<float>(const float value)
+        {
+            if (m_data_type == node_data_type::string)
+            {
+                delete m_value.string;
+            }
+            m_data_type = node_data_type::float32;
+            m_value.float32 = value;
+        }
+        template<>
+        inline void scalar_node_impl::set<double>(const double value)
+        {
+            if (m_data_type == node_data_type::string)
+            {
+                delete m_value.string;
+            }
+            m_data_type = node_data_type::float64;
+            m_value.float64 = value;
+        }
+        template<>
+        inline void scalar_node_impl::set<int32_t>(const int32_t value)
+        {
+            if (m_data_type == node_data_type::string)
+            {
+                delete m_value.string;
+            }
+            m_data_type = node_data_type::int32;
+            m_value.int32 = value;
+        }
+        template<>
+        inline void scalar_node_impl::set<int64_t>(const int64_t value)
+        {
+            if (m_data_type == node_data_type::string)
+            {
+                delete m_value.string;
+            }
+            m_data_type = node_data_type::int64;
+            m_value.int64 = value;
+        }
+        template<>
+        inline void scalar_node_impl::set<const char *>(const char * value)
+        {
+            if (m_data_type != node_data_type::string)
+            {
+                m_value.string = new std::string;
+            }
+            m_data_type = node_data_type::string;
+            *m_value.string = value;
+        }
+
+        inline void scalar_node_impl::set(const std::string & value)
+        {
+            if (m_data_type != node_data_type::string)
+            {
+                m_value.string = new std::string;
+            }
+            m_data_type = node_data_type::string;
+            *m_value.string = value;
+        }  
+
+
+        // map_node_impl implementations.
+        template<typename T>
+        inline node & sequence_node_impl::push_back(const T value)
+        {
+            node * new_node = new node(value);
+            m_nodes.push_back(node_unique_ptr(new_node));
+            return *new_node;
+        }
+
+        template<typename T>
+        inline node & sequence_node_impl::push_front(const T value)
+        {
+            node * new_node = new node(value);
+            m_nodes.push_front(node_unique_ptr(new_node));
+            return *new_node;
+        }
+
     } //< End of private API namespace.
 
 
-    // Node inline implementations.
+
+    // Node implementations.
     template<typename T>
     inline node::node(const T value) :
         m_type(node_type::scalar),

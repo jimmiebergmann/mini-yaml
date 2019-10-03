@@ -23,7 +23,7 @@ root["list"][1]["integer"].as<int>();          // 123
 root["list"][1]["boolean"].as<bool>();         // true
 root["list"][1]["boolean"].as<std::string>();  // "true"
 
-// Iterate second sequence item.
+// Iterate second sequence item of "list".
 auto & item = root["list"][1];
 for(auto it = item.begin(); it != item.end(); it++)
 {
