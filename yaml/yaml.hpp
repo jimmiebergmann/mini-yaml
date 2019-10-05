@@ -64,18 +64,21 @@ namespace yaml
     {
         template<typename Type> struct scalar_default_value;
         template<typename From, typename To> struct data_converter;
+        template<typename Writer> class string_writer;
+
         class node_impl;
         class null_node_impl;
         class map_node_impl;
         class scalar_node_impl;
         class sequence_node_impl;
+
         class iterator_impl;
         class const_iterator_impl;
         class map_iterator_impl;
         class map_const_iterator_impl;
         class sequence_iterator_impl;
         class sequence_const_iterator_impl;
-        template<typename Writer> class string_writer;
+  
     }
 
 
@@ -855,6 +858,45 @@ namespace yaml
         };
 
 
+
+
+        /**
+        * @breif Helper class for writing strings.
+        *
+        */
+        template<typename Writer>
+        class string_writer
+        {
+
+        public:
+
+            string_writer(Writer & writer);
+
+            void write(const std::string & out);
+            void write(const char * out);
+
+        private:
+
+            Writer & m_out;
+
+        };
+        template<>
+        class string_writer<std::string>
+        {
+
+        public:
+
+            string_writer(std::string & out);
+            void write(const std::string & out);
+            void write(const char * out);
+
+        private:
+
+            std::string & m_out;
+
+        };
+
+
         /**
         * @breif Base class for node implementation.
         *        Inherited by null, map, scalar and sequence node implementation classes.
@@ -1067,60 +1109,6 @@ namespace yaml
         };
 
 
-        /**
-        * @breif Helper class for writing strings.
-        *
-        */
-        template<typename Writer>
-        class string_writer
-        {
-
-        public:
-
-            string_writer(Writer & writer) :
-                m_out(writer)
-            { }
-
-            void write(const std::string & out)
-            {
-                m_out << out;
-            }
-            void write(const char * out)
-            {
-                m_out << out;
-            }
-
-        private:
-
-            Writer & m_out;
-
-        };
-        template<>
-        class string_writer<std::string>
-        {
-
-        public:
-
-            string_writer(std::string & out) :
-                m_out(out)
-            { }
-
-            void write(const std::string & out) {
-                m_out += out;
-            }
-
-            void write(const char * out)
-            {
-                m_out += out;
-            }
-
-        private:
-
-            std::string & m_out;
-
-        };
-
-
         // data_converter implementations.
         template<typename From, typename To>
         inline To data_converter<From, To>::get(const From data)
@@ -1257,6 +1245,37 @@ namespace yaml
         inline std::string data_converter<bool, std::string>::get(const bool data)
         {
             return data ? "true" : "false";
+        }
+
+
+        // string_writer implementations
+        template<typename Writer>
+        inline string_writer<Writer>::string_writer(Writer & writer) :
+            m_out(writer)
+        { }
+
+        template<typename Writer>
+        inline void string_writer<Writer>::write(const std::string & out)
+        {
+            m_out << out;
+        }
+        template<typename Writer>
+        inline void string_writer<Writer>::write(const char * out)
+        {
+            m_out << out;
+        }
+
+        inline string_writer<std::string>::string_writer(std::string & out) :
+                m_out(out)
+        { }
+
+        void inline string_writer<std::string>::write(const std::string & out)
+        {
+            m_out += out;
+        }
+        void inline string_writer<std::string>::write(const char * out)
+        {
+            m_out += out;
         }
 
 
