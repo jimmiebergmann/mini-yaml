@@ -48,14 +48,14 @@ https://www.codeproject.com/Articles/28720/YAML-Parser-in-C
 
 
 /**
-* @breif Namespace wrapping mini-yaml classes.
+* @brief Namespace wrapping mini-yaml classes.
 *
 */
 namespace yaml
 {
 
     /**
-    * @breif Forward declarations.
+    * @brief Forward declarations.
     *
     */ 
     class node;
@@ -86,7 +86,7 @@ namespace yaml
 
 
     /**
-    * @breif Enumeration of exception types.
+    * @brief Enumeration of exception types.
     *
     */
     enum class exception_type
@@ -97,7 +97,7 @@ namespace yaml
     };
 
     /**
-    * @breif Enumeration of node types.
+    * @brief Enumeration of node types.
     *
     */
     enum class node_type
@@ -109,7 +109,7 @@ namespace yaml
     };
 
     /**
-    * @breif Enumeration of node data types.
+    * @brief Enumeration of node data types.
     *
     */
     enum class node_data_type
@@ -131,7 +131,7 @@ namespace yaml
     using documents = std::vector<document>;    ///< Should become it's own container???
 
     /**
-    * @breif Exception class.
+    * @brief Exception class.
     *
     */
     class exception : public std::runtime_error
@@ -140,7 +140,7 @@ namespace yaml
     public:
 
         /**
-        * @breif Constructor.
+        * @brief Constructor.
         *
         * @param message    Exception message.
         * @param type       Type of exception.
@@ -149,7 +149,7 @@ namespace yaml
         exception(const std::string & message, const exception_type type);
 
         /**
-        * @breif Get type of exception.
+        * @brief Get type of exception.
         *
         */
         exception_type type() const;
@@ -161,7 +161,7 @@ namespace yaml
     };
 
     /**
-    * @breif Error exception class.
+    * @brief Error exception class.
     *
     * @see Exception
     *
@@ -172,7 +172,7 @@ namespace yaml
     public:
 
         /**
-        * @breif Constructor.
+        * @brief Constructor.
         *
         * @param message Error message.
         *
@@ -182,7 +182,7 @@ namespace yaml
     };
 
     /**
-    * @breif Internal error exception class.
+    * @brief Internal error exception class.
     *
     * @see Exception
     *
@@ -193,7 +193,7 @@ namespace yaml
     public:
 
         /**
-        * @breif Constructor.
+        * @brief Constructor.
         *
         * @param message Internal error message.
         *
@@ -203,7 +203,7 @@ namespace yaml
     };
 
     /**
-    * @breif Parsing error exception class.
+    * @brief Parsing error exception class.
     *
     * @see Exception
     *
@@ -214,7 +214,7 @@ namespace yaml
     public:
 
         /**
-        * @breif Constructor.
+        * @brief Constructor.
         *
         * @param message Parsing error message.
         *
@@ -225,7 +225,7 @@ namespace yaml
 
 
     /**
-    * @breif Operation error exception class.
+    * @brief Operation error exception class.
     *
     * @see Exception
     *
@@ -236,7 +236,7 @@ namespace yaml
     public:
 
         /**
-        * @breif Constructor.
+        * @brief Constructor.
         *
         * @param message Exception message.
         *
@@ -247,7 +247,7 @@ namespace yaml
 
 
     /**
-    * @breif Node class.
+    * @brief Node class.
     *
     */
     class node
@@ -256,7 +256,7 @@ namespace yaml
     public:
 
         /**
-        * @breif Enumeration of iterator types.
+        * @brief Enumeration of iterator types.
         *
         */
         enum class iterator_type
@@ -267,7 +267,7 @@ namespace yaml
         };
 
         /**
-        * @breif Iterator class.
+        * @brief Iterator class.
         *
         */
         class iterator
@@ -276,86 +276,86 @@ namespace yaml
         public:
 
             /**
-            * @breif Default constructor.
+            * @brief Default constructor.
             *
             */
             iterator();
 
             /**
-            * @breif Copy constructor.
+            * @brief Copy constructor.
             *
             */
             iterator(const iterator & it);
 
             /**
-            * @breif Constructing iterator as a map iterator.
+            * @brief Constructing iterator as a map iterator.
             *
             */
             iterator(priv::node_map::iterator it);
 
             /**
-            * @breif Constructing iterator as a sequence iterator.
+            * @brief Constructing iterator as a sequence iterator.
             *
             */
             iterator(priv::node_list::iterator it);
 
             /**
-            * @breif Destructor.
+            * @brief Destructor.
             *
             */
             ~iterator();
 
             /**
-            * @breif Get type of node iterator.
+            * @brief Get type of node iterator.
             *
             */
             iterator_type type() const;
 
             /**
-            * @breif Get node of iterator.
+            * @brief Get node of iterator.
             *        First pair item is the key of map value, empty if type is sequence.
             *
             */
             std::pair<const std::string &, node &> operator *();
 
             /**
-            * @breif Assignment operator.
+            * @brief Assignment operator.
             *
             */
             iterator & operator = (const iterator & it);
 
             /**
-            * @breif Pre-increment operator.
+            * @brief Pre-increment operator.
             *
             */
             iterator operator ++ ();
 
             /**
-            * @breif Post-increment operator.
+            * @brief Post-increment operator.
             *
             */
             iterator operator ++ (int);
 
             /**
-            * @breif pre-decrement operator.
+            * @brief pre-decrement operator.
             *
             */
             iterator operator -- ();
 
             /**
-            * @breif Post-decrement operator.
+            * @brief Post-decrement operator.
             *
             */
             iterator operator -- (int);
 
             /**
-            * @breif Check if iterator is equal to other iterator.
+            * @brief Check if iterator is equal to other iterator.
             *
             */
             bool operator == (const iterator & it) const;
 
             /**
-            * @breif Check if iterator is not equal to other iterator.
+            * @brief Check if iterator is not equal to other iterator.
             *
             */
             bool operator != (const iterator & it) const;
@@ -371,7 +371,7 @@ namespace yaml
 
 
         /**
-        * @breif Constant iterator class.
+        * @brief Constant iterator class.
         *
         */
         class const_iterator
@@ -380,86 +380,86 @@ namespace yaml
         public:
 
             /**
-            * @breif Default constructor.
+            * @brief Default constructor.
             *
             */
             const_iterator();
 
             /**
-            * @breif Copy constructor.
+            * @brief Copy constructor.
             *
             */
             const_iterator(const const_iterator & it);
 
             /**
-            * @breif Constructing iterator as a map iterator.
+            * @brief Constructing iterator as a map iterator.
             *
             */
             const_iterator(priv::node_map::const_iterator it);
 
             /**
-            * @breif Constructing iterator as a sequence iterator.
+            * @brief Constructing iterator as a sequence iterator.
             *
             */
             const_iterator(priv::node_list::const_iterator it);
 
             /**
-            * @breif Destructor.
+            * @brief Destructor.
             *
             */
             ~const_iterator();
 
             /**
-            * @breif Get type of node iterator.
+            * @brief Get type of node iterator.
             *
             */
             iterator_type type() const;
 
             /**
-            * @breif Get node of iterator.
+            * @brief Get node of iterator.
             *        First pair item is the key of map value, empty if type is sequence.
             *
             */
             std::pair<const std::string &, const node &> operator *();
 
             /**
-            * @breif Assignment operator.
+            * @brief Assignment operator.
             *
             */
             const_iterator & operator = (const const_iterator & it);
 
             /**
-            * @breif Pre-increment operator.
+            * @brief Pre-increment operator.
             *
             */
             const_iterator operator ++ ();
 
             /**
-            * @breif Post-increment operator.
+            * @brief Post-increment operator.
             *
             */
             const_iterator operator ++ (int);
 
             /**
-            * @breif pre-decrement operator.
+            * @brief pre-decrement operator.
             *
             */
             const_iterator operator -- ();
 
             /**
-            * @breif Post-decrement operator.
+            * @brief Post-decrement operator.
             *
             */
             const_iterator operator -- (int);
 
             /**
-            * @breif Check if iterator is equal to other iterator.
+            * @brief Check if iterator is equal to other iterator.
             *
             */
             bool operator == (const const_iterator & it) const;
 
             /**
-            * @breif Check if iterator is not equal to other iterator.
+            * @brief Check if iterator is not equal to other iterator.
             *
             */
             bool operator != (const const_iterator & it) const;
@@ -477,27 +477,27 @@ namespace yaml
         static const node null;
 
         /**
-        * @breif Default constructor.
+        * @brief Default constructor.
         *
         */
         node();
 
         /**
-        * @breif Constructs node of given type.
+        * @brief Constructs node of given type.
         *        Default data type value of given type is set.
         *
         */
         node(const node_type type);
 
         /**
-        * @breif Constructs scalar node.
+        * @brief Constructs scalar node.
         *        Default value of given node data type is set.
         *
         */
         node(const node_data_type data_type);
 
         /**
-        * @breif Assignment constructor.
+        * @brief Assignment constructor.
         *        Turns the node into a scalar node and assignes by given value.
         *
         */
@@ -505,32 +505,32 @@ namespace yaml
         node(const T value);
 
         /**
-        * @breif Deleted copy constructor.
+        * @brief Deleted copy constructor.
         *
         */
         node(const node & node) = delete;
 
         /**
-        * @breif Move constructor.
+        * @brief Move constructor.
         *
         */
         node(node && from);
 
         /**
-        * @breif Destructor.
+        * @brief Destructor.
         *
         */
         ~node();
 
         /**
-        * @breif Get node as given template type.
+        * @brief Get node as given template type.
         *
         */
         template<typename T>
         T as() const;
 
         /**
-        * @breif Get node as given template type.
+        * @brief Get node as given template type.
         *
         * @param default_value Returned if conversion between current data type and T fails.
         *
@@ -539,7 +539,7 @@ namespace yaml
         T as(const T & default_value) const;
         
         /**
-        * @breif Get existing child node by key value.
+        * @brief Get existing child node by key value.
         * 
         * @return Reference to node if found, else yaml::node::null is returned.
         *
@@ -549,21 +549,21 @@ namespace yaml
         const node & at(const std::string & key) const;
 
         /**
-        * @breif Get start iterator.
+        * @brief Get start iterator.
         *
         */
         iterator begin();
         const_iterator begin() const;
 
         /**
-        * @breif Get end iterator.
+        * @brief Get end iterator.
         *
         */
         iterator end();
         const_iterator end() const;
 
         /**
-        * @breif Clears content of node.
+        * @brief Clears content of node.
         *        Scalar's value is set to default value,
         *        map and sequence items are cleared, resulting in size() = 0.
         *
@@ -571,7 +571,7 @@ namespace yaml
         void clear();
 
         /**
-        * @breif Get data type of scalar.
+        * @brief Get data type of scalar.
         *
         * @return Data type of scalar, will return node_data_type::null if type() != node_type::scalar.
         *
@@ -579,7 +579,7 @@ namespace yaml
         node_data_type data_type() const;
 
         /**
-        * @breif Erase map item.
+        * @brief Erase map item.
         *        No action if node type is not equal to map type.
         *
         * @param key Only available if node type is map.
@@ -600,13 +600,13 @@ namespace yaml
         const_iterator find(const std::string & key) const;
 
         /**
-        * @breif Checks if map item exists, by key value.
+        * @brief Checks if map item exists, by key value.
         *
         */
         bool exists(const std::string & key) const;
 
         /**
-        * @breif Inserts or updates map item.
+        * @brief Inserts or updates map item.
         *        Converts node to map type if needed.
         *
         * @tparam T = scalar value / node_type / node_data_type.
@@ -622,7 +622,7 @@ namespace yaml
         std::pair<iterator, bool> insert(const std::pair<const std::string &, const T> & pair);        
 
         /**
-        * @breif Pushing new sequence item to back.
+        * @brief Pushing new sequence item to back.
         *        Converts node to sequence type if needed.
         *
         * @tparam T = scalar value / node_type / node_data_type.
@@ -634,7 +634,7 @@ namespace yaml
         node & push_back(const T value);
 
         /**
-        * @breif Pushing new sequence item to front.
+        * @brief Pushing new sequence item to front.
         *        Converts node to sequence type if needed.
         *
         * @tparam T = scalar value / node_type / node_data_type.
@@ -646,7 +646,7 @@ namespace yaml
         node & push_front(const T value);
 
         /**
-        * @breif Methods for checking node type.
+        * @brief Methods for checking node type.
         *
         */     
         bool is_map() const;
@@ -656,7 +656,7 @@ namespace yaml
         node_type type() const;
       
         /**
-        * @breif Get item count of map or sequence.
+        * @brief Get item count of map or sequence.
         *
         * @return Number of sequence or map entries in node. 0 if node_type != map or sequence.
         *
@@ -664,14 +664,14 @@ namespace yaml
         size_t size() const;
 
         /**
-        * @breif Converts node to given type if needed.
+        * @brief Converts node to given type if needed.
         *        Any existing node data is lost and the node's data type is sett to null.
         *
         */
         node & operator = (const node_type type);
 
         /**
-        * @breif Assigns default value of given node data type.
+        * @brief Assigns default value of given node data type.
         *        This is one way to explicitly assign null values.
         *        Converts node to scalar type if needed.
         *
@@ -679,7 +679,7 @@ namespace yaml
         node & operator = (const node_data_type data_type);
 
         /**
-        * @breif Assigns scalar value.
+        * @brief Assigns scalar value.
         *        Converts node to scalar type if needed.
         *
         */
@@ -687,7 +687,7 @@ namespace yaml
         node & operator = (const T value);
 
         /**
-        * @breif    Get existing or insert new map item.
+        * @brief    Get existing or insert new map item.
         *           Converts node to map type if the current type is different from node_type::map.
         *
         * @param key Map key. Creates a new node if key is unknown.
@@ -704,7 +704,7 @@ namespace yaml
 
 
     /**
-    * @breif Parsing functions.
+    * @brief Parsing functions.
     *
     * @tparam Return    Return type of parsed object.
     *                   Allowing types yaml::documents, yaml::document and yaml::node.
@@ -727,7 +727,7 @@ namespace yaml
 
 
     /**
-    * @breif    Serialization configuration structure,
+    * @brief    Serialization configuration structure,
     *           describing output behavior.
     *
     */
@@ -735,7 +735,7 @@ namespace yaml
      {
 
         /**
-        * @breif Constructor.
+        * @brief Constructor.
         *
         * @param indentation            Number of spaces per indentation.
         * @param scalar_fold_length     Maximum length of scalars. Serialized as folder scalars if exceeded.
@@ -751,7 +751,7 @@ namespace yaml
 
 
     /**
-    * @breif Dump/serialization functions.
+    * @brief Dump/serialization functions.
     *
     * Indentation is set to default value: 2, if dump_config::indentation is 0.
     *
@@ -780,14 +780,14 @@ namespace yaml
 {
 
     /**
-    * @breif Private mini-yaml API namespace, containing helper classes and functions.
+    * @brief Private mini-yaml API namespace, containing helper classes and functions.
     *
     */
     namespace priv
     {
 
         /**
-        * @breif Traits struct, to retreive default values of different types.
+        * @brief Traits struct, to retreive default values of different types.
         *
         */
         template<typename Type>
@@ -827,7 +827,7 @@ namespace yaml
 
 
         /**
-        * @breif Traits struct, to converting string to any data type.
+        * @brief Traits struct, to converting string to any data type.
         *        std::string are left untouched and bool converting checks for "true"/"yes"/"1".
         *
         */
@@ -871,7 +871,7 @@ namespace yaml
 
 
         /**
-        * @breif Helper class for writing strings.
+        * @brief Helper class for writing strings.
         *
         */
         template<typename Writer>
@@ -908,7 +908,7 @@ namespace yaml
 
 
         /**
-        * @breif Base class for node implementation.
+        * @brief Base class for node implementation.
         *        Inherited by null, map, scalar and sequence node implementation classes.
         *
         */
