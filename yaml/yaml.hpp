@@ -79,6 +79,9 @@ namespace yaml
         class sequence_iterator_impl;
         class sequence_const_iterator_impl;
   
+        using node_unique_ptr = std::unique_ptr<node>;
+        using node_map = std::map<std::string, node_unique_ptr>;
+        using node_list = std::list<node_unique_ptr>;
     }
 
 
@@ -119,13 +122,14 @@ namespace yaml
         null,
         string
     };
+    
+    /*
+    * @brief List of multiple documents(nodes).
+    *
+    */
+    using document = node;                      ///< Alias of node, suits better when parsing, but same thing...
+    using documents = std::vector<document>;    ///< Should become it's own container???
 
-    using node_unique_ptr = std::unique_ptr<node>;
-    using node_map = std::map<std::string, node_unique_ptr>;
-    using node_list = std::list<node_unique_ptr>;
-    using documents = std::vector<node>;
-
-   
     /**
     * @breif Exception class.
     *
@@ -287,13 +291,13 @@ namespace yaml
             * @breif Constructing iterator as a map iterator.
             *
             */
-            iterator(node_map::iterator it);
+            iterator(priv::node_map::iterator it);
 
             /**
             * @breif Constructing iterator as a sequence iterator.
             *
             */
-            iterator(node_list::iterator it);
+            iterator(priv::node_list::iterator it);
 
             /**
             * @breif Destructor.
@@ -391,13 +395,13 @@ namespace yaml
             * @breif Constructing iterator as a map iterator.
             *
             */
-            const_iterator(node_map::const_iterator it);
+            const_iterator(priv::node_map::const_iterator it);
 
             /**
             * @breif Constructing iterator as a sequence iterator.
             *
             */
-            const_iterator(node_list::const_iterator it);
+            const_iterator(priv::node_list::const_iterator it);
 
             /**
             * @breif Destructor.
@@ -470,7 +474,7 @@ namespace yaml
         };
 
 
-        static const node null_node;
+        static const node null;
 
         /**
         * @breif Default constructor.
@@ -501,6 +505,18 @@ namespace yaml
         node(const T value);
 
         /**
+        * @breif Deleted copy constructor.
+        *
+        */
+        node(const node & node) = delete;
+
+        /**
+        * @breif Move constructor.
+        *
+        */
+        node(node && from);
+
+        /**
         * @breif Destructor.
         *
         */
@@ -521,14 +537,15 @@ namespace yaml
         */
         template<typename T>
         T as(const T & default_value) const;
-
+        
         /**
-        * @breif Get child node by key value.
+        * @breif Get existing child node by key value.
         * 
-        * @return Reference to node if found, else clear null node is returned.
+        * @return Reference to node if found, else yaml::node::null is returned.
+        *
+        * @see operator[]
         *
         */
-        //node & at(const std::string & key);
         const node & at(const std::string & key) const;
 
         /**
@@ -563,7 +580,7 @@ namespace yaml
 
         /**
         * @breif Erase map item.
-        *        No action node type != map.
+        *        No action if node type is not equal to map type.
         *
         * @param key Only available if node type is map.
         * @param it iterator of map or sequence node.
@@ -671,7 +688,7 @@ namespace yaml
 
         /**
         * @breif    Get existing or insert new map item.
-        *           Converts node to map type if needed.
+        *           Converts node to map type if the current type is different from node_type::map.
         *
         * @param key Map key. Creates a new node if key is unknown.
         *
@@ -679,14 +696,6 @@ namespace yaml
         node & operator [] (const std::string & key);
 
     private:
-
-
-        /**
-        * @breif Deleted copy constructor.
-        *        Will be available in later versions of the API.
-        *
-        */
-        node(const node & node) = delete;
 
         node_type                           m_type; ///< Type of node..
         std::unique_ptr<priv::node_impl>    m_impl; ///< Implementation class.
@@ -696,12 +705,14 @@ namespace yaml
 
     /**
     * @breif Parsing functions.
-    *        Population given root node with deserialized data.
-    *  
-    * @param stream     Input stream.
+    *
+    * @tparam Return    Return type of parsed object.
+    *                   Allowing types yaml::documents, yaml::document and yaml::node.
+    *
     * @param string     String of input data.
     * @param buffer     Char array of input data.
     * @param size       Buffer size.
+    * @param stream     Input stream.
     * @param filename   Path of input file.
     *
     * @throw ParsingWarning     Parsing succeeded, but got warnings.
@@ -709,11 +720,10 @@ namespace yaml
     * @throw ParsingError       Invalid input YAML data.
     * @throw OperationError     If filename or buffer pointer is invalid.
     *
-    */
-    //node parse(std::iostream & stream);
-    //node parse(const std::string & string);
-    //node parse(const char * buffer, const size_t size);
-    //node parse_file(const std::string & filename);
+    */   
+    template<typename Return> Return parse(const std::string & string);
+    template<typename Return> Return parse(const char * buffer, const size_t size);
+    template<typename Return> Return parse_file(const std::string & filename);
 
 
     /**
@@ -1564,6 +1574,28 @@ namespace yaml
         return *this;
     }
 
+
+    // Parsing implementations.
+    template<typename Return>
+    inline Return parse(const std::string &)
+    {
+        Return a;// (node_type::scalar);
+        return a;
+    }
+
+    template<typename Return>
+    inline Return parse(const char * /*buffer*/, const size_t /*size*/)
+    {
+        Return a;
+        return a;
+    }
+
+    template<typename Return>
+    inline Return parse_file(const std::string & /*filename*/)
+    {
+        Return a;
+        return a;
+    }
 }
 
 #endif

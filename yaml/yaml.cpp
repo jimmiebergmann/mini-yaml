@@ -69,7 +69,7 @@ namespace yaml
 
         const node & node_impl::at(const std::string &) const
         {
-            return node::null_node;
+            return node::null;
         }
 
         void node_impl::clear()
@@ -91,7 +91,7 @@ namespace yaml
             auto it = m_nodes.find(key);
             if (it == m_nodes.end())
             {
-                return node::null_node;
+                return node::null;
             }
 
             return *it->second;
@@ -459,12 +459,12 @@ namespace yaml
         }
     }
 
-    node::iterator::iterator(node_map::iterator it) :
+    node::iterator::iterator(priv::node_map::iterator it) :
         m_type(iterator_type::map),
         m_impl(new priv::map_iterator_impl(it))
     { }
 
-    node::iterator::iterator(node_list::iterator it) :
+    node::iterator::iterator(priv::node_list::iterator it) :
         m_type(iterator_type::sequence),
         m_impl(new priv::sequence_iterator_impl(it))
     { }
@@ -645,12 +645,12 @@ namespace yaml
         }
     }
 
-    node::const_iterator::const_iterator(node_map::const_iterator it) :
+    node::const_iterator::const_iterator(priv::node_map::const_iterator it) :
         m_type(iterator_type::map),
         m_impl(new priv::map_const_iterator_impl(it))
     { }
 
-    node::const_iterator::const_iterator(node_list::const_iterator it) :
+    node::const_iterator::const_iterator(priv::node_list::const_iterator it) :
         m_type(iterator_type::sequence),
         m_impl(new priv::sequence_const_iterator_impl(it))
     { }
@@ -811,7 +811,7 @@ namespace yaml
 
 
     // node implementations.
-    const node node::null_node(yaml::node_type::null);
+    const node node::null(yaml::node_type::null);
 
     node::node() :
         m_type(node_type::null)
@@ -830,11 +830,18 @@ namespace yaml
     node::~node()
     { }
 
+    node::node(node && from) :
+        m_impl(std::move(from.m_impl)),
+        m_type(from.m_type)
+    {
+        from.m_type = node_type::null;
+    }
+
     const node & node::at(const std::string & key) const
     {
         if (!m_impl)
         {
-            return node::null_node;
+            return node::null;
         }
 
         return m_impl->at(key);

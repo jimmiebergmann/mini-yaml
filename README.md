@@ -14,7 +14,7 @@ list:
 ```
 #### .cpp
 ```cpp
-auto root = yaml::parse_file("file.txt");
+auto root = yaml::parse_file<yaml::document>("file.txt");
 
 // Get scalar values.
 root["key"].as<std::string>();                 // "foo bar"
