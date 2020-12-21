@@ -1213,6 +1213,7 @@ namespace yaml
 #include <vector>
 #include <list>
 #include <cstdio>
+#include <cctype>
 #include <stdarg.h>
 
 
@@ -2495,8 +2496,135 @@ namespace Yaml
 
     const unsigned char ReaderLine::FlagMask[3] = { 0x01, 0x02, 0x04 };
 
+	/*!
+		@brief The class is an implementation of UTF - 8 encoded strings
+	*/
+
+	class U8String
+	{
+		public:
+			using Codepoint = uint32_t;
+		public:
+			U8String(): StrBuffer() {}
+			U8String(const char* str): StrBuffer(str) {}
+			U8String(const std::string& str) : StrBuffer(str) {}
+			U8String(const U8String& str): StrBuffer(str.StrBuffer) {}
+			U8String(U8String&& str): StrBuffer(std::move(str.StrBuffer)) {}
+			
+			~U8String() {}
+
+			/*!
+				@return The method returns a length of a string in code points
+			*/
+
+			size_t Length() const { return GetLength(StrBuffer.c_str(), StrBuffer.size()); }
+
+			/*!
+				@brief The method returns a code point at a given position
+
+				@param[in] pos A position at which the code point should be returned
+
+				@return The method returns a code point at a given position, returns an empty string if pos >= str.Length()
+			*/
+
+			Codepoint At(size_t pos) const
+			{
+				const size_t bufferLength = StrBuffer.size();
+				const size_t internalPos = GetInternalCharPos(StrBuffer.c_str(), bufferLength, pos);
+
+				if (internalPos >= bufferLength)
+				{
+					return Codepoint();
+				}
+
+				uint8_t codePointLength = GetCharLength(StrBuffer[internalPos]);
+
+				Codepoint result = 0x0;
+
+				for (uint8_t i = 0; i < codePointLength; ++i)
+				{
+					result |= (static_cast<uint8_t>(StrBuffer[internalPos + codePointLength - i - 1]) << (8 * i));
+				}
+
+				return result;
+			}
+
+			static uint8_t GetHighSignificantByte(Codepoint codePoint)
+			{
+				uint8_t currByte = 0x0;
+				uint8_t i = 1;
+
+				while (!(currByte = static_cast<uint8_t>(codePoint >> 8 * (4 - i))) && i <= 4)
+				{
+					i += 1;
+				}
+
+				return currByte;
+			}
+
+			/*!
+				\brief The method returns a number of bytes which is occupied by the code point
+				with specified high byte
+
+				\param[in] ch A high byte of a code point
+
+				\return A number of bytes which the code point occupies
+			*/
+
+			static uint8_t GetCharLength(char ch)
+			{
+				if ((ch & 0xE0) == 0xC0)
+				{
+					return 2;
+				}
+				else if ((ch & 0xF0) == 0xE0)
+				{
+					return 3;
+				}
+				else if ((ch & 0xF8) == 0xF0)
+				{
+					return 4;
+				}
+
+				return 1;
+			}
+		protected:
+			size_t GetLength(const char* pStr, size_t size) const
+			{
+				size_t length = 0;
+				size_t i = 0;
+
+				while (i < size)
+				{
+					i += static_cast<size_t>(GetCharLength(pStr[i]));
+
+					++length;
+				}
+
+				return length;
+			}
+
+			size_t GetInternalCharPos(const char* pStrBuffer, size_t bufferSize, size_t pos) const
+			{
+				size_t internalPos = 0;
+
+				for (size_t i = 0; i < pos && internalPos < bufferSize; ++i)
+				{
+					internalPos += GetCharLength(pStrBuffer[internalPos]);
+				}
+
+				return internalPos;
+			}
+		protected:
+			std::string StrBuffer;
+	};
 
 
+    /**
+    * @breif Implementation class of Yaml parsing.
+    *        Parsing incoming stream and outputs a root node.
+    *
+    */
     class ParseImp
     {
 
@@ -2592,11 +2720,18 @@ namespace Yaml
                 }
 
                 // Validate characters.
-                for (size_t i = 0; i < line.size(); i++)
+				U8String utf8Line(line);
+
+				for (size_t i = 0; i < utf8Line.Length(); ++i)
                 {
-                    if (line[i] != '\t' && (line[i] < 32 || line[i] > 125))
+					U8String::Codepoint cp = utf8Line.At(i);
+
+                    if (cp != '\t')
                     {
-                        throw ParsingException(ExceptionMessage(g_ErrorInvalidCharacter, lineNo, i + 1));
+						if (cp >= 0 && cp < 0xff && std::iscntrl(cp))
+						{
+							throw ParsingException(ExceptionMessage(g_ErrorInvalidCharacter, lineNo, i + 1));
+						}
                     }
                 }
 
