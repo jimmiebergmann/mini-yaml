@@ -30,7 +30,9 @@
 static void example_1();
 /*static void Example2();
 static void Example3();
+<<<<<<< HEAD:examples/first_example.cpp
 static void Example4();*/
+static void Example5();
 
 int main()
 {
@@ -38,7 +40,7 @@ int main()
     /*Example2();
     Example3();
     Example4();*/
-
+	Example5();
 	return 0;
 }
 
@@ -238,5 +240,29 @@ void Example4()
     }
 
 }*/
+
+void Example5()
+{
+	const std::string data =
+		"- value : \"Привет, Мир Unicode'а!\"\n";
+
+	Node root;
+	try
+	{
+		Parse(root, data);
+		if (root.IsSequence() == false)
+		{
+			throw InternalException("Test: Root is not a sequence.");
+		}
+	}
+	catch (const Exception e)
+	{
+		std::cout << "Exception " << e.Type() << ": " << e.what() << std::endl;
+		return;
+	}
+
+	std::cout << root[0]["value"].As<std::string>() << std::endl;
+}
+
 
 
