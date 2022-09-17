@@ -47,19 +47,14 @@ https://www.codeproject.com/Articles/28720/YAML-Parser-in-C
 #include <vector>
 
 
-/**
-* @brief Namespace wrapping mini-yaml classes.
-*
-*/
+/** Namespace wrapping mini-yaml classes. */
 namespace yaml
 {
 
-    /**
-    * @brief Forward declarations.
-    *
-    */ 
+    /** Forward declarations. */ 
     class node;
 
+    /** Private implementation details. */
     namespace priv
     {
         template<typename Type> struct scalar_default_value;
@@ -85,10 +80,7 @@ namespace yaml
     }
 
 
-    /**
-    * @brief Enumeration of exception types.
-    *
-    */
+    /** Enumeration of exception types. */
     enum class exception_type
     {
         internal_error,  ///< Internal error.
@@ -96,10 +88,7 @@ namespace yaml
         operation_error  ///< User operation error.
     };
 
-    /**
-    * @brief Enumeration of node types.
-    *
-    */
+    /** Enumeration of node types. */
     enum class node_type
     {
         map,
@@ -108,10 +97,7 @@ namespace yaml
         sequence
     };
 
-    /**
-    * @brief Enumeration of node data types.
-    *
-    */
+    /** Enumeration of node data types. */
     enum class node_data_type
     {
         boolean,
@@ -122,143 +108,87 @@ namespace yaml
         null,
         string
     };
-    
-    /*
-    * @brief List of multiple documents(nodes).
-    *
-    */
+
     using document = node;                      ///< Alias of node, suits better when parsing, but same thing...
     using documents = std::vector<document>;    ///< Should become it's own container???
 
-    /**
-    * @brief Exception class.
-    *
-    */
+    /** Exception class. */
     class exception : public std::runtime_error
     {
 
     public:
 
-        /**
-        * @brief Constructor.
-        *
-        * @param message    Exception message.
-        * @param type       Type of exception.
-        *
-        */
-        exception(const std::string & message, const exception_type type);
+        exception(const std::string& message, const exception_type type);
 
-        /**
-        * @brief Get type of exception.
-        *
-        */
         exception_type type() const;
 
     private:
 
-        exception_type m_type;   ///< Type of exception.
+        exception_type m_type;
 
     };
 
-    /**
-    * @brief Error exception class.
-    *
-    * @see Exception
-    *
-    */
+    /** Error exception class.
+     *
+     * @see Exception
+     */
     class error : public exception
     {
 
     public:
 
-        /**
-        * @brief Constructor.
-        *
-        * @param message Error message.
-        *
-        */
-        error(const std::string & message, const exception_type type);
+        error(const std::string& message, const exception_type type);
 
     };
 
-    /**
-    * @brief Internal error exception class.
-    *
-    * @see Exception
-    *
-    */
+    /** Internal error exception class.
+     *
+     * @see Exception
+     */
     class internal_error : public error
     {
 
     public:
 
-        /**
-        * @brief Constructor.
-        *
-        * @param message Internal error message.
-        *
-        */
-        internal_error(const std::string & message);
+        internal_error(const std::string& message);
 
     };
 
-    /**
-    * @brief Parsing error exception class.
-    *
-    * @see Exception
-    *
-    */
+    /** Parsing error exception class.
+     *
+     * @see Exception
+     */
     class parsing_error : public error
     {
 
     public:
 
-        /**
-        * @brief Constructor.
-        *
-        * @param message Parsing error message.
-        *
-        */
-        parsing_error(const std::string & message);
+        parsing_error(const std::string& message);
 
     };
 
 
-    /**
-    * @brief Operation error exception class.
-    *
-    * @see Exception
-    *
-    */
+    /** Operation error exception class.
+     *
+     * @see Exception
+     */
     class operation_error : public error
     {
 
     public:
 
-        /**
-        * @brief Constructor.
-        *
-        * @param message Exception message.
-        *
-        */
-        operation_error(const std::string & message);
+        operation_error(const std::string& message);
 
     };
 
 
-    /**
-    * @brief Node class.
-    *
-    */
+    /** Node class. */
     class node
     {
 
     public:
 
-        /**
-        * @brief Enumeration of iterator types.
-        *
-        */
+        /** Enumeration of iterator types. */
         enum class iterator_type
         {
             map,
@@ -266,99 +196,55 @@ namespace yaml
             sequence
         };
 
-        /**
-        * @brief Iterator class.
-        *
-        */
+        /** Iterator class. */
         class iterator
         {
 
         public:
 
-            /**
-            * @brief Default constructor.
-            *
-            */
+            /** Default constructor. */
             iterator();
 
-            /**
-            * @brief Copy constructor.
-            *
-            */
-            iterator(const iterator & it);
+            /** Copy constructor. */
+            iterator(const iterator& it);
 
-            /**
-            * @brief Constructing iterator as a map iterator.
-            *
-            */
+            /**  Constructing iterator as a map iterator. */
             iterator(priv::node_map::iterator it);
 
-            /**
-            * @brief Constructing iterator as a sequence iterator.
-            *
-            */
+            /** Constructing iterator as a sequence iterator. */
             iterator(priv::node_list::iterator it);
 
-            /**
-            * @brief Destructor.
-            *
-            */
+            /**  Destructor. */
             ~iterator();
 
-            /**
-            * @brief Get type of node iterator.
-            *
-            */
+            /** Get type of node iterator. */
             iterator_type type() const;
 
-            /**
-            * @brief Get node of iterator.
-            *        First pair item is the key of map value, empty if type is sequence.
-            *
-            */
-            std::pair<const std::string &, node &> operator *();
+            /** Get node of iterator.
+             *  First pair item is the key of map value, empty if type is sequence.
+             */
+            std::pair<const std::string&, node&> operator *();
 
-            /**
-            * @brief Assignment operator.
-            *
-            */
-            iterator & operator = (const iterator & it);
+            /** Assignment operator. */
+            iterator& operator = (const iterator& it);
 
-            /**
-            * @brief Pre-increment operator.
-            *
-            */
+            /**  Pre-increment operator. */
             iterator operator ++ ();
 
-            /**
-            * @brief Post-increment operator.
-            *
-            */
+            /** Post-increment operator. */
             iterator operator ++ (int);
 
-            /**
-            * @brief pre-decrement operator.
-            *
-            */
+            /** pre-decrement operator. */
             iterator operator -- ();
 
-            /**
-            * @brief Post-decrement operator.
-            *
-            */
+            /** Post-decrement operator. */
             iterator operator -- (int);
 
-            /**
-            * @brief Check if iterator is equal to other iterator.
-            *
-            */
-            bool operator == (const iterator & it) const;
+            /**  Check if iterator is equal to other iterator. */
+            bool operator == (const iterator& it) const;
 
-            /**
-            * @brief Check if iterator is not equal to other iterator.
-            *
-            */
-            bool operator != (const iterator & it) const;
+            /** Check if iterator is not equal to other iterator. */
+            bool operator != (const iterator& it) const;
 
         private:
 
@@ -370,99 +256,55 @@ namespace yaml
         };
 
 
-        /**
-        * @brief Constant iterator class.
-        *
-        */
+        /** Constant iterator class. */
         class const_iterator
         {
 
         public:
 
-            /**
-            * @brief Default constructor.
-            *
-            */
+            /** Default constructor. */
             const_iterator();
 
-            /**
-            * @brief Copy constructor.
-            *
-            */
-            const_iterator(const const_iterator & it);
+            /** Copy constructor. */
+            const_iterator(const const_iterator& it);
 
-            /**
-            * @brief Constructing iterator as a map iterator.
-            *
-            */
+            /** Constructing iterator as a map iterator. */
             const_iterator(priv::node_map::const_iterator it);
 
-            /**
-            * @brief Constructing iterator as a sequence iterator.
-            *
-            */
+            /** Constructing iterator as a sequence iterator. */
             const_iterator(priv::node_list::const_iterator it);
 
-            /**
-            * @brief Destructor.
-            *
-            */
+            /** Destructor. */
             ~const_iterator();
 
-            /**
-            * @brief Get type of node iterator.
-            *
-            */
+            /** Get type of node iterator. */
             iterator_type type() const;
 
-            /**
-            * @brief Get node of iterator.
-            *        First pair item is the key of map value, empty if type is sequence.
-            *
-            */
-            std::pair<const std::string &, const node &> operator *();
+            /** Get node of iterator.
+             *  First pair item is the key of map value, empty if type is sequence.
+             */
+            std::pair<const std::string&, const node&> operator *();
 
-            /**
-            * @brief Assignment operator.
-            *
-            */
-            const_iterator & operator = (const const_iterator & it);
+            /** Assignment operator. */
+            const_iterator& operator = (const const_iterator& it);
 
-            /**
-            * @brief Pre-increment operator.
-            *
-            */
+            /** Pre-increment operator. */
             const_iterator operator ++ ();
 
-            /**
-            * @brief Post-increment operator.
-            *
-            */
+            /** Post-increment operator. */
             const_iterator operator ++ (int);
 
-            /**
-            * @brief pre-decrement operator.
-            *
-            */
+            /** pre-decrement operator. */
             const_iterator operator -- ();
 
-            /**
-            * @brief Post-decrement operator.
-            *
-            */
+            /** Post-decrement operator. */
             const_iterator operator -- (int);
 
-            /**
-            * @brief Check if iterator is equal to other iterator.
-            *
-            */
-            bool operator == (const const_iterator & it) const;
+            /** Check if iterator is equal to other iterator. */
+            bool operator == (const const_iterator& it) const;
 
-            /**
-            * @brief Check if iterator is not equal to other iterator.
-            *
-            */
-            bool operator != (const const_iterator & it) const;
+            /** Check if iterator is not equal to other iterator. */
+            bool operator != (const const_iterator& it) const;
 
         private:
 
@@ -476,224 +318,162 @@ namespace yaml
 
         static const node null;
 
-        /**
-        * @brief Default constructor.
-        *
-        */
+        /** Default constructor. */
         node();
 
-        /**
-        * @brief Constructs node of given type.
-        *        Default data type value of given type is set.
-        *
-        */
+        /** Constructs node of given type.
+         *  Default data type value of given type is set.
+         */
         node(const node_type type);
 
-        /**
-        * @brief Constructs scalar node.
-        *        Default value of given node data type is set.
-        *
-        */
+        /** Constructs scalar node.
+         *  Default value of given node data type is set.
+         */
         node(const node_data_type data_type);
 
-        /**
-        * @brief Assignment constructor.
-        *        Turns the node into a scalar node and assignes by given value.
-        *
-        */
+        /** Assignment constructor.
+         *  Turns the node into a scalar node and assignes by given value.
+         */
         template<typename T>
         node(const T value);
 
-        /**
-        * @brief Deleted copy constructor.
-        *
-        */
-        node(const node & node) = delete;
+        /** Deleted copy constructor.  */
+        node(const node& node) = delete;
 
-        /**
-        * @brief Move constructor.
-        *
-        */
-        node(node && from);
+        /** Move constructor. */
+        node(node&& from);
 
-        /**
-        * @brief Destructor.
-        *
-        */
+        /** Destructor. */
         ~node();
 
-        /**
-        * @brief Get node as given template type.
-        *
-        */
+        /**  Get node as given template type. */
         template<typename T>
         T as() const;
 
-        /**
-        * @brief Get node as given template type.
-        *
-        * @param default_value Returned if conversion between current data type and T fails.
-        *
-        */
+        /** Get node as given template type.
+         *
+         * @param default_value Returned if conversion between current data type and T fails.
+         */
         template<typename T>
-        T as(const T & default_value) const;
+        T as(const T& default_value) const;
         
-        /**
-        * @brief Get existing child node by key value.
-        * 
-        * @return Reference to node if found, else yaml::node::null is returned.
-        *
-        * @see operator[]
-        *
-        */
-        const node & at(const std::string & key) const;
+        /** Get existing child node by key value.
+         * 
+         * @return Reference to node if found, else yaml::node::null is returned.
+         *
+         * @see operator[]
+         */
+        const node& at(const std::string& key) const;
 
-        /**
-        * @brief Get start iterator.
-        *
-        */
+        /** Get start iterator. */
         iterator begin();
         const_iterator begin() const;
 
-        /**
-        * @brief Get end iterator.
-        *
-        */
+        /** Get end iterator. */
         iterator end();
         const_iterator end() const;
 
-        /**
-        * @brief Clears content of node.
-        *        Scalar's value is set to default value,
-        *        map and sequence items are cleared, resulting in size() = 0.
-        *
-        */
+        /** Clears content of node.
+         *  Scalar's value is set to default value,
+         *  map and sequence items are cleared, resulting in size() = 0.
+         */
         void clear();
 
-        /**
-        * @brief Get data type of scalar.
-        *
-        * @return Data type of scalar, will return node_data_type::null if type() != node_type::scalar.
-        *
-        */
+        /** Get data type of scalar.
+         *
+         * @return Data type of scalar, will return node_data_type::null if type() != node_type::scalar.
+         */
         node_data_type data_type() const;
 
-        /**
-        * @brief Erase map item.
-        *        No action if node type is not equal to map type.
-        *
-        * @param key Only available if node type is map.
-        * @param it iterator of map or sequence node.
-        *
-        * @return true if key is found and erased, else false.
-        *
-        */
+        /** Erase map item.
+         *   No action if node type is not equal to map type.
+         *
+         * @param key Only available if node type is map.
+         * @param it iterator of map or sequence node.
+         *
+         * @return true if key is found and erased, else false.
+         */
         bool erase(const std::string & key);
         iterator erase(iterator it);
         const_iterator erase(const_iterator it);
 
-        /*
-        * @brief Find node item by key.
-        *
-        */
-        iterator find(const std::string & key);
-        const_iterator find(const std::string & key) const;
+        /* Find node item by key. */
+        iterator find(const std::string& key);
+        const_iterator find(const std::string& key) const;
 
-        /**
-        * @brief Checks if map item exists, by key value.
-        *
-        */
-        bool exists(const std::string & key) const;
+        /** Checks if map item exists, by key value. */
+        bool exists(const std::string& key) const;
 
-        /**
-        * @brief Inserts or updates map item.
-        *        Converts node to map type if needed.
-        *
-        * @tparam T = scalar value / node_type / node_data_type.
-        *
-        * @return Pair of iterator and bool. pair::first is an iterator of the newly inserted or already existing node.
-        *         pair::second is a boolean, set to true if a new node was inserted, false if an already existing node were updated.
-        *
-        */
+        /** Inserts or updates map item.
+         *   Converts node to map type if needed.
+         *
+         * @tparam T = scalar value / node_type / node_data_type.
+         *
+         * @return Pair of iterator and bool. pair::first is an iterator of the newly inserted or already existing node.
+         *         pair::second is a boolean, set to true if a new node was inserted, false if an already existing node were updated.
+         */
         template<typename T>
-        node & insert(const std::string & key, const T value = node_type::null);
+        node& insert(const std::string& key, const T value = node_type::null);
 
         template<typename T>
-        std::pair<iterator, bool> insert(const std::pair<const std::string &, const T> & pair);        
+        std::pair<iterator, bool> insert(const std::pair<const std::string&, const T>& pair);        
 
-        /**
-        * @brief Pushing new sequence item to back.
-        *        Converts node to sequence type if needed.
-        *
-        * @tparam T = scalar value / node_type / node_data_type.
-        *
-        * @return Reference of pushed node.
-        *
-        */
+        /** Pushing new sequence item to back.
+         *  Converts node to sequence type if needed.
+         *
+         * @tparam T = scalar value / node_type / node_data_type.
+         *
+         * @return Reference of pushed node.
+         */
         template<typename T>
-        node & push_back(const T value);
+        node& push_back(const T value);
 
-        /**
-        * @brief Pushing new sequence item to front.
-        *        Converts node to sequence type if needed.
-        *
-        * @tparam T = scalar value / node_type / node_data_type.
-        *
-        * @return Reference of pushed node.
-        *
-        */
+        /** Pushing new sequence item to front.
+         *  Converts node to sequence type if needed.
+         *
+         * @tparam T = scalar value / node_type / node_data_type.
+         *
+         * @return Reference of pushed node.
+         */
         template<typename T>
-        node & push_front(const T value);
+        node& push_front(const T value);
 
-        /**
-        * @brief Methods for checking node type.
-        *
-        */     
+        /** Methods for checking node type. */     
         bool is_map() const;
         bool is_null() const;
         bool is_scalar() const;
         bool is_sequence() const;
         node_type type() const;
       
-        /**
-        * @brief Get item count of map or sequence.
-        *
-        * @return Number of sequence or map entries in node. 0 if node_type != map or sequence.
-        *
-        */
+        /** Get item count of map or sequence.
+         *
+         * @return Number of sequence or map entries in node. 0 if node_type != map or sequence.
+         */
         size_t size() const;
 
-        /**
-        * @brief Converts node to given type if needed.
-        *        Any existing node data is lost and the node's data type is sett to null.
-        *
-        */
-        node & operator = (const node_type type);
+        /** Converts node to given type if needed.
+         *  Any existing node data is lost and the node's data type is sett to null.
+         */
+        node& operator = (const node_type type);
 
-        /**
-        * @brief Assigns default value of given node data type.
-        *        This is one way to explicitly assign null values.
-        *        Converts node to scalar type if needed.
-        *
-        */
-        node & operator = (const node_data_type data_type);
+        /** Assigns default value of given node data type.
+         *  This is one way to explicitly assign null values.
+         *  Converts node to scalar type if needed.
+         */
+        node& operator = (const node_data_type data_type);
 
-        /**
-        * @brief Assigns scalar value.
-        *        Converts node to scalar type if needed.
-        *
-        */
+        /** Assigns scalar value.
+         *  Converts node to scalar type if needed.
+         */
         template<typename T>
-        node & operator = (const T value);
+        node& operator = (const T value);
 
-        /**
-        * @brief    Get existing or insert new map item.
-        *           Converts node to map type if the current type is different from node_type::map.
-        *
-        * @param key Map key. Creates a new node if key is unknown.
-        *
-        */
-        node & operator [] (const std::string & key);
+        /** Get existing or insert new map item.
+         *  Converts node to map type if the current type is different from node_type::map.
+         *
+         * @param key Map key. Creates a new node if key is unknown.
+         */
+        node& operator [] (const std::string& key);
 
     private:
 
@@ -703,76 +483,80 @@ namespace yaml
     };
 
 
-    /**
-    * @brief Parsing functions.
-    *
-    * @tparam Return    Return type of parsed object.
-    *                   Allowing types yaml::documents, yaml::document and yaml::node.
-    *
-    * @param string     String of input data.
-    * @param buffer     Char array of input data.
-    * @param size       Buffer size.
-    * @param stream     Input stream.
-    * @param filename   Path of input file.
-    *
-    * @throw ParsingWarning     Parsing succeeded, but got warnings.
-    * @throw InternalError      An internal error occurred.
-    * @throw ParsingError       Invalid input YAML data.
-    * @throw OperationError     If filename or buffer pointer is invalid.
-    *
-    */   
+    /** Parsing functions.
+     *
+     * @tparam Return    Return type of parsed object.
+     *                   Allowing types yaml::documents, yaml::document and yaml::node.
+     *
+     * @param string     String of input data.
+     * @param buffer     Char array of input data.
+     * @param size       Buffer size.
+     * @param stream     Input stream.
+     * @param filename   Path of input file.
+     *
+     * @throw ParsingWarning     Parsing succeeded, but got warnings.
+     * @throw InternalError      An internal error occurred.
+     * @throw ParsingError       Invalid input YAML data.
+     * @throw OperationError     If filename or buffer pointer is invalid.
+     */   
     template<typename Return> Return parse(const std::string & string);
     template<typename Return> Return parse(const char * buffer, const size_t size);
     template<typename Return> Return parse_file(const std::string & filename);
 
 
-    /**
-    * @brief    Serialization configuration structure,
-    *           describing output behavior.
-    *
-    */
-     struct dump_config
-     {
+    /** Serialization configuration structure, describing output behavior. */
+	struct dump_config
+	{
 
-        /**
-        * @brief Constructor.
-        *
-        * @param indentation            Number of spaces per indentation.
-        * @param scalar_fold_length     Maximum length of scalars. Serialized as folder scalars if exceeded.
-        *                               Ignored if equal to 0.
-        *
-        */
-        dump_config(const size_t indentation = 2,
-                    const size_t scalar_fold_length = 64);
+        /** Constructor.
+         *
+         * @param indentation            Number of spaces per indentation. Default: 2.
+         * @param explicit_start         Always puts "---" to start of document if set to true.. Default: false.
+         * @param explicit_end           Always puts "..." to start of document if set to true. Default: false.
+         * @param scalar_fold_length     Maximum length of scalars. Serialized as folder scalars if exceeded.
+         *                               Ignored if equal to 0. Default: 64.
+         */
+		dump_config(
+            const size_t indentation = 2,
+            const bool explicit_start = false,
+            const bool explicit_end = false,
+			const size_t scalar_fold_length = 64);
 
-        size_t indentation;            ///< Number of spaces per indentation.
-        size_t scalar_fold_length;     ///< Scalars are serialized as folded scalars if exceeded.
+        size_t indentation;         ///< Number of spaces per indentation.
+        bool explicit_start;        ///< Always puts "---" to start of document.
+        bool explicit_end;          ///< Always puts "..." to end of document.
+        size_t scalar_fold_length;  ///< Scalars are serialized as folded scalars if exceeded.
     };
 
 
-    /**
-    * @brief Dump/serialization functions.
-    *
-    * Indentation is set to default value: 2, if dump_config::indentation is 0.
-    *
-    * @param root       Root node to serialize.
-    * @param filename   Path of output file.
-    * @param stream     Output stream.
-    * @param string     String of output data.
-    * @param config     Serialization configurations.
-    *
-    * @throw internal_error  An internal error occurred.
-    * @throw operation_error If filename is invalid, or passed dump_config is invalid.
-    *
-    */
-    std::string dump(const node & root, const dump_config & config = { 2, 64 });
+    /** Dump/serialization functions.
+     *  Indentation is set to default value: 2, if dump_config::indentation is 0.
+     *
+     * @param doc        Document to serialize.
+     * @param docs       Documents to serialize.
+     * @param filename   Path of output file.
+     * @param stream     Output stream.
+     * @param string     String of output data.
+     * @param config     Serialization configurations.
+     *
+     * @throw internal_error  An internal error occurred.
+     * @throw operation_error If filename is invalid, or passed dump_config is invalid.
+     */
+    std::string dump(const document & doc, const dump_config & config = { });
+    std::string dump(const documents & docs, const dump_config & config = { });
 
-    void dump_file(const node & root, const std::string & filename, const dump_config & config = {2, 64} );
-    void dump_stream(const node & root, std::ostream & stream, const dump_config & config = {2, 64} );
-    void dump_string(const node & root, std::string & string, const dump_config & config = {2, 64} );
+    void dump_file(const document & doc, const std::string & filename, const dump_config & config = { });
+    void dump_file(const documents & docs, const std::string & filename, const dump_config & config = { });
+
+    void dump_stream(const document & doc, std::ostream & stream, const dump_config & config = { });
+    void dump_stream(const documents & docs, std::ostream & stream, const dump_config & config = { });
+
+    void dump_string(const document & doc, std::string & string, const dump_config & config = { });
+    void dump_string(const documents & docs, std::string & string, const dump_config & config = { });
 
 }
 
+// END OF PUBLIC API.
 
 
 // Inline implementations.
@@ -787,7 +571,7 @@ namespace yaml
     {
 
         /**
-        * @brief Traits struct, to retreive default values of different types.
+        * @brief Traits struct, to retrieve default values of different types.
         *
         */
         template<typename Type>

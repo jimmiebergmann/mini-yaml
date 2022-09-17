@@ -1077,32 +1077,38 @@ namespace yaml
 
 
     // dump_config implementations.
-    dump_config::dump_config(const size_t indentation, const size_t scalar_fold_length) :
+    dump_config::dump_config(
+            const size_t indentation,
+            const bool explicit_start,
+            const bool explicit_end,
+            const size_t scalar_fold_length) :
         indentation(indentation),
+        explicit_start(explicit_start),
+        explicit_end(explicit_end),
         scalar_fold_length(scalar_fold_length)
     { }
 
 
     // dump implementations.
     template<typename Writer>
-    static void dump_node(Writer & writer, const node & root, const dump_config & config)
+    static void dump_document(Writer & writer, const document & doc, const dump_config & config)
     {
         size_t indentation = config.indentation ? config.indentation : 2;
 
-        switch (root.type())
+        switch (doc.type())
         {
-            case node_type::scalar: writer.write(root.as<std::string>()); return;
+            case node_type::scalar: writer.write(doc.as<std::string>()); return;
             case node_type::null:   return;
             default: break;
         }
 
-        if (!root.size())
+        if (!doc.size())
         {
             return;
         }
 
         std::stack<std::pair<const node &, node::const_iterator> > node_stack;
-        node_stack.push({ root, root.begin() });
+        node_stack.push({ doc, doc.begin() });
 
         auto process_node = [&](yaml::node::const_iterator & it)
         {
@@ -1166,15 +1172,63 @@ namespace yaml
         }
     }
 
-    std::string dump(const node & root, const dump_config & config)
+    template<typename Writer>
+    static void dump_documents(Writer & writer, const documents & docs, const dump_config & config)
+    {
+        size_t loop = 0;
+        for (auto it = docs.begin(); it != docs.end(); it++)
+        {
+            auto & doc = *it;
+            dump_document(writer, doc, config);
+
+            if (++loop < docs.size())
+            {
+                writer.write("---\n");
+            }
+        }
+    }
+
+    std::string dump(const document & doc, const dump_config & config)
     {
         std::string buffer = "";
         priv::string_writer<std::string> writer(buffer);
-        dump_node(writer, root, config);
+
+        if (config.explicit_start)
+        {
+            writer.write("---\n");
+        }
+
+        dump_document(writer, doc, config);
+
+        if (config.explicit_end)
+        {
+            writer.write("...\n");
+        }
+
+        return buffer;
+    }
+    std::string dump(const documents & docs, const dump_config & config)
+    {
+        std::string buffer = "";
+        priv::string_writer<std::string> writer(buffer);
+
+        if (config.explicit_start)
+        {
+            writer.write("---\n");
+        }
+
+        dump_documents(writer, docs, config);
+
+        if (config.explicit_end)
+        {
+            writer.write("...\n");
+        }
+
         return buffer;
     }
 
-    void dump_file(const node & root, const std::string & filename, const dump_config & config)
+
+    void dump_file(const document & doc, const std::string & filename, const dump_config & config)
     {
         std::ofstream fin(filename, std::ofstream::binary);
         if (!fin.is_open())
@@ -1184,19 +1238,107 @@ namespace yaml
         }
 
         priv::string_writer<std::ostream> writer(fin);
-        dump_node(writer, root, config);
+        
+        if (config.explicit_start)
+        {
+            writer.write("---\n");
+        }
+
+        dump_document(writer, doc, config);
+
+        if (config.explicit_end)
+        {
+            writer.write("...\n");
+        }
+    }
+    void dump_file(const documents & docs, const std::string & filename, const dump_config & config)
+    {
+        std::ofstream fin(filename, std::ofstream::binary);
+        if (!fin.is_open())
+        {
+            // ERROR HERE... Exception...
+            return;
+        }
+
+        priv::string_writer<std::ostream> writer(fin);
+
+        if (config.explicit_start)
+        {
+            writer.write("---\n");
+        }
+
+        dump_documents(writer, docs, config);
+
+        if (config.explicit_end)
+        {
+            writer.write("...\n");
+        }
     }
 
-    void dump_stream(const node & root, std::ostream & stream, const dump_config & config)
+    void dump_stream(const document & doc, std::ostream & stream, const dump_config & config)
     {
         priv::string_writer<std::ostream> writer(stream);
-        dump_node(writer, root, config);
+        
+        if (config.explicit_start)
+        {
+            writer.write("---\n");
+        }
+
+        dump_document(writer, doc, config);
+
+        if (config.explicit_end)
+        {
+            writer.write("...\n");
+        }
+    }
+    void dump_stream(const documents & docs, std::ostream & stream, const dump_config & config)
+    {
+        priv::string_writer<std::ostream> writer(stream);
+
+        if (config.explicit_start)
+        {
+            writer.write("---\n");
+        }
+
+        dump_documents(writer, docs, config);
+
+        if (config.explicit_end)
+        {
+            writer.write("...\n");
+        }
     }
 
-    void dump_string(const node & root, std::string & string, const dump_config & config)
+    void dump_string(const document & doc, std::string & string, const dump_config & config)
     {
         priv::string_writer<std::string> writer(string);
-        dump_node(writer, root, config);
+
+        if (config.explicit_start)
+        {
+            writer.write("---\n");
+        }
+
+        dump_document(writer, doc, config);
+
+        if (config.explicit_end)
+        {
+            writer.write("...\n");
+        }
+    }
+    void dump_string(const documents & docs, std::string & string, const dump_config & config)
+    {
+        priv::string_writer<std::string> writer(string);
+
+        if (config.explicit_start)
+        {
+            writer.write("---\n");
+        }
+
+        dump_documents(writer, docs, config);
+
+        if (config.explicit_end)
+        {
+            writer.write("...\n");
+        }
     }
 
 }
