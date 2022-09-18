@@ -98,10 +98,9 @@ namespace MINIYAML_NAMESPACE {
         success,
         not_implemented,
         internal_error,
-        unexpected_end_of_file,
+        forbidden_tab_indentation,
         unexpected_key,
-        unexpected_sequence,
-        invalid_tab_indentation,
+        //unexpected_sequence,
         bad_key_indentation,
         missing_key
     };
@@ -199,7 +198,6 @@ namespace sax {
 
             state_function_t state_function = nullptr;
             int64_t min_indention = 0;
-            int64_t min_indention_line = 0;
             stack_type_t type = stack_type_t::unknown;
         };  
 
@@ -225,10 +223,10 @@ namespace sax {
 
         void execute_find_value();
         void execute_find_scalar();
-        void execute_find_scalar_after_newline();
         void execute_process_scalar_end();
         void execute_find_scalar_potential_key();
         void execute_found_key(); 
+        void execute_parse_comment();
 
         void signal_start_object();
         void signal_end_object();
@@ -246,6 +244,7 @@ namespace sax {
         stack_item_t& push_stack(state_function_t state_function);
         void pop_stack();
         void pop_stack_from(stack_iterator_t it);
+        stack_iterator_t find_stack_by_min_indention(int64_t indention);
 
     };
 
@@ -372,9 +371,11 @@ namespace sax {
             (this->*(state_function))();
         }
 
-        if (m_stack.empty()) {
+        pop_stack_from(m_stack.begin());
+
+        /*if (m_stack.empty()) {
             return parse_result_code::internal_error;
-        }
+        }*/
 
         return m_current_result_code;
     }
@@ -421,15 +422,18 @@ namespace sax {
     template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::execute_find_value() {
         auto& stack = get_stack();
+        bool found_tab_on_current_line = false;
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
                 case token::carriage:
-                case token::newline: register_newline(); break;
+                case token::newline: {
+                    register_newline();
+                    found_tab_on_current_line = false;
+                } break;
                 case token::space: register_line_indentation(); break;
-                case token::tab: return error(parse_result_code::invalid_tab_indentation);            
-                case token::comment: return error(parse_result_code::not_implemented);
-
+                case token::tab: found_tab_on_current_line = true; break;
+                case token::comment: push_stack(&parser::execute_parse_comment); return;
                 case token::object: return error(parse_result_code::not_implemented);
                 case token::sequence: return error(parse_result_code::not_implemented);
                 case token::null: return error(parse_result_code::not_implemented);
@@ -440,7 +444,12 @@ namespace sax {
                 case token::quote: return error(parse_result_code::not_implemented);
                 case token::single_quote: return error(parse_result_code::not_implemented);
                 default: {
+                    if (found_tab_on_current_line) {
+                        return error(parse_result_code::forbidden_tab_indentation);
+                    }
+
                     m_current_ptr -= 1;
+                    m_current_value_start_ptr = m_current_ptr;
                     stack.type = stack_type_t::scalar;
                     stack.state_function = &parser::execute_find_scalar;
                 } return;
@@ -452,21 +461,21 @@ namespace sax {
     void parser<Tchar, Tsax_handler>::execute_find_scalar() {
         auto& stack = get_stack();
 
-        /*if (m_current_line_indention < stack.min_indention && m_current_line > stack.min_indention_line) {
-            stack.state_function = &parser::execute_process_scalar_end;
-            return;
-        }*/
-
-        m_current_value_start_ptr = m_current_ptr;
-
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
                 case token::carriage:
                 case token::newline: {
-                    register_newline();
-                    stack.min_indention += 1;
-                    stack.state_function = &parser::execute_find_scalar_after_newline;
+                    const auto string_length = static_cast<size_t>(m_current_value_end_ptr - m_current_value_start_ptr);
+                    if (string_length > 0) {
+                        const auto string_value = string_view_type{ m_current_value_start_ptr, string_length };
+                        signal_string(string_value);
+                    }
+
+                    m_current_ptr -= 1;
+                    m_current_value_start_ptr = nullptr;
+                    m_current_value_end_ptr = nullptr;
+                    stack.state_function = &parser::execute_find_value;
                 } return;
                 case token::space:
                 case token::tab: break;
@@ -491,42 +500,6 @@ namespace sax {
 
         stack.state_function = &parser::execute_process_scalar_end;
         return;
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::execute_find_scalar_after_newline() {
-        /*auto clear_whitespaces = [&]() {
-            while (m_current_ptr < m_end_ptr) {
-                const auto codepoint = *(m_current_ptr++);
-                switch (codepoint) {
-                    case token::carriage:
-                    case token::newline: register_newline(); break;
-                    case token::space: register_line_indentation(); break;
-                    case token::tab: return parse_result_code::invalid_tab_indentation;
-                    default: {
-                        m_current_ptr -= 1;
-                        return parse_result_code::success;
-                    }
-                }
-            }
-            return parse_result_code::success;
-        };
-
-        const auto clear_whitespaces_result = clear_whitespaces();
-        if (clear_whitespaces_result != parse_result_code::success) {
-            return error(clear_whitespaces_result);
-        }
-
-        auto& stack = get_stack();
-        auto min_indention = stack.registry.b.int64_value;
-        auto min_indention_line = stack.registry.d.int64_value;
-        if (m_current_line > min_indention_line && m_current_line_indention < min_indention) {
-            stack.state_function = &parser::execute_process_scalar_end;
-            return;
-        }*/
-
-        // Process more lines...
-        return error(parse_result_code::not_implemented);
     }
 
     template<typename Tchar, typename Tsax_handler>
@@ -576,13 +549,29 @@ namespace sax {
                 const auto key_value = string_view_type{ m_current_value_start_ptr, key_length };
 
                 auto& stack = get_stack();
+                if (m_current_line_indention > stack.min_indention) {
+                    stack.type = stack_type_t::object;
+                    stack.min_indention = m_current_line_indention;
 
-                if (m_current_line_indention == stack.min_indention) {
-                    if (stack.type != stack_type_t::object) {
+                    signal_start_object();
+                    signal_key(key_value);
+                    push_stack(&parser::execute_found_key);
+                    return;
+                }
 
-                        stack.type = stack_type_t::object;
-                        stack.min_indention = m_current_line_indention;
-                        stack.min_indention_line = m_current_line;
+                auto min_indention_stack = find_stack_by_min_indention(m_current_line_indention);
+                if (min_indention_stack == m_stack.end()) {
+                    return error(parse_result_code::internal_error);
+                }
+
+                auto next_min_indention_stack = std::next(min_indention_stack);
+                pop_stack_from(next_min_indention_stack);
+                
+                auto& popped_stack = get_stack();
+                if (m_current_line_indention == popped_stack.min_indention) {
+                    if (popped_stack.type != stack_type_t::object) {
+                        popped_stack.type = stack_type_t::object;
+                        popped_stack.min_indention = m_current_line_indention;
 
                         signal_start_object();
                     }
@@ -592,38 +581,8 @@ namespace sax {
                     return;
                 }
 
-                if (m_current_line_indention > stack.min_indention) {
-                    stack.type = stack_type_t::object;
-                    stack.min_indention = m_current_line_indention;
-                    stack.min_indention_line = m_current_line;
-
-                    signal_start_object();
-                    signal_key(key_value);
-                    push_stack(&parser::execute_found_key);
-                    return;
-                }
-
-                if (m_current_line_indention < stack.min_indention) {
-                    auto find_min_indention_stack = [&](int64_t p_indention) {
-                        auto it = m_stack.begin();
-                        auto prev_it = it;
-                        for (; it != m_stack.end(); ++it) {
-                            if (it->min_indention == p_indention) {
-                                return it;
-                            }
-                            if (it->min_indention > p_indention) {
-                                return prev_it;
-                            }
-                            prev_it = it;
-                        }
-                        return prev_it;
-                    };
-
-                    auto min_indention_stack = find_min_indention_stack(m_current_line_indention);
-                    pop_stack_from(min_indention_stack);
-                    
-                    auto& stack_after_pop = get_stack();
-                    if (stack_after_pop.min_indention != m_current_line_indention) {
+                if (m_current_line_indention < popped_stack.min_indention) {
+                    if (min_indention_stack->min_indention != m_current_line_indention) {
                         return error(parse_result_code::bad_key_indentation);
                     }
 
@@ -652,84 +611,60 @@ namespace sax {
                     m_current_value_end_ptr = nullptr;
                     
                     auto& stack = get_stack();
-                    stack.min_indention = m_current_line_indention /* + 1*/;
-                    stack.min_indention_line = m_current_line;
+                    stack.min_indention = m_current_line_indention;
                     stack.state_function = &parser::execute_find_value;
-
                 } return;
             }
         }
     }
-    
 
-    ///*template<typename Tchar, typename Tsax_handler>
-    //void parser<Tchar, Tsax_handler>::execute_find_comment_start() {
-    //    while (m_current_ptr < m_end_ptr) {
-    //        auto prev_ptr = m_current_ptr;
-    //        const auto codepoint = *(m_current_ptr++);
-    //        switch (codepoint) {
-    //            case token::space:
-    //            case token::tab: continue;
-    //            case token::carriage:
-    //            case token::newline: {
-    //                signal_comment({});
-    //                return pop_stack();
-    //            } break;
-    //            default: {
-    //                return update_stack(&parser::execute_find_comment_end, prev_ptr);
-    //            }
-    //        }
-    //    }
+    template<typename Tchar, typename Tsax_handler>
+    void parser<Tchar, Tsax_handler>::execute_parse_comment() {
 
-    //    signal_comment({});
-    //    return pop_stack();
-    //}
+        [&]() {
+            while (m_current_ptr < m_end_ptr) {
+                const auto codepoint = *(m_current_ptr++);
+                switch (codepoint) {
+                    case token::space:
+                    case token::tab: break;
+                    case token::carriage:
+                    case token::newline:
+                    default: --m_current_ptr; return;
+                }
+            }
+        }();
+     
+        [[maybe_unused]] auto* comment_start_ptr = m_current_ptr;
+        [[maybe_unused]] auto* comment_end_ptr = m_current_ptr;
 
-    //template<typename Tchar, typename Tsax_handler>
-    //void parser<Tchar, Tsax_handler>::execute_find_comment_end() {
-    //    auto next_not_space_ptr = m_current_ptr + 1;
+        auto signal_function = [&]() {
+            const auto comment_length = static_cast<size_t>(comment_end_ptr - comment_start_ptr);
+            if (comment_length == 0) {
+                return;
+            }
+            const auto comment_value = string_view_type{ comment_start_ptr, comment_length };
+            signal_comment(comment_value);
+        };
 
-    //    while (m_current_ptr < m_end_ptr) {
-    //        //auto prev_ptr = m_current_ptr;
-    //        const auto codepoint = *(m_current_ptr++);
-    //        switch (codepoint) {
-    //            case token::carriage:
-    //            case token::newline: {
-    //                auto& stack = get_stack();
-    //                auto length = static_cast<size_t>(next_not_space_ptr - stack.data_ptr);
-    //                auto string = string_view_type{ stack.data_ptr, length };
-    //                signal_comment(string);
-    //                return pop_stack();
-    //            }
-    //            case token::space:
-    //            case token::tab: continue;
-    //            default: {
-    //                next_not_space_ptr = m_current_ptr;
-    //                continue;
-    //            }
-    //        }
-    //    }*/
+        while (m_current_ptr < m_end_ptr) {
+            const auto codepoint = *(m_current_ptr++);
+            switch (codepoint) {
+                case token::space:
+                case token::tab: break;
+                case token::carriage:
+                case token::newline: {
+                    m_current_ptr -= 1;
+                    signal_function();
+                    pop_stack();
+                    return;
+                } break;
+                default: comment_end_ptr = m_current_ptr; break;
+            }
+        }
 
-    //    /*auto next_not_space_iterator = std::next(m_current_it);
-
-    //    for (auto loop : parse_to_end()) {
-    //        switch (const auto current_char = *loop.prev_it; current_char) {
-    //            case token::carriage:
-    //            case token::newline: {
-    //                auto string = impl::iterators_to_string_view(get_stack().data_iterator, next_not_space_iterator);
-    //                signal_comment(string);
-    //                return pop_stack();
-    //            }
-    //            case token::space:
-    //            case token::tab: continue;
-    //            default: {
-    //                next_not_space_iterator = loop.it;
-    //                continue;
-    //            }
-    //        }
-    //    }*/
-    ////}
-
+        signal_function();
+        pop_stack();
+    }
 
     template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::signal_start_object() {
@@ -850,19 +785,29 @@ namespace sax {
 
     template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::pop_stack_from(stack_iterator_t it) {
-        if (it == m_stack.end()) {
-            return;
-        }
-
-        auto erase_from_it = ++it;   
-
+        auto erase_from_it = it;
         for (; it != m_stack.end(); ++it) { // WARNING: Need to run in reverse as soon as multiple type checks are implemented.
             if (it->type == stack_type_t::object) {
                 signal_end_object();
             }
         }
-
         m_stack.erase(erase_from_it, m_stack.end());
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename parser<Tchar, Tsax_handler>::stack_iterator_t parser<Tchar, Tsax_handler>::find_stack_by_min_indention(int64_t indention) {
+        auto it = m_stack.begin();
+        auto prev_it = it;
+        for (; it != m_stack.end(); ++it) {
+            if (it->min_indention == indention) {
+                return it;
+            }
+            if (it->min_indention > indention) {
+                return prev_it;
+            }
+            prev_it = it;
+        }
+        return prev_it;
     }
 
     template<typename Tchar, typename Tsax_handler>
