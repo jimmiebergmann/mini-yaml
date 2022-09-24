@@ -9,26 +9,39 @@ environment:
       arch: x64
       configuration: Debug
       output_name_postfix: _d
+      language_number: 20
       
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
       generator: "Visual Studio 17 2022"
       arch: x64
       configuration: Release
-      language_number: 17
+      language_number: 20
   
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       generator: "Visual Studio 16 2019"
       arch: x64
       configuration: Debug
       output_name_postfix: _d
+      language_number: 17
       
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       generator: "Visual Studio 16 2019"
       arch: x64
       configuration: Release
+      language_number: 17
       
-    - language_number: 14
-    - language_number: 17
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      generator: "Visual Studio 15 2017"
+      arch: x64
+      configuration: Debug
+      output_name_postfix: _d
+      language_number: 14
+      
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      generator: "Visual Studio 15 2017"
+      arch: x64
+      configuration: Release
+      language_number: 14
 
 install:
   - git submodule update --init --recursive
