@@ -117,24 +117,25 @@ namespace MINIYAML_NAMESPACE {
         missing_key
     };
 
-    namespace token {
-        MINIYAML_INLINE_VARIABLE constexpr auto space = ' ';
-        MINIYAML_INLINE_VARIABLE constexpr auto tab = '\t';
-        MINIYAML_INLINE_VARIABLE constexpr auto carriage = '\r';
-        MINIYAML_INLINE_VARIABLE constexpr auto newline = '\n';
-        MINIYAML_INLINE_VARIABLE constexpr auto comment = '#';
-        MINIYAML_INLINE_VARIABLE constexpr auto quote = '\"';
-        MINIYAML_INLINE_VARIABLE constexpr auto single_quote = '\'';
-        MINIYAML_INLINE_VARIABLE constexpr auto object = ':';
-        MINIYAML_INLINE_VARIABLE constexpr auto object_start = '{';
-        MINIYAML_INLINE_VARIABLE constexpr auto object_end = '}';
-        MINIYAML_INLINE_VARIABLE constexpr auto sequence = '-';
-        MINIYAML_INLINE_VARIABLE constexpr auto sequence_start = '[';
-        MINIYAML_INLINE_VARIABLE constexpr auto sequence_end = ']';
-        MINIYAML_INLINE_VARIABLE constexpr auto null = '~';
-        MINIYAML_INLINE_VARIABLE constexpr auto literal = '|';
-        MINIYAML_INLINE_VARIABLE constexpr auto folded = '>';
-    }
+    template<typename T>
+    struct token {
+        MINIYAML_INLINE_VARIABLE constexpr static T space = ' ';
+        MINIYAML_INLINE_VARIABLE constexpr static T tab = '\t';
+        MINIYAML_INLINE_VARIABLE constexpr static T carriage = '\r';
+        MINIYAML_INLINE_VARIABLE constexpr static T newline = '\n';
+        MINIYAML_INLINE_VARIABLE constexpr static T comment = '#';
+        MINIYAML_INLINE_VARIABLE constexpr static T quote = '\"';
+        MINIYAML_INLINE_VARIABLE constexpr static T single_quote = '\'';
+        MINIYAML_INLINE_VARIABLE constexpr static T object = ':';
+        MINIYAML_INLINE_VARIABLE constexpr static T object_start = '{';
+        MINIYAML_INLINE_VARIABLE constexpr static T object_end = '}';
+        MINIYAML_INLINE_VARIABLE constexpr static T sequence = '-';
+        MINIYAML_INLINE_VARIABLE constexpr static T sequence_start = '[';
+        MINIYAML_INLINE_VARIABLE constexpr static T sequence_end = ']';
+        MINIYAML_INLINE_VARIABLE constexpr static T null = '~';
+        MINIYAML_INLINE_VARIABLE constexpr static T literal = '|';
+        MINIYAML_INLINE_VARIABLE constexpr static T folded = '>';
+    };
 }
 
 
@@ -177,6 +178,7 @@ namespace sax {
         using size_type = size_t;
         using string_view_type = basic_string_view<Tchar>;
         using sax_handler_type = Tsax_handler;
+        using token_type = token<Tchar>;
 
         parser(sax_handler_type& sax_handler);
 
@@ -470,23 +472,23 @@ namespace sax {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
-                case token::carriage:
-                case token::newline: {
+                case token_type::carriage:
+                case token_type::newline: {
                     register_newline();
                     found_tab_on_current_line = false;
                 } break;
-                case token::space: register_line_indentation(); break;
-                case token::tab: found_tab_on_current_line = true; break;
-                case token::comment: push_stack(&parser::execute_parse_comment); return;
-                case token::object: return error(parse_result_code::missing_key);
-                case token::sequence: return error(parse_result_code::not_implemented);
-                case token::null: return error(parse_result_code::not_implemented);
-                case token::object_start: return error(parse_result_code::not_implemented);     // json
-                case token::object_end: return error(parse_result_code::not_implemented);       // json
-                case token::sequence_start: return error(parse_result_code::not_implemented);   // json
-                case token::sequence_end: return error(parse_result_code::not_implemented);     // json
-                case token::quote: return error(parse_result_code::not_implemented);
-                case token::single_quote: return error(parse_result_code::not_implemented);
+                case token_type::space: register_line_indentation(); break;
+                case token_type::tab: found_tab_on_current_line = true; break;
+                case token_type::comment: push_stack(&parser::execute_parse_comment); return;
+                case token_type::object: return error(parse_result_code::missing_key);
+                case token_type::sequence: return error(parse_result_code::not_implemented);
+                case token_type::null: return error(parse_result_code::not_implemented);
+                case token_type::object_start: return error(parse_result_code::not_implemented);     // json
+                case token_type::object_end: return error(parse_result_code::not_implemented);       // json
+                case token_type::sequence_start: return error(parse_result_code::not_implemented);   // json
+                case token_type::sequence_end: return error(parse_result_code::not_implemented);     // json
+                case token_type::quote: return error(parse_result_code::not_implemented);
+                case token_type::single_quote: return error(parse_result_code::not_implemented);
                 default: {
                     if (found_tab_on_current_line) {
                         return error(parse_result_code::forbidden_tab_indentation);
@@ -526,32 +528,32 @@ namespace sax {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
-                case token::carriage:
-                case token::newline: {
+                case token_type::carriage:
+                case token_type::newline: {
                     stack.type = stack_type_t::scalar;
                     process_scalar();
                     m_current_ptr -= 1;
                     stack.state_function = &parser::execute_find_value;
                 } return;
-                case token::space:
-                case token::tab: break;
-                case token::comment: {
+                case token_type::space:
+                case token_type::tab: break;
+                case token_type::comment: {
                     process_scalar();
                     push_stack(&parser::execute_parse_comment);
                 } return;
-                case token::object: {
+                case token_type::object: {
                     stack.state_function = &parser::execute_find_unknown_potential_key;
                 } return;
-                case token::literal: return error(parse_result_code::not_implemented);
-                case token::folded: return error(parse_result_code::not_implemented);
-                case token::sequence: return error(parse_result_code::not_implemented);
-                case token::null: return error(parse_result_code::not_implemented);
-                case token::object_start: return error(parse_result_code::not_implemented);     // json
-                case token::object_end: return error(parse_result_code::not_implemented);       // json
-                case token::sequence_start: return error(parse_result_code::not_implemented);   // json
-                case token::sequence_end: return error(parse_result_code::not_implemented);     // json
-                case token::quote: return error(parse_result_code::not_implemented);
-                case token::single_quote: return error(parse_result_code::not_implemented);
+                case token_type::literal: return error(parse_result_code::not_implemented);
+                case token_type::folded: return error(parse_result_code::not_implemented);
+                case token_type::sequence: return error(parse_result_code::not_implemented);
+                case token_type::null: return error(parse_result_code::not_implemented);
+                case token_type::object_start: return error(parse_result_code::not_implemented);     // json
+                case token_type::object_end: return error(parse_result_code::not_implemented);       // json
+                case token_type::sequence_start: return error(parse_result_code::not_implemented);   // json
+                case token_type::sequence_end: return error(parse_result_code::not_implemented);     // json
+                case token_type::quote: return error(parse_result_code::not_implemented);
+                case token_type::single_quote: return error(parse_result_code::not_implemented);
                 default: m_current_value_end_ptr = m_current_ptr; break;
             }
         }
@@ -572,10 +574,10 @@ namespace sax {
         if (m_current_ptr < m_end_ptr) {
             const auto peek_codepoint = *m_current_ptr;
             switch (peek_codepoint) {
-                case token::space:
-                case token::tab: unknown_to_object_func(); break;
-                case token::carriage:
-                case token::newline: unknown_to_object_func(); return;
+                case token_type::space:
+                case token_type::tab: unknown_to_object_func(); break;
+                case token_type::carriage:
+                case token_type::newline: unknown_to_object_func(); return;
                 default: stack.state_function = &parser::execute_find_unknown; return;
             }
 
@@ -594,29 +596,29 @@ namespace sax {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
-                case token::carriage:
-                case token::newline: {
+                case token_type::carriage:
+                case token_type::newline: {
                     process_scalar();
                     m_current_ptr -= 1;
                     stack.state_function = &parser::execute_find_value;
                 } return;
-                case token::space:
-                case token::tab: break;
-                case token::comment: {
+                case token_type::space:
+                case token_type::tab: break;
+                case token_type::comment: {
                     process_scalar();
                     push_stack(&parser::execute_parse_comment);
                 } return;
-                case token::object: return error(parse_result_code::unexpected_key);
-                case token::literal: return error(parse_result_code::not_implemented);
-                case token::folded: return error(parse_result_code::not_implemented);
-                case token::sequence: return error(parse_result_code::not_implemented);
-                case token::null: return error(parse_result_code::not_implemented);
-                case token::object_start: return error(parse_result_code::not_implemented);     // json
-                case token::object_end: return error(parse_result_code::not_implemented);       // json
-                case token::sequence_start: return error(parse_result_code::not_implemented);   // json
-                case token::sequence_end: return error(parse_result_code::not_implemented);     // json
-                case token::quote: return error(parse_result_code::not_implemented);
-                case token::single_quote: return error(parse_result_code::not_implemented);
+                case token_type::object: return error(parse_result_code::unexpected_key);
+                case token_type::literal: return error(parse_result_code::not_implemented);
+                case token_type::folded: return error(parse_result_code::not_implemented);
+                case token_type::sequence: return error(parse_result_code::not_implemented);
+                case token_type::null: return error(parse_result_code::not_implemented);
+                case token_type::object_start: return error(parse_result_code::not_implemented);     // json
+                case token_type::object_end: return error(parse_result_code::not_implemented);       // json
+                case token_type::sequence_start: return error(parse_result_code::not_implemented);   // json
+                case token_type::sequence_end: return error(parse_result_code::not_implemented);     // json
+                case token_type::quote: return error(parse_result_code::not_implemented);
+                case token_type::single_quote: return error(parse_result_code::not_implemented);
                 default: m_current_value_end_ptr = m_current_ptr; break;
             }
         }
@@ -634,10 +636,10 @@ namespace sax {
 
             const auto peek_codepoint = *m_current_ptr;
             switch (peek_codepoint) {
-                case token::space:
-                case token::tab: new_key_func(); return true;
-                case token::carriage:
-                case token::newline: new_key_func(); return true;
+                case token_type::space:
+                case token_type::tab: new_key_func(); return true;
+                case token_type::carriage:
+                case token_type::newline: new_key_func(); return true;
                 default: break;
             }
             
@@ -647,12 +649,12 @@ namespace sax {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
-                case token::carriage:
-                case token::newline: return error(parse_result_code::missing_key);
-                case token::space:
-                case token::tab: break;
-                case token::comment: return error(parse_result_code::missing_key);
-                case token::object: {
+                case token_type::carriage:
+                case token_type::newline: return error(parse_result_code::missing_key);
+                case token_type::space:
+                case token_type::tab: break;
+                case token_type::comment: return error(parse_result_code::missing_key);
+                case token_type::object: {
                     if (m_current_ptr >= m_end_ptr) {
                         return error(parse_result_code::missing_key);
                     }
@@ -677,10 +679,10 @@ namespace sax {
             while (m_current_ptr < m_end_ptr) {
                 const auto codepoint = *(m_current_ptr++);
                 switch (codepoint) {
-                    case token::space:
-                    case token::tab: break;
-                    case token::carriage:
-                    case token::newline:
+                    case token_type::space:
+                    case token_type::tab: break;
+                    case token_type::carriage:
+                    case token_type::newline:
                     default: --m_current_ptr; return;
                 }
             }
@@ -692,10 +694,10 @@ namespace sax {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
-                case token::space:
-                case token::tab: break;
-                case token::carriage:
-                case token::newline: {
+                case token_type::space:
+                case token_type::tab: break;
+                case token_type::carriage:
+                case token_type::newline: {
                     m_current_ptr -= 1;
                     process_comment();
                     pop_stack();
@@ -716,10 +718,10 @@ namespace sax {
             while (m_current_ptr < m_end_ptr) {
                 const auto codepoint = *(m_current_ptr++);
                 switch (codepoint) {
-                    case token::space:
-                    case token::tab: break;
-                    case token::carriage:
-                    case token::newline: {
+                    case token_type::space:
+                    case token_type::tab: break;
+                    case token_type::carriage:
+                    case token_type::newline: {
                         m_current_ptr -= 1;
                         current_stack.min_indention += 1;
                     } return parse_result_code::success;
