@@ -13,10 +13,13 @@ project (mini-yaml)
 cmake_minimum_required(VERSION 2.8.12)
 
 # Options.
-option(CODE_COVERAGE "Enables coverage reporting" OFF)
+option(MINIYAML_ENABLE_COVERAGE "Enables coverage reporting." OFF)
+set(MINIYAML_CPP_VERSION 20 CACHE STRING "Set c++ version.")
 
-# Require C++11.
-set(CMAKE_CXX_STANDARD 11)
+message("C++ language version: ${MINIYAML_CPP_VERSION}")
+
+# C++ config.
+set(CMAKE_CXX_STANDARD ${MINIYAML_CPP_VERSION})
 set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -38,10 +41,10 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 
-if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+if(MINIYAML_ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
-endif(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+endif()
 
 
 # Find files
@@ -84,18 +87,20 @@ if (CMAKE_VERSION VERSION_LESS 2.8.11)
 endif()
 
 include_directories ("${mini_yaml_dir}")
-add_executable(mini_yaml_test ${test_files})
+add_executable(mini_yaml_tests ${test_files})
 
-set_target_properties( mini_yaml_test
+set_target_properties( mini_yaml_tests
   PROPERTIES
+  OUTPUT_NAME_DEBUG "mini_yaml_tests_d"
+  OUTPUT_NAME_RELEASE "mini_yaml_tests"
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
   RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/bin"
   RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin"
 )
 
 if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU") ## Code coverage
-  set_target_properties(mini_yaml_test PROPERTIES COMPILE_FLAGS "--coverage")
-  target_link_libraries(mini_yaml_test "gcov")
+  set_target_properties(mini_yaml_tests PROPERTIES COMPILE_FLAGS "--coverage")
+  target_link_libraries(mini_yaml_tests "gcov")
 endif(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 
-target_link_libraries(mini_yaml_test gtest_main)
+target_link_libraries(mini_yaml_tests gtest_main)
