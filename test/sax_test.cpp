@@ -135,7 +135,7 @@ struct test_sax_handler {
 };
 
 template<typename TChar>
-void run_sax_parse(const std::function<void(std::basic_string<TChar>)>& func, std::string input, const std::string& type) {
+void run_sax_parse(const std::function<void(std::basic_string<TChar>)>& func, std::basic_string<TChar> input, const std::string& type) {
     mini_yaml_test::print_info(type);
     func(input);
 }
@@ -167,13 +167,32 @@ void run_sax_parse_unix_style(std::basic_string<TChar> input, const std::functio
 
 template<typename TChar>
 void run_sax_parse_win_style(std::basic_string<TChar> input, const std::function<void(std::basic_string<TChar>)>& func) {
-    replace_all<TChar>(input, "\n", "\r\n");
+#if MINIYAML_HAS_IF_CONSTEXPR
+    if constexpr (std::is_same<TChar, char>::value == false) {
+        replace_all<TChar>(input, u8"\n", u8"\r\n");
+    }
+    else
+#endif
+    {
+        replace_all<TChar>(input, "\n", "\r\n");
+    }
+
     run_sax_parse<TChar>(func, input, "windows_style");
 }
 
 template<typename TChar>
 void run_sax_parse_mac_style(std::basic_string<TChar> input, const std::function<void(std::basic_string<TChar>)>& func) {
-    replace_all<TChar>(input, "\n", "\r");
+
+#if MINIYAML_HAS_IF_CONSTEXPR
+    if constexpr (std::is_same<TChar, char>::value == false) {
+        replace_all<TChar>(input, u8"\n", u8"\r");
+    }
+    else 
+#endif
+    {
+        replace_all<TChar>(input, "\n", "\r");
+    }
+
     run_sax_parse<TChar>(func, input, "mac_style");
 }
 
@@ -585,10 +604,10 @@ TEST(sax_parse, ok_u8_bom_1)
 
     using char_type = typename decltype(input)::value_type;
 
-    // Add BOM.
-    input[0] = static_cast<char_type>(0xEF);
-    input[1] = static_cast<char_type>(0xBB);
-    input[2] = static_cast<char_type>(0xBF);
+    const std::array<uint8_t, 3> bom_chars = { 0xEF, 0xBB, 0xBF };
+    input[0] = static_cast<char_type>(bom_chars[0]);
+    input[1] = static_cast<char_type>(bom_chars[1]);
+    input[2] = static_cast<char_type>(bom_chars[2]);
 
     run_sax_parse_all_styles<char_type>(input, [](mini_yaml_test::u8_string_type input) {
         test_sax_handler<char_type> handler = {};
@@ -617,10 +636,10 @@ TEST(sax_parse, ok_u8_bom_2)
 
     using char_type = typename decltype(input)::value_type;
 
-    // Add BOM.
-    input[0] = static_cast<char_type>(0xEF);
-    input[1] = static_cast<char_type>(0xBB);
-    input[2] = static_cast<char_type>(0xBF);
+    const std::array<uint8_t, 3> bom_chars = { 0xEF, 0xBB, 0xBF };
+    input[0] = static_cast<char_type>(bom_chars[0]);
+    input[1] = static_cast<char_type>(bom_chars[1]);
+    input[2] = static_cast<char_type>(bom_chars[2]);
 
     run_sax_parse_all_styles<char_type>(input, [](mini_yaml_test::u8_string_type input) {
         test_sax_handler<char_type> handler = {};

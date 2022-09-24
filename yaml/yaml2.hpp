@@ -24,6 +24,7 @@
 */
 
 #include <memory>
+#include <array>
 #include <vector>
 #include <string>
 #include <cstdlib>
@@ -430,11 +431,12 @@ namespace sax {
         if (char_size_test) {
 #endif
             const auto data_length = static_cast<size_t>(end - begin);
+            const std::array<uint8_t, 3> bom_chars = { 0xEF, 0xBB, 0xBF };
 
             if (data_length >= 3 && 
-                static_cast<uint8_t>(begin[0]) == static_cast<uint8_t>(0xEF) &&
-                static_cast<uint8_t>(begin[1]) == static_cast<uint8_t>(0xBB) &&
-                static_cast<uint8_t>(begin[2]) == static_cast<uint8_t>(0xBF))
+                static_cast<uint8_t>(begin[0]) == bom_chars[0] &&
+                static_cast<uint8_t>(begin[1]) == bom_chars[1] &&
+                static_cast<uint8_t>(begin[2]) == bom_chars[2])
             {
                 return begin + 3;
             }
