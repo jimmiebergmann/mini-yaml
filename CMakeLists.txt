@@ -10,7 +10,7 @@ endfunction(createSourceGroups)
 
 
 project (mini-yaml)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
 
 # Options.
 option(CODE_COVERAGE "Enables coverage reporting" OFF)
@@ -48,9 +48,6 @@ endif(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 set(mini_yaml_dir "${CMAKE_SOURCE_DIR}/yaml")
 set(mini_yaml_test_dir "${CMAKE_SOURCE_DIR}/test")
 set(mini_yaml_examples_dir "${CMAKE_SOURCE_DIR}/examples")
-file(GLOB_RECURSE mini_yaml_inc "${mini_yaml_dir}/*.h" "${mini_yaml_dir}/*.hpp")
-file(GLOB_RECURSE mini_yaml_src "${mini_yaml_dir}/*.c" "${mini_yaml_dir}/*.cpp")
-set(mini_yaml_files "${mini_yaml_inc}" "${mini_yaml_src}")
 file(GLOB_RECURSE test_files "${mini_yaml_test_dir}/*.cpp" "${mini_yaml_test_dir}/*.hpp")
 file(GLOB_RECURSE first_example_src "${mini_yaml_examples_dir}/first_example.cpp")
 
@@ -60,16 +57,16 @@ file(GLOB_RECURSE first_example_src "${mini_yaml_examples_dir}/first_example.cpp
 #   First example
 #
 # ==============================================================================================================
-include_directories ("${mini_yaml_dir}")
-link_directories("${CMAKE_SOURCE_DIR}/lib")
-add_executable(first_example ${first_example_src} ${mini_yaml_files})
+#include_directories ("${mini_yaml_dir}")
+#link_directories("${CMAKE_SOURCE_DIR}/lib")
+#add_executable(first_example ${first_example_src} ${mini_yaml_files})
 
-set_target_properties( first_example
-  PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
-  RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/bin"
-  RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin"
-)
+#set_target_properties( first_example
+#  PROPERTIES
+#  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+#  RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/bin"
+#  RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin"
+#)
 
 
 # ==============================================================================================================
@@ -79,15 +76,15 @@ set_target_properties( first_example
 # ==============================================================================================================
 SET(gtest_force_shared_crt on CACHE BOOL
   "Use shared (DLL) run-time lib even when Google Test is built as static lib.")
-add_subdirectory(${CMAKE_SOURCE_DIR}/vendor/googletest/googletest
-                 ${CMAKE_SOURCE_DIR}/vendor/googletest/googletest
+add_subdirectory(${CMAKE_SOURCE_DIR}/vendor/googletest
+                 ${CMAKE_SOURCE_DIR}/vendor/googletest
                  EXCLUDE_FROM_ALL) # Add googletest directly to our build.
 if (CMAKE_VERSION VERSION_LESS 2.8.11)
   include_directories("${gtest_SOURCE_DIR}/include")
 endif()
 
 include_directories ("${mini_yaml_dir}")
-add_executable(mini_yaml_test ${test_files} ${mini_yaml_files})
+add_executable(mini_yaml_test ${test_files})
 
 set_target_properties( mini_yaml_test
   PROPERTIES

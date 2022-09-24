@@ -36,6 +36,12 @@
 
 namespace mini_yaml_test {
 
+#if defined(__cpp_char8_t)
+    using u8_string_type = std::u8string;
+#else
+    using u8_string_type = std::string;
+#endif
+
     void print_info(const std::string& message) {
         std::cout << "\033[0;1;32m" << "[          ] " << "\033[0m";
         std::cout << "\033[0;36m" << message << "\033[0m" << std::endl;

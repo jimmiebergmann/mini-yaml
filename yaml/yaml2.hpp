@@ -49,10 +49,18 @@
 #endif
 #endif
 
-#if defined(__cpp_if_constexpr)
+#if defined(__cpp_if_constexpr) && _MSVC_LANG >= __cpp_if_constexpr
 #define MINIYAML_HAS_IF_CONSTEXPR true
+#define MINIYAML_IF_CONSTEXPR constexpr
 #else
 #define MINIYAML_HAS_IF_CONSTEXPR false
+#define MINIYAML_IF_CONSTEXPR
+#endif
+
+#if defined(__cpp_concepts)
+#define MINIYAML_HAS_CONCEPTS true
+#else
+#define MINIYAML_HAS_CONCEPTS false
 #endif
 
 #if defined(__cpp_lib_string_view) && !defined(MINIYAML_NO_STD_STRING_VIEW)
@@ -223,6 +231,8 @@ namespace sax {
         const_pointer m_current_value_start_ptr; 
         const_pointer m_current_value_end_ptr;
 
+        static const_pointer skip_utf8_bom(const_pointer begin, const_pointer end);
+
         void register_newline();
         void register_line_indentation();
 
@@ -282,7 +292,7 @@ namespace sax {
 
     namespace impl {
 
-#if defined(__cpp_concepts)
+#if MINIYAML_HAS_CONCEPTS
         template<typename Tsax_handler>
         constexpr bool sax_handler_has_start_object() {
             return requires(Tsax_handler value) { { value.start_object() }; };
@@ -362,9 +372,9 @@ namespace sax {
 
     template<typename Tchar, typename Tsax_handler>
     parse_result_code parser<Tchar, Tsax_handler>::execute(const_pointer raw_input, size_type size) {
-        m_current_ptr = raw_input;
         m_end_ptr = raw_input + size;
-        m_begin_ptr = raw_input;    
+        m_begin_ptr = skip_utf8_bom(raw_input, m_end_ptr);
+        m_current_ptr = m_begin_ptr;
         m_stack.clear();
         m_current_result_code = parse_result_code::success;
 
@@ -406,6 +416,31 @@ namespace sax {
         auto raw_input = &*first;
         auto size = static_cast<size_t>(std::distance(first, last));
         return execute(raw_input, size);
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename parser<Tchar, Tsax_handler>::const_pointer parser<Tchar, Tsax_handler>::skip_utf8_bom(const_pointer begin, const_pointer end) {
+#if MINIYAML_HAS_IF_CONSTEXPR
+        if constexpr (sizeof(Tchar) == 1) {
+#else
+        // This is a stupid workaround for a MSVC bug, caused when compiling using C++14.
+        // "if constexpr" is expected even if __cpp_if_constexpr isn't defined,
+        //  if the expression "sizeof(Tchar) == 1" is used directly in if statement.
+        const auto char_size_test = sizeof(Tchar) == 1;
+        if (char_size_test) {
+#endif
+            const auto data_length = static_cast<size_t>(end - begin);
+
+            if (data_length >= 3 && 
+                static_cast<uint8_t>(begin[0]) == static_cast<uint8_t>(0xEF) &&
+                static_cast<uint8_t>(begin[1]) == static_cast<uint8_t>(0xBB) &&
+                static_cast<uint8_t>(begin[2]) == static_cast<uint8_t>(0xBF))
+            {
+                return begin + 3;
+            }
+        }
+        
+        return begin;
     }
 
     template<typename Tchar, typename Tsax_handler>
