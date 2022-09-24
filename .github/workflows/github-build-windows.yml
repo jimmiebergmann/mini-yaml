@@ -1,0 +1,36 @@
+name: Windows
+on: push
+
+jobs:
+
+  Windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        language: [c++14, c++17, c++20]
+        build_type: [Debug, Release]
+        include:
+          - build_type: Debug
+            output_name_postfix: _d
+          - language: c++14
+            language_number: 14
+          - language: c++17
+            language_number: 17    
+          - language: c++20
+            language_number: 20                        
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake -DMINIYAML_CPP_VERSION=${{matrix.language_number}} -DCMAKE_BUILD_TYPE=${{matrix.build_type}} ..
+          cmake --build . --config ${{matrix.build_type}}
+      - name: Test
+        run: |
+          cd bin
+          ./mini_yaml_tests${{matrix.output_name_postfix}}.exe
