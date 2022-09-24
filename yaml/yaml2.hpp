@@ -50,12 +50,10 @@
 #endif
 #endif
 
-#if defined(__cpp_if_constexpr) && _MSVC_LANG >= __cpp_if_constexpr
+#if defined(__cpp_if_constexpr)
 #define MINIYAML_HAS_IF_CONSTEXPR true
-#define MINIYAML_IF_CONSTEXPR constexpr
 #else
 #define MINIYAML_HAS_IF_CONSTEXPR false
-#define MINIYAML_IF_CONSTEXPR
 #endif
 
 #if defined(__cpp_concepts)
