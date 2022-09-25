@@ -68,4 +68,4 @@ jobs:
         run: |
           cd bin
           mkdir corpus_new_2
-          ./fuzz_sax_parse_reject_failture${{matrix.output_name_postfix}} corpus corpus_new_2 -max_total_time=100 -only_ascii=1
+          ./fuzz_sax_parse_reject_failure${{matrix.output_name_postfix}} corpus corpus_new_2 -max_total_time=100 -only_ascii=1
