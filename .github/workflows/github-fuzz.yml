@@ -1,4 +1,4 @@
-name: linux
+name: fuzz
 on: push
 
 jobs:
@@ -7,8 +7,8 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        compiler: clang
-        language: c++20
+        compiler: [clang]
+        language: [c++20]
         build_type: [Debug, Release]
         include:
           - compiler: clang
@@ -17,7 +17,7 @@ jobs:
           - build_type: Debug
             output_name_postfix: _d
           - language: c++20
-            language_number: 20                        
+            language_number: 20
             
     env:
       CC: ${{matrix.c_compiler}}
