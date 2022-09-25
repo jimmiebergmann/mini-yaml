@@ -53,27 +53,19 @@ struct test_sax_handler {
     std::vector<std::basic_string<TChar>> comments = {};
 
     test_sax_instruction* m_current_read_instruction = nullptr;
-    std::basic_string<TChar>* m_current_read_key = nullptr;
     std::basic_string<TChar>* m_current_read_string = nullptr;
+    std::basic_string<TChar>* m_current_read_key = nullptr;
     std::basic_string<TChar>* m_current_read_comment = nullptr;
 
     void prepare_read() {
         m_current_read_instruction = instructions.data();
-        m_current_read_key = keys.data();
         m_current_read_string = strings.data();
+        m_current_read_key = keys.data();
         m_current_read_comment = comments.data();
     }
 
     test_sax_instruction get_next_instruction() {
         return *(m_current_read_instruction++);
-    }
-
-    std::basic_string<TChar> get_next_key() {
-        auto* current_key = m_current_read_key++;
-        if (current_key >= keys.data() + keys.size()) {
-            return {};
-        }
-        return *current_key;
     }
 
     std::basic_string<TChar> get_next_string() {
@@ -84,6 +76,14 @@ struct test_sax_handler {
         return *current_string;
     }
 
+    std::basic_string<TChar> get_next_key() {
+        auto* current_key = m_current_read_key++;
+        if (current_key >= keys.data() + keys.size()) {
+            return {};
+        }
+        return *current_key;
+    }
+
     std::basic_string<TChar> get_next_comment() {
         auto* current_comment = m_current_read_comment++;
         if (current_comment >= comments.data() + comments.size()) {
@@ -92,6 +92,10 @@ struct test_sax_handler {
         return *current_comment;
     }
 
+    void null() {
+        ++null_count;
+        instructions.push_back(test_sax_instruction::null);
+    }
 
     void start_object() {
         ++start_object_count;
@@ -113,19 +117,14 @@ struct test_sax_handler {
         instructions.push_back(test_sax_instruction::end_array);
     }
 
-    void key(yaml::basic_string_view<TChar> value) {
-        keys.push_back(std::basic_string<TChar>{ value.data(), value.size() });
-        instructions.push_back(test_sax_instruction::key);
-    }
-
-    void null() {
-        ++null_count;
-        instructions.push_back(test_sax_instruction::null);
-    }
-
     void string(yaml::basic_string_view<TChar> value) {
         strings.push_back(std::basic_string<TChar>{ value.data(), value.size() });
         instructions.push_back(test_sax_instruction::string);
+    }
+
+    void key(yaml::basic_string_view<TChar> value) {
+        keys.push_back(std::basic_string<TChar>{ value.data(), value.size() });
+        instructions.push_back(test_sax_instruction::key);
     }
 
     void comment(yaml::basic_string_view<TChar> value) {
