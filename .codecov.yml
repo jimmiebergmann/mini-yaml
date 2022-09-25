@@ -1,9 +1,20 @@
+codecov:
+  require_ci_to_pass: yes
+  
+coverage:
+  
+  precision: 2
+  round: down
+  range: "80...100"
+  status:
+    project:
+      default:
+        threshold: 5.0%
+    patch:
+      default:
+          threshold: 5.0%
 ignore:
   - "test"
   - "example"
   - "vendor"
   - "bin"
-coverage:
-  range: 50..80
-  round: down
-  precision: 2
