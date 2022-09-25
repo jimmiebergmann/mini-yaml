@@ -37,5 +37,5 @@ Builds are passed if all tests are successful and no memory leaks were found.
 - tags(!!type)
 - anchors
 - flow sequences/maps
-- omplex keys
+- complex keys
 - sets

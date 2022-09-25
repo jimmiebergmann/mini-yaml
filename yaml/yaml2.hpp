@@ -256,9 +256,9 @@ namespace sax {
         void signal_end_object();
         void signal_start_array();
         void signal_end_array();
-        void signal_key(string_view_type value);
         void signal_null();
         void signal_string(string_view_type value);
+        void signal_key(string_view_type value);
         void signal_comment(string_view_type value);
 
         void error(const parse_result_code result_code);
@@ -311,10 +311,6 @@ namespace sax {
         constexpr bool sax_handler_has_end_array() {
             return requires(Tsax_handler value) { { value.end_array() }; };
         }
-        template<typename Tchar, typename Tsax_handler>
-        constexpr bool sax_handler_has_key() {
-            return requires(Tsax_handler handler) { { handler.key(typename parser<Tchar, Tsax_handler>::string_view_type{}) }; };
-        }
         template<typename Tsax_handler>
         constexpr bool sax_handler_has_null() {
             return requires(Tsax_handler value) { { value.null() }; };
@@ -322,6 +318,10 @@ namespace sax {
         template<typename Tchar, typename Tsax_handler>
         constexpr bool sax_handler_has_string() {
             return requires(Tsax_handler handler) { { handler.string(typename parser<Tchar, Tsax_handler>::string_view_type{}) }; };
+        }
+        template<typename Tchar, typename Tsax_handler>
+        constexpr bool sax_handler_has_key() {
+            return requires(Tsax_handler handler) { { handler.key(typename parser<Tchar, Tsax_handler>::string_view_type{}) }; };
         }
         template<typename Tchar, typename Tsax_handler>
         constexpr bool sax_handler_has_comment() {
@@ -340,13 +340,13 @@ namespace sax {
         template<typename Tsax_handler> constexpr bool sax_handler_has_end_array() {
             return true;
         }
-        template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_key() {
-            return true;
-        }
         template<typename Tsax_handler> constexpr bool sax_handler_has_null() {
             return true;
         }
         template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_string() {
+            return true;
+        }
+        template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_key() {
             return true;
         }
         template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_comment() {
@@ -837,17 +837,6 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_key(string_view_type value) {
-#if MINIYAML_HAS_IF_CONSTEXPR
-        if constexpr (impl::sax_handler_has_key<Tchar, Tsax_handler>() == true) {
-            m_sax_handler.key(value);
-        }
-#else
-        m_sax_handler.key(value);
-#endif 
-    }
-
-    template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::signal_null() {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_null<Tsax_handler>() == true) {
@@ -870,6 +859,17 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
+    void parser<Tchar, Tsax_handler>::signal_key(string_view_type value) {
+#if MINIYAML_HAS_IF_CONSTEXPR
+        if constexpr (impl::sax_handler_has_key<Tchar, Tsax_handler>() == true) {
+            m_sax_handler.key(value);
+        }
+#else
+        m_sax_handler.key(value);
+#endif 
+    }
+
+    template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::signal_comment(string_view_type value) {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_comment<Tchar, Tsax_handler>() == true) {
@@ -879,7 +879,6 @@ namespace sax {
         m_sax_handler.comment(value);
 #endif 
     }
-
 
     template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::error(const parse_result_code result_code) {

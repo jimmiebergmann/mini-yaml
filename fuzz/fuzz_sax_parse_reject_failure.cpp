@@ -6,8 +6,8 @@ struct test_sax_handler {
     void end_object() {}
     void start_array() {}
     void end_array() {}
-    void key(yaml::basic_string_view<uint8_t>) {}
     void string(yaml::basic_string_view<uint8_t>) {}
+    void key(yaml::basic_string_view<uint8_t>) {}
     void comment(yaml::basic_string_view<uint8_t>) {}
 };
 
