@@ -52,7 +52,7 @@ jobs:
           cd fuzz
           mkdir build
           cd build
-          cmake -DMINIYAML_ENABLE_COVERAGE=ON -DMINIYAML_CPP_VERSION=${{matrix.language_number}} -DCMAKE_BUILD_TYPE=${{matrix.build_type}} ..
+          cmake -DMINIYAML_CPP_VERSION=${{matrix.language_number}} -DCMAKE_BUILD_TYPE=${{matrix.build_type}} ..
           cmake --build . --config ${{matrix.build_type}}
       - name: Corpus
         run: |
@@ -63,7 +63,7 @@ jobs:
         run: |
           cd bin
           mkdir corpus_new_1
-          ./fuzz_sax_parse corpus corpus_new_1 -max_total_time=100
+          ./fuzz_sax_parse${{matrix.output_name_postfix}} corpus corpus_new_1 -max_total_time=100
       - name: Fuzz reject failure
         run: |
           cd bin
