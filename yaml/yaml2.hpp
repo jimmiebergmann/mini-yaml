@@ -563,30 +563,30 @@ namespace sax {
     void parser<Tchar, Tsax_handler>::execute_find_unknown_potential_key() {
         auto& stack = get_stack();
         
-        auto unknown_to_object_func = [&]() {
+        auto found_key_func = [&]() {
             stack.type = stack_type_t::object;
             stack.min_indention = m_current_line_indention;
             signal_start_object();
             process_key();
             push_stack(&parser::execute_find_value);
+            consume_whitespaces_after_key();
         };
 
         if (m_current_ptr < m_end_ptr) {
             const auto peek_codepoint = *m_current_ptr;
             switch (peek_codepoint) {
                 case token_type::space:
-                case token_type::tab: unknown_to_object_func(); break;
+                case token_type::tab: found_key_func(); break;
                 case token_type::carriage:
-                case token_type::newline: unknown_to_object_func(); return;
+                case token_type::newline: found_key_func(); return;
                 default: stack.state_function = &parser::execute_find_unknown; return;
             }
 
-            consume_whitespaces_after_key();
             return;
         }
 
-        // Out of buffer, so this was a key with null as value.
-        unknown_to_object_func();
+        // Out of buffer, so this must be a key
+        found_key_func();
     }
 
     template<typename Tchar, typename Tsax_handler>
@@ -628,12 +628,13 @@ namespace sax {
     void parser<Tchar, Tsax_handler>::execute_find_key() {
         auto& stack = get_stack();
 
-        auto process_expected_whitespace = [&]() {
-            auto new_key_func = [&]() {
-                process_key();
-                stack.state_function = &parser::execute_find_value;
-            };
+        auto new_key_func = [&]() {
+            process_key();
+            stack.state_function = &parser::execute_find_value;
+            consume_whitespaces_after_key();
+        };
 
+        auto process_expected_whitespace = [&]() {
             const auto peek_codepoint = *m_current_ptr;
             switch (peek_codepoint) {
                 case token_type::space:
@@ -656,14 +657,13 @@ namespace sax {
                 case token_type::comment: return error(parse_result_code::missing_key);
                 case token_type::object: {
                     if (m_current_ptr >= m_end_ptr) {
-                        return error(parse_result_code::missing_key);
+                        new_key_func();
+                        return;
                     }
 
                     if (!process_expected_whitespace()) {
                         break;
                     }
-                    
-                    consume_whitespaces_after_key();
                 } return;
                 default: m_current_value_end_ptr = m_current_ptr; break;
             }

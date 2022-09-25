@@ -204,7 +204,7 @@ void run_sax_parse_all_styles(const std::basic_string<TChar>& input, const std::
 }
 
 TEST(sax_parse, ok_comments) {
-    std::string input =
+    const std::string input =
         "#test comment 1\n"
         "# test comment 2 \n"
         "#\ttest comment 3\t\n"
@@ -275,7 +275,7 @@ TEST(sax_parse, ok_comments) {
 
 TEST(sax_parse, ok_normal_scalar_single_line)
 {
-    std::string input =
+    const std::string input =
         "Hello world \n";
 
     using char_type = typename decltype(input)::value_type;
@@ -294,7 +294,7 @@ TEST(sax_parse, ok_normal_scalar_single_line)
 
 TEST(sax_parse, ok_normal_scalar_single_line_with_comment)
 {
-    std::string input =
+    const std::string input =
         "Hello world #Comment goes here\n";
 
     using char_type = typename decltype(input)::value_type;
@@ -314,7 +314,7 @@ TEST(sax_parse, ok_normal_scalar_single_line_with_comment)
 
 TEST(sax_parse, ok_normal_scalar_multi_line)
 {
-    std::string input =
+    const std::string input =
         "Hello world \n"
         " This is another line, with a leading space.\n"
         "My last line, with ending newline character.\n";
@@ -338,7 +338,7 @@ TEST(sax_parse, ok_normal_scalar_multi_line)
 
 TEST(sax_parse, ok_normal_scalar_multi_line_with_comment)
 {
-    std::string input =
+    const std::string input =
         "Hello world    #This is my first comment.\n"
         " This is another line, with a leading space. # Another useless comment...   \n"
         "My last line, with ending newline character. # Last comment  \n";
@@ -368,7 +368,7 @@ TEST(sax_parse, ok_normal_scalar_multi_line_with_comment)
 
 TEST(sax_parse, ok_normal_scalar_multi_line_without_newline)
 {
-    std::string input =
+    const std::string input =
         "  Hello world \n"
         " This is another line, with a leading space.\n"
         "My last line, without any ending newline character.";
@@ -392,7 +392,7 @@ TEST(sax_parse, ok_normal_scalar_multi_line_without_newline)
 
 TEST(sax_parse, fail_normal_scalar_invalid_tab_1)
 {
-    std::string input =
+    const std::string input =
         "\tHello world \n";
 
     using char_type = typename decltype(input)::value_type;
@@ -408,7 +408,7 @@ TEST(sax_parse, fail_normal_scalar_invalid_tab_1)
 
 TEST(sax_parse, fail_normal_scalar_invalid_tab_2)
 {
-    std::string input =
+    const std::string input =
         "Hello world \n"
         "\tThis line is invalid, due to tab.";
 
@@ -428,7 +428,7 @@ TEST(sax_parse, fail_normal_scalar_invalid_tab_2)
 
 TEST(sax_parse, ok_null_objects)
 {
-    std::string input =
+    const std::string input =
         " aaaa:\n"
         "  bbbb:\n"
         " cccc:\n"
@@ -483,9 +483,9 @@ TEST(sax_parse, ok_null_objects)
     });
 }
 
-TEST(sax_parse, ok_scalar_key_values)
+TEST(sax_parse, ok_object_scalar_values)
 {
-    std::string input =
+    const std::string input =
         "key:with:colon: Hello world\n"
         "key 2:  Second key value\n"
         "key 3: \t This is my last key";
@@ -516,9 +516,9 @@ TEST(sax_parse, ok_scalar_key_values)
     });
 }
 
-TEST(sax_parse, ok_scalar_key_values_with_leading_spaces)
+TEST(sax_parse, ok_object_scalar_values_with_leading_spaces)
 {
-    std::string input =
+    const std::string input =
         " key:with:colon: Hello world\n"
         " key 2:  Second key value\n"
         " key 3: \t This is my last key";
@@ -549,9 +549,59 @@ TEST(sax_parse, ok_scalar_key_values_with_leading_spaces)
     });
 }
 
-TEST(sax_parse, fail_scalar_key_values_invalid_indention_1)
+TEST(sax_parse, ok_object_key_at_EOF)
 {
-    std::string input =
+    const std::string input =
+        "key 1: Hello world\n"
+        "end of line:";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+
+        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Hello world");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "end of line");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+    });
+}
+
+TEST(sax_parse, fail_object_key_missing_at_EOF)
+{
+    const std::string input =
+        "key 1: Hello world\n"
+        "end of line";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::missing_key);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+
+        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Hello world");
+    });
+}
+
+TEST(sax_parse, fail_object_key_invalid_indention_1)
+{
+    const std::string input =
         " key:with:colon: Hello world\n"
         "key 2:  Second key value\n"
         "key 3: \t This is my last key\n";
@@ -574,9 +624,9 @@ TEST(sax_parse, fail_scalar_key_values_invalid_indention_1)
     });
 }
 
-TEST(sax_parse, fail_scalar_key_values_invalid_indention_2)
+TEST(sax_parse, fail_object_key_invalid_indention_2)
 {
-    std::string input =
+    const std::string input =
         "key:with:colon: Hello world\n"
         " key 2:  Second key value\n"
         "key 3: \t This is my last key\n";
@@ -598,7 +648,28 @@ TEST(sax_parse, fail_scalar_key_values_invalid_indention_2)
     });
 }
 
-TEST(sax_parse, ok_u8_bom_1)
+TEST(sax_parse, fail_object_key_value_invalid_indention_1)
+{
+    const std::string input =
+        "test:\n"
+        "wow";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::missing_key);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+
+        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "test");
+    });
+}
+
+TEST(sax_parse, ok_u8_BOM_1)
 {    
     mini_yaml_test::u8_string_type input = u8"...key 1: 歴戦経る素早い黒小鬼、怠けドワアフ達をひらり。裃の鵺、棟誉めて夜露誘う。\nkey 2: test";
 
@@ -630,7 +701,7 @@ TEST(sax_parse, ok_u8_bom_1)
    });
 }
 
-TEST(sax_parse, ok_u8_bom_2)
+TEST(sax_parse, ok_u8_BOM_2)
 {
     mini_yaml_test::u8_string_type input = u8"...key 1: Швидка бура лисиця перестрибує через ледачого\nkey 2: test";
 
