@@ -231,6 +231,7 @@ namespace sax {
         const_pointer m_current_line_indention_ptr;
         const_pointer m_current_value_start_ptr; 
         const_pointer m_current_value_end_ptr;
+        int64_t m_last_key_line;
 
         static const_pointer skip_utf8_bom(const_pointer begin, const_pointer end);
 
@@ -368,7 +369,8 @@ namespace sax {
         m_current_line_indention(0),
         m_current_line_indention_ptr(nullptr),
         m_current_value_start_ptr(nullptr),
-        m_current_value_end_ptr(nullptr)
+        m_current_value_end_ptr(nullptr),
+        m_last_key_line(-1)
     {}
 
     template<typename Tchar, typename Tsax_handler>
@@ -385,6 +387,7 @@ namespace sax {
         m_current_line_indention_ptr = m_begin_ptr;
         m_current_value_start_ptr = nullptr;
         m_current_value_end_ptr = nullptr;
+        m_last_key_line = -1;
 
         push_stack(&parser::execute_find_value);
 
@@ -564,6 +567,11 @@ namespace sax {
         auto& stack = get_stack();
         
         auto found_key_func = [&]() {
+            if (m_last_key_line == m_current_line) {
+                return error(parse_result_code::unexpected_key);
+            }
+            m_last_key_line = m_current_line;
+
             stack.type = stack_type_t::object;
             stack.min_indention = m_current_line_indention;
             signal_start_object();
@@ -576,10 +584,10 @@ namespace sax {
             const auto peek_codepoint = *m_current_ptr;
             switch (peek_codepoint) {
                 case token_type::space:
-                case token_type::tab: found_key_func(); break;
+                case token_type::tab:
                 case token_type::carriage:
-                case token_type::newline: found_key_func(); return;
-                default: stack.state_function = &parser::execute_find_unknown; return;
+                case token_type::newline: return found_key_func();
+                default: stack.state_function = &parser::execute_find_unknown; break;
             }
 
             return;
@@ -629,6 +637,11 @@ namespace sax {
         auto& stack = get_stack();
 
         auto new_key_func = [&]() {
+            if (m_last_key_line == m_current_line) {
+                return error(parse_result_code::unexpected_key);
+            }
+            m_last_key_line = m_current_line;
+
             process_key();
             stack.state_function = &parser::execute_find_value;
             consume_whitespaces_after_key();
@@ -638,7 +651,7 @@ namespace sax {
             const auto peek_codepoint = *m_current_ptr;
             switch (peek_codepoint) {
                 case token_type::space:
-                case token_type::tab: new_key_func(); return true;
+                case token_type::tab:
                 case token_type::carriage:
                 case token_type::newline: new_key_func(); return true;
                 default: break;
@@ -711,8 +724,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result_code parser<Tchar, Tsax_handler>::consume_whitespaces_after_key() {
-        
+    parse_result_code parser<Tchar, Tsax_handler>::consume_whitespaces_after_key() {     
         auto result = [&]() {
             auto& current_stack = get_stack();
             while (m_current_ptr < m_end_ptr) {

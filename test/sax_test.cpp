@@ -576,6 +576,26 @@ TEST(sax_parse, ok_object_key_at_EOF)
     });
 }
 
+TEST(sax_parse, fail_object_nested_on_single_line)
+{
+    const std::string input =
+        "key 1: key 2: value\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::unexpected_key);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
+
+        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1");
+    });
+}
+
 TEST(sax_parse, fail_object_key_missing_at_EOF)
 {
     const std::string input =
