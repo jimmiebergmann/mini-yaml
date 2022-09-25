@@ -86,7 +86,6 @@ if (CMAKE_VERSION VERSION_LESS 2.8.11)
   include_directories("${gtest_SOURCE_DIR}/include")
 endif()
 
-include_directories ("${mini_yaml_dir}")
 add_executable(mini_yaml_tests ${test_files})
 
 set_target_properties( mini_yaml_tests

@@ -10,6 +10,8 @@ enc_temp_folder
 *.tlog
 Valgrind*
 CppCheckResults*
+.vs
+.vscode
 
 # Build
 *.exp
