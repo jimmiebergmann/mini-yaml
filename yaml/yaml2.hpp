@@ -135,6 +135,8 @@ namespace MINIYAML_NAMESPACE {
         MINIYAML_INLINE_VARIABLE constexpr static T null = '~';
         MINIYAML_INLINE_VARIABLE constexpr static T literal = '|';
         MINIYAML_INLINE_VARIABLE constexpr static T folded = '>';
+        MINIYAML_INLINE_VARIABLE constexpr static T chomping_strip = '-';
+        MINIYAML_INLINE_VARIABLE constexpr static T chomping_keep = '+';
     };
 }
 
@@ -164,6 +166,19 @@ namespace sax {
         Tit_begin first,
         Tit_end last,
         Tsax_handler& handler);
+
+
+    /** Helper base struct for sax handler. */
+    struct handler_base {
+        virtual void null() {}
+        virtual void start_object() {}
+        virtual void end_object() {}
+        virtual void start_array() {}
+        virtual void end_array() {}
+        virtual void string(basic_string_view<uint8_t>) {}
+        virtual void key(basic_string_view<uint8_t>) {}
+        virtual void comment(basic_string_view<uint8_t>) {}
+    };
 
 
     /** SAX style parser. */
@@ -380,7 +395,6 @@ namespace sax {
         m_current_ptr = m_begin_ptr;
         m_stack.clear();
         m_current_result_code = parse_result_code::success;
-
         m_current_line = 0;
         m_current_line_ptr = m_begin_ptr;
         m_current_line_indention = 0;

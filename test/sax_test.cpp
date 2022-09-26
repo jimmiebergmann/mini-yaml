@@ -426,123 +426,6 @@ TEST(sax_parse, ok_comments) {
     });
 }
 
-TEST(sax_parse, ok_normal_scalar_multi_line)
-{
-    const std::string input =
-        "Hello world \n"
-        " This is another line, with a leading space.\n"
-        "My last line, with ending newline character.\n";
-
-    using char_type = typename decltype(input)::value_type;
-
-    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
-        handler.prepare_read();
-
-        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "Hello world");
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "This is another line, with a leading space.");
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "My last line, with ending newline character.");
-    });
-}
-
-TEST(sax_parse, ok_normal_scalar_multi_line_with_comment)
-{
-    const std::string input =
-        "Hello world    #This is my first comment.\n"
-        " This is another line, with a leading space. # Another useless comment...   \n"
-        "My last line, with ending newline character. # Last comment  \n";
-
-    using char_type = typename decltype(input)::value_type;
-
-    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
-        handler.prepare_read();
-
-        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "Hello world");
-        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-        EXPECT_EQ(handler.get_next_comment(), "This is my first comment.");
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "This is another line, with a leading space.");
-        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-        EXPECT_EQ(handler.get_next_comment(), "Another useless comment...");
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "My last line, with ending newline character.");
-        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-        EXPECT_EQ(handler.get_next_comment(), "Last comment");
-    });
-}
-
-TEST(sax_parse, ok_normal_scalar_multi_line_without_newline)
-{
-    const std::string input =
-        "  Hello world \n"
-        " This is another line, with a leading space.\n"
-        "My last line, without any ending newline character.";
-
-    using char_type = typename decltype(input)::value_type;
-
-    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
-        handler.prepare_read();
-
-        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "Hello world");
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "This is another line, with a leading space.");
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "My last line, without any ending newline character.");
-    });
-}
-
-TEST(sax_parse, ok_normal_scalar_single_line)
-{
-    const std::string input =
-        "Hello world \n";
-
-    using char_type = typename decltype(input)::value_type;
-
-    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
-        handler.prepare_read();
-
-        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "Hello world");
-    });
-}
-
-
-TEST(sax_parse, ok_normal_scalar_single_line_with_comment)
-{
-    const std::string input =
-        "Hello world #Comment goes here\n";
-
-    using char_type = typename decltype(input)::value_type;
-
-    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
-        handler.prepare_read();
-
-        ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "Hello world");
-        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-        EXPECT_EQ(handler.get_next_comment(), "Comment goes here");
-    });
-}
-
 TEST(sax_parse, ok_null_objects)
 {
     const std::string input =
@@ -686,6 +569,150 @@ TEST(sax_parse, ok_object_scalar_values_with_leading_spaces)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "This is my last key");
         EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+    });
+}
+
+
+/*TEST(sax_parse, ok_scalar_literal)
+{
+    const std::string input =
+        "|\n"
+        " Hello world \n"
+        " Foo bar\n"
+        " This is my last line of this literal scalar value.\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Hello world");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Foo bar");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This is my last line of this literal scalar value.");
+       
+    });
+}*/
+
+TEST(sax_parse, ok_scalar_multi_line)
+{
+    const std::string input =
+        "Hello world \n"
+        " This is another line, with a leading space.\n"
+        "My last line, with ending newline character.\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Hello world");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This is another line, with a leading space.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "My last line, with ending newline character.");
+    });
+}
+
+TEST(sax_parse, ok_scalar_multi_line_with_comment)
+{
+    const std::string input =
+        "Hello world    #This is my first comment.\n"
+        " This is another line, with a leading space. # Another useless comment...   \n"
+        "My last line, with ending newline character. # Last comment  \n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Hello world");
+        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "This is my first comment.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This is another line, with a leading space.");
+        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Another useless comment...");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "My last line, with ending newline character.");
+        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Last comment");
+    });
+}
+
+TEST(sax_parse, ok_scalar_multi_line_without_newline)
+{
+    const std::string input =
+        "  Hello world \n"
+        " This is another line, with a leading space.\n"
+        "My last line, without any ending newline character.";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Hello world");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This is another line, with a leading space.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "My last line, without any ending newline character.");
+    });
+}
+
+TEST(sax_parse, ok_scalar_single_line)
+{
+    const std::string input =
+        "Hello world \n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Hello world");
+    });
+}
+
+
+TEST(sax_parse, ok_scalar_single_line_with_comment)
+{
+    const std::string input =
+        "Hello world #Comment goes here\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Hello world");
+        EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Comment goes here");
     });
 }
 
