@@ -31,8 +31,6 @@ Builds are passed if all tests are successful and no memory leaks were found.
 ## Missing features (TODO)
 - yaml::dom
 - yaml::dom_view
-- block style (literal/folded)
-- chomping (clip/stip/keep)
 - indentation indicator
 - sequences
 - tags(!!type)

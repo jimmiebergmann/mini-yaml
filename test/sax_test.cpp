@@ -384,7 +384,7 @@ TEST(sax_parse, fail_bad_indention_scalar_multiple_literal_1)
 
         ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::strip));
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
@@ -411,7 +411,7 @@ TEST(sax_parse, fail_bad_indention_scalar_multiple_literal_2)
 
         ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::strip));
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "This is a scalar value.");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
@@ -424,7 +424,7 @@ TEST(sax_parse, fail_bad_indention_scalar_multiple_literal_2)
     });
 }
 
-TEST(sax_parse, fail_object_unexpected_key)
+TEST(sax_parse, fail_object_unexpected_key_1)
 {
     const std::string input =
         "key 1: key 2:\n";
@@ -440,6 +440,29 @@ TEST(sax_parse, fail_object_unexpected_key)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
         EXPECT_EQ(handler.get_next_key(), "key 1");
+    });
+}
+
+TEST(sax_parse, fail_object_unexpected_key_2)
+{
+    const std::string input =
+        "key 1: value\n"
+        " unexpected:";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::unexpected_key);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "value");
     });
 }
 
@@ -593,13 +616,15 @@ TEST(sax_parse, ok_object_multiple_nested_objects)
 {
     const std::string input =
         "key 1: first value\n"
-        "key 2 : second value\n"
+        "key 2 : | \n"
+        "    second value\n"
         "Key 3:\n"
         "  key 3_1: \n"
         "   key 3_1_1: \n"
         "    value on new line.\n"
         "  key 3_2: \n"
-        "  key 3_3: Another value here...\n"
+        "  key 3_3: >+  \n"
+        "              Another value here...\n"
         "key 4: This is my very last value";
 
     using char_type = typename decltype(input)::value_type;
@@ -623,7 +648,7 @@ TEST(sax_parse, ok_object_multiple_nested_objects)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
         EXPECT_EQ(handler.get_next_key(), "key 2");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "second value");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
@@ -655,7 +680,7 @@ TEST(sax_parse, ok_object_multiple_nested_objects)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
         EXPECT_EQ(handler.get_next_key(), "key 3_3");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::folded, yaml::chomping::keep));
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "Another value here...");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
@@ -771,6 +796,99 @@ TEST(sax_parse, ok_scalar_multiple)
     });
 }
 
+TEST(sax_parse, ok_scalar_multiple_folded)
+{
+    const std::string input =
+        ">\n"
+        "\n"
+        "    Row 1 here.\n"
+        "    Row 2 here.\n"
+        "    Row 3 here. After empty row.\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::folded, yaml::chomping::clip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 1 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 2 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
+TEST(sax_parse, ok_scalar_multiple_folded_keep)
+{
+    const std::string input =
+        ">+\n"
+        "\n"
+        "    Row 1 here.\n"
+        "    Row 2 here.\n"
+        "    Row 3 here. After empty row.\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::folded, yaml::chomping::keep));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 1 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 2 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
+TEST(sax_parse, ok_scalar_multiple_folded_strip)
+{
+    const std::string input =
+        ">-\n"
+        "\n"
+        "    Row 1 here.\n"
+        "    Row 2 here.\n"
+        "    Row 3 here. After empty row.\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::folded, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 1 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 2 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
 TEST(sax_parse, ok_scalar_multiple_literal)
 {
     const std::string input =
@@ -784,7 +902,7 @@ TEST(sax_parse, ok_scalar_multiple_literal)
         "     \n"
         "    Row 5 here. After 1 space row.\n"
         "   \n"
-        "     Row 6 here with indention. After empty row.\n"
+        "     Row 6 here with indention. After empty row. 3 leading spaces   \n"
         "    Finally my last row to test.\n"
         "\n";
 
@@ -797,7 +915,7 @@ TEST(sax_parse, ok_scalar_multiple_literal)
 
         ASSERT_EQ(handler.instructions.size(), size_t{ 14 });
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::strip));
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "Row 1 here.");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
@@ -817,12 +935,74 @@ TEST(sax_parse, ok_scalar_multiple_literal)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), " Row 6 here with indention. After empty row.");
+        EXPECT_EQ(handler.get_next_string(), " Row 6 here with indention. After empty row. 3 leading spaces   ");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "Finally my last row to test.");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "");
 
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
+TEST(sax_parse, ok_scalar_multiple_literal_keep)
+{
+    const std::string input =
+        "|+ \n"
+        "\n"
+        "    Row 1 here.\n"
+        "    Row 2 here.\n"
+        "    Row 3 here. After empty row.\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::keep));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 1 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 2 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
+TEST(sax_parse, ok_scalar_multiple_literal_strip)
+{
+    const std::string input =
+        "|-\n"
+        "\n"
+        "    Row 1 here.\n"
+        "    Row 2 here.\n"
+        "    Row 3 here. After empty row.\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 1 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 2 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
     });
 }
@@ -863,7 +1043,7 @@ TEST(sax_parse, ok_scalar_single_literal)
 
         ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::strip));
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
