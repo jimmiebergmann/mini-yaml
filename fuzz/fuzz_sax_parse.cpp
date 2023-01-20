@@ -2,6 +2,8 @@
 
 struct test_sax_handler {
     void null() {}
+    void start_scalar(yaml::block_style, yaml::chomping) {}
+    void end_scalar() {}
     void start_object() {}
     void end_object() {}
     void start_array() {}

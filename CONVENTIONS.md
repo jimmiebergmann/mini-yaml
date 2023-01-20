@@ -9,17 +9,14 @@ Following code illustrates the coding style conventions for spacing, naming and 
 
 
 ```cpp
-namespace my_namespace
-{
+namespace my_namespace {
 
-    enum class my_enum
-    {
+    enum class my_enum {
         foo_bar,
         hello_word
     };
 
-    class my_class
-    {
+    class my_class {
     
       public: 
       
@@ -53,8 +50,8 @@ namespace my_namespace
         void private_method();
         ...
       
-        int m_foo;
-        int m_hello_world;
+        int32_t m_foo;
+        int32_t m_hello_world;
         ...
         
     };
@@ -62,12 +59,10 @@ namespace my_namespace
 }
 
 // Inline implementations.
-namespace my_namespace
-{
+namespace my_namespace {
 
     template<typename T>
-    inline void my_class::method_3()
-    {
+    inline void my_class::method_3() {
         
     }
     

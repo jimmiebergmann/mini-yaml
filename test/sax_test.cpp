@@ -1,7 +1,7 @@
 ﻿/*
 * MIT License
 *
-* Copyright(c) 2022 Jimmie Bergmann
+* Copyright(c) 2023 Jimmie Bergmann
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files(the "Software"), to deal
@@ -26,8 +26,9 @@
 
 #include "test_utility.hpp"
 
-enum class test_sax_instruction
-{
+enum class test_sax_instruction {
+    start_scalar,
+    end_scalar,
     start_object,
     end_object,
     start_array,
@@ -38,27 +39,59 @@ enum class test_sax_instruction
     comment
 };
 
+struct test_scalar_style {
+    yaml::block_style block_style;
+    yaml::chomping chomping;
+
+    test_scalar_style() :
+        block_style(yaml::block_style::none),
+        chomping(yaml::chomping::strip),
+        m_default_constructed(true)
+    {}
+
+    test_scalar_style(yaml::block_style p_block_style, yaml::chomping p_chomping) :
+        block_style(p_block_style),
+        chomping(p_chomping),
+        m_default_constructed(false)
+    {}
+
+    bool operator == (const test_scalar_style& rhs) const {
+        return
+            m_default_constructed == rhs.m_default_constructed &&
+            block_style == rhs.block_style &&
+            chomping == rhs.chomping;
+    }
+
+private:
+    bool m_default_constructed;
+};
+
 template<typename TChar>
 struct test_sax_handler {
 
     std::vector<test_sax_instruction> instructions = {};
 
+    size_t start_scalar_count = 0;
+    size_t end_scalar_count = 0;
     size_t start_object_count = 0;
     size_t end_object_count = 0;
     size_t start_array_count = 0;
     size_t end_array_count = 0;
     size_t null_count = 0;
+    std::vector<test_scalar_style> scalar_styles = {};
     std::vector<std::basic_string<TChar>> keys = {};
     std::vector<std::basic_string<TChar>> strings = {};
     std::vector<std::basic_string<TChar>> comments = {};
 
     test_sax_instruction* m_current_read_instruction = nullptr;
+    test_scalar_style* m_current_read_scalar_styles = nullptr;
     std::basic_string<TChar>* m_current_read_string = nullptr;
     std::basic_string<TChar>* m_current_read_key = nullptr;
     std::basic_string<TChar>* m_current_read_comment = nullptr;
 
     void prepare_read() {
         m_current_read_instruction = instructions.data();
+        m_current_read_scalar_styles = scalar_styles.data();
         m_current_read_string = strings.data();
         m_current_read_key = keys.data();
         m_current_read_comment = comments.data();
@@ -66,6 +99,14 @@ struct test_sax_handler {
 
     test_sax_instruction get_next_instruction() {
         return *(m_current_read_instruction++);
+    }
+
+    test_scalar_style get_next_scalar_style() {
+        auto* current_scalar_style = m_current_read_scalar_styles++;
+        if (current_scalar_style >= scalar_styles.data() + scalar_styles.size()) {
+            return {};
+        }
+        return *current_scalar_style;
     }
 
     std::basic_string<TChar> get_next_string() {
@@ -95,6 +136,17 @@ struct test_sax_handler {
     void null() {
         ++null_count;
         instructions.push_back(test_sax_instruction::null);
+    }
+
+    void start_scalar(yaml::block_style block_style, yaml::chomping chomping) {
+        ++start_scalar_count;
+        instructions.push_back(test_sax_instruction::start_scalar);
+        scalar_styles.emplace_back(block_style, chomping);
+    }
+
+    void end_scalar() {
+        ++end_scalar_count;
+        instructions.push_back(test_sax_instruction::end_scalar);
     }
 
     void start_object() {
@@ -203,7 +255,626 @@ void run_sax_parse_all_styles(const std::basic_string<TChar>& input, const std::
 }
 
 
+// =====================================================================
 // Tests
+
+TEST(sax_parse, fail_bad_indention_objects_1)
+{
+    const std::string input =
+        "   key 1:\n"
+        "  key 1_fail:\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::bad_indentation);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+    });
+}
+
+TEST(sax_parse, fail_bad_indention_objects_2)
+{
+    const std::string input =
+        "key 1:\n"
+        "  key 1_1:\n"
+        "  key 1_2:\n"
+        "key 2:\n"
+        " key 2_1:\n"
+        "key 3:\n"
+        "  key 3_1:\n"
+        "      key 3_1_1:\n"
+        "  key 3_2:\n"
+        "key 4:\n"
+        "key 5:\n"
+        "   key 5_1:\n"
+        "  key 5_bad:\n"
+        "key 6:\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::bad_indentation);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 30 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1_1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1_2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object); // End key 1.
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);    
+        EXPECT_EQ(handler.get_next_key(), "key 2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 2_1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object); // End key 2.
+
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 3");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 3_1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 3_1_1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object); // End key 3_1
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 3_2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object); // End key 3.
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 4");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 5");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 5_1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object); // End key 5_1.
+    });
+}
+
+TEST(sax_parse, fail_bad_indention_scalar_multiple_literal_1)
+{
+    const std::string input =
+        "|\n"
+        "   This is a scalar value\n"
+        "  with invalid indention.";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::bad_indentation);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
+TEST(sax_parse, fail_bad_indention_scalar_multiple_literal_2)
+{
+    const std::string input =
+        "|\n"
+        "   This is a scalar value.\n"
+        "    This is another line,\n"
+        "     and another one.\n"
+        "    This is the last valid row.\n"
+        "  This line fails\n"
+        "   and this one is never parsed.\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::bad_indentation);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This is a scalar value.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), " This is another line,");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "  and another one.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), " This is the last valid row.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
+TEST(sax_parse, fail_object_unexpected_key)
+{
+    const std::string input =
+        "key 1: key 2:\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::unexpected_key);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1");
+    });
+}
+
+/*
+TEST(sax_parse, ok_comments_single)
+{
+    const std::string input =
+        "# Hello World";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Hello World");
+    });
+}
+
+TEST(sax_parse, ok_comments_multiple)
+{
+    const std::string input =
+        "#No indent, no space.\n"
+        " #One indent, no space.\n"
+        "  #Two indents, no space.\n"
+        "   #Three indents, no space.\n"
+
+        "# No indent, one space.\n"
+        " # One indent, one space.\n"
+        "  # Two indents, one space.\n"
+        "   # Three indents, one space.\n"
+
+        "#  No indent, two spaces.\n"
+        " #  One indent, two spaces.\n"
+        "  #  Two indents, two spaces.\n"
+        "   #  Three indents, two spaces.\n"
+
+        "#   No indent, three spaces.\n"
+        " #   One indent, three spaces.\n"
+        "  #   Two indents, three spaces.\n"
+        "   #   Three indents, three spaces.\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 16 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "No indent, no space.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "One indent, no space.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Two indents, no space.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Three indents, no space.");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "No indent, one space.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "One indent, one space.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Two indents, one space.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Three indents, one space.");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "No indent, two spaces.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "One indent, two spaces.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Two indents, two spaces.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Three indents, two spaces.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+
+        EXPECT_EQ(handler.get_next_comment(), "No indent, three spaces.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "One indent, three spaces.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Two indents, three spaces.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Three indents, three spaces.");
+    });
+}
+*/
+
+TEST(sax_parse, ok_empty_file)
+{
+    const std::string input = "";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+    });
+}
+
+TEST(sax_parse, ok_empty_file_empty_lines)
+{
+    const std::string input =
+        "\n"
+        "\r\n"
+        "\r";
+
+    using char_type = typename decltype(input)::value_type;
+
+    test_sax_handler<char_type> handler = {};
+    ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+    handler.prepare_read();
+
+    ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+}
+
+TEST(sax_parse, ok_empty_file_empty_lines_with_spaces)
+{
+    const std::string input =
+        " \n"
+        "\n"
+        "    \n"
+        " \r"
+        "\r"
+        "    \r"
+        " \r\n"
+        "\r\n"
+        "    \r\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    test_sax_handler<char_type> handler = {};
+    ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+    handler.prepare_read();
+
+    ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+}
+
+TEST(sax_parse, ok_object_multiple_nested_objects)
+{
+    const std::string input =
+        "key 1: first value\n"
+        "key 2 : second value\n"
+        "Key 3:\n"
+        "  key 3_1: \n"
+        "   key 3_1_1: \n"
+        "    value on new line.\n"
+        "  key 3_2: \n"
+        "  key 3_3: Another value here...\n"
+        "key 4: This is my very last value";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 30 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "first value");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "second value");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "Key 3");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 3_1");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 3_1_1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "value on new line.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object); // End 3_1
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 3_2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 3_3");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Another value here...");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object); // End 3
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 4");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This is my very last value");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+    });
+}
+
+TEST(sax_parse, ok_object_single_nested_objects)
+{
+    const std::string input =
+        " key 1:\n"
+        "  key 2 : \n"
+        "   key 3:\n"
+        "    key 4: Scalar value here  \n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 15 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 1");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 2");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 3");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key 4");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Scalar value here");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+    });
+}
+
+TEST(sax_parse, ok_object_single_with_scalar_inline)
+{
+    const std::string input =
+        "key: hello world";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "hello world");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+    });
+}
+
+TEST(sax_parse, ok_scalar_multiple)
+{
+    const std::string input =
+        "This is a scalar value, \n"
+        "with multiple rows.\n"
+        " Block style is none and chomping is set to strip. ";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This is a scalar value,");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "with multiple rows.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Block style is none and chomping is set to strip.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
+TEST(sax_parse, ok_scalar_multiple_literal)
+{
+    const std::string input =
+        "|\n"
+        "    Row 1 here.\n"
+        "    Row 2 here.\n"
+        "\n"
+        "    Row 3 here. After empty row.\n"
+        "    \n"
+        "    Row 4 here. After empty row.\n"
+        "     \n"
+        "    Row 5 here. After 1 space row.\n"
+        "   \n"
+        "     Row 6 here with indention. After empty row.\n"
+        "    Finally my last row to test.\n"
+        "\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 14 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 1 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 2 here.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 4 here. After empty row.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), " ");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Row 5 here. After 1 space row.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), " Row 6 here with indention. After empty row.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "Finally my last row to test.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
+TEST(sax_parse, ok_scalar_single)
+{
+    const std::string input =
+        "This is a scalar value";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
+TEST(sax_parse, ok_scalar_single_literal)
+{
+    const std::string input =
+        "|\n"
+        " This is a scalar value";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        handler.prepare_read();
+
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
+
+
+
+ /*
+ 
 TEST(sax_parse, fail_normal_scalar_invalid_tab_1)
 {
     const std::string input =
@@ -573,7 +1244,7 @@ TEST(sax_parse, ok_object_scalar_values_with_leading_spaces)
 }
 
 
-/*TEST(sax_parse, ok_scalar_literal)
+TEST(sax_parse, ok_scalar_literal)
 {
     const std::string input =
         "|\n"
@@ -588,7 +1259,7 @@ TEST(sax_parse, ok_object_scalar_values_with_leading_spaces)
         ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
         handler.prepare_read();
 
-        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+        /ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "Hello world");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
@@ -597,7 +1268,7 @@ TEST(sax_parse, ok_object_scalar_values_with_leading_spaces)
         EXPECT_EQ(handler.get_next_string(), "This is my last line of this literal scalar value.");
        
     });
-}*/
+}
 
 TEST(sax_parse, ok_scalar_multi_line)
 {
@@ -778,6 +1449,4 @@ TEST(sax_parse, ok_u8_BOM_2)
         EXPECT_EQ(handler.get_next_string(), u8"test");
         EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
     });
-}
-
-// 
+}*/
