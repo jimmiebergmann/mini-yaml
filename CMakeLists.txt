@@ -97,6 +97,12 @@ set_target_properties( mini_yaml_tests
   RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin"
 )
 
+if(MSVC)
+  if((${CMAKE_VERSION} VERSION_EQ "3.8.0") OR (${CMAKE_VERSION} VERSION_GREATER "3.8.0")) 
+    set_property(TARGET mini_yaml_tests APPEND PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
+  endif()
+endif()
+
 if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU") ## Code coverage
   set_target_properties(mini_yaml_tests PROPERTIES COMPILE_FLAGS "--coverage")
   target_link_libraries(mini_yaml_tests "gcov")

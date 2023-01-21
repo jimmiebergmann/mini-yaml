@@ -121,20 +121,22 @@ namespace MINIYAML_NAMESPACE {
     template<typename T>
     struct token {
         MINIYAML_INLINE_VARIABLE constexpr static T eof = '\0';
+        MINIYAML_INLINE_VARIABLE constexpr static T document_start = '-';
+        MINIYAML_INLINE_VARIABLE constexpr static T document_end = '.';
         MINIYAML_INLINE_VARIABLE constexpr static T space = ' ';
         MINIYAML_INLINE_VARIABLE constexpr static T tab = '\t';
         MINIYAML_INLINE_VARIABLE constexpr static T carriage = '\r';
         MINIYAML_INLINE_VARIABLE constexpr static T newline = '\n';
         MINIYAML_INLINE_VARIABLE constexpr static T comment = '#';
-        MINIYAML_INLINE_VARIABLE constexpr static T quote = '\"';
-        MINIYAML_INLINE_VARIABLE constexpr static T single_quote = '\'';
+        //MINIYAML_INLINE_VARIABLE constexpr static T quote = '\"';
+        //MINIYAML_INLINE_VARIABLE constexpr static T single_quote = '\'';
         MINIYAML_INLINE_VARIABLE constexpr static T object = ':';
-        MINIYAML_INLINE_VARIABLE constexpr static T object_start = '{';
-        MINIYAML_INLINE_VARIABLE constexpr static T object_end = '}';
-        MINIYAML_INLINE_VARIABLE constexpr static T sequence = '-';
-        MINIYAML_INLINE_VARIABLE constexpr static T sequence_start = '[';
-        MINIYAML_INLINE_VARIABLE constexpr static T sequence_end = ']';
-        MINIYAML_INLINE_VARIABLE constexpr static T null = '~';
+        //MINIYAML_INLINE_VARIABLE constexpr static T object_start = '{';
+        //MINIYAML_INLINE_VARIABLE constexpr static T object_end = '}';
+        //MINIYAML_INLINE_VARIABLE constexpr static T sequence = '-';
+        //MINIYAML_INLINE_VARIABLE constexpr static T sequence_start = '[';
+        //MINIYAML_INLINE_VARIABLE constexpr static T sequence_end = ']';
+        //MINIYAML_INLINE_VARIABLE constexpr static T null = '~';
         MINIYAML_INLINE_VARIABLE constexpr static T literal_block = '|';
         MINIYAML_INLINE_VARIABLE constexpr static T folded_block = '>';
         MINIYAML_INLINE_VARIABLE constexpr static T chomping_strip = '-';
@@ -279,7 +281,10 @@ namespace sax {
         void execute_read_scalar_block();
         void execute_read_key();
 
-        //bool consume_only_whitespaces_until_newline();
+        bool consume_only_whitespaces_until_newline_or_comment();
+
+        bool has_min_tokens_left(size_t count);
+        bool is_next_token(size_t increments, const value_type value);
 
         void signal_start_scalar(yaml::block_style block_style, yaml::chomping comping);
         void signal_end_scalar();
@@ -490,6 +495,53 @@ namespace sax {
             }
         };
 
+        auto process_zero_line_indention = [&]() {
+            const auto codepoint = *m_current_line_indention_ptr;
+            switch (codepoint) {
+                case token_type::document_start: { 
+                    if (is_next_token(1, token_type::document_start) && is_next_token(2, token_type::document_start))
+                    {
+                        m_current_ptr += 3;
+                        if (consume_only_whitespaces_until_newline_or_comment()) {
+                            if (m_stack.front().type != stack_type_t::unknown) {
+                                return false;
+                            }
+                        }
+                        else {
+                            error(parse_result_code::expected_line_break);
+                            return false;
+                        }
+                    }
+                } break;
+                case token_type::document_end: {
+                    if (is_next_token(1, token_type::document_end) && is_next_token(2, token_type::document_end))
+                    {
+                        m_current_ptr += 3;
+                        if (consume_only_whitespaces_until_newline_or_comment()) {
+                            return false;
+                        }
+                        else {
+                            error(parse_result_code::expected_line_break);
+                            return false;
+                        }
+                    }
+                } break;
+                default: break;
+            };
+
+            return true;
+        };
+
+        auto pre_process_line = [&]() {
+            if (m_current_line_indention == 0) {
+                if (!process_zero_line_indention()) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+
         while (m_current_result_code == parse_result_code::success && m_current_ptr < m_end_ptr && !m_stack.empty()) {
             if (m_stack.size() > m_options.max_depth) {
                 error(parse_result_code::reached_stack_max_depth);
@@ -511,6 +563,13 @@ namespace sax {
             }
 
             if (m_stack.empty() || m_current_result_code != parse_result_code::success) {
+                break;
+            }
+
+            if (!pre_process_line()) {
+                break;
+            }
+            if (m_current_result_code != parse_result_code::success) {
                 break;
             }
 
@@ -649,6 +708,11 @@ namespace sax {
                 default: {
                     error(parse_result_code::expected_line_break);
                 } return;
+            }
+
+            if (!consume_only_whitespaces_until_newline_or_comment()) {
+                error(parse_result_code::expected_line_break);
+                return;
             }
 
             auto& stack_item = m_stack.back();
@@ -912,8 +976,8 @@ namespace sax {
         push_stack(&parser::execute_find_value);
     }
 
-    /*template<typename Tchar, typename Tsax_handler>
-    bool parser<Tchar, Tsax_handler>::consume_only_whitespaces_until_newline() {
+    template<typename Tchar, typename Tsax_handler>
+    bool parser<Tchar, Tsax_handler>::consume_only_whitespaces_until_newline_or_comment() {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
@@ -921,11 +985,26 @@ namespace sax {
                 case token_type::tab: break;
                 case token_type::carriage:
                 case token_type::newline: register_newline(); return true;
+                case token_type::comment: --m_current_ptr; return true;
                 default: return false;
             }
         }
         return true;
-    }*/
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    bool parser<Tchar, Tsax_handler>::has_min_tokens_left(size_t count) {
+        return m_current_ptr + count < m_end_ptr;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    bool parser<Tchar, Tsax_handler>::is_next_token(size_t increments, const value_type value) {
+        if (m_current_ptr + increments >= m_end_ptr) {
+            return false;
+        }
+
+        return *(m_current_ptr + increments) == value;
+    }
 
     template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::signal_start_scalar(yaml::block_style block_style, yaml::chomping comping) {
