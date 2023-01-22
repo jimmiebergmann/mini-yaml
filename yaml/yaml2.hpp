@@ -477,7 +477,7 @@ namespace sax {
         };
 
         auto process_newline_indentation = [&]() {      
-            if (current_is_newline() || *m_current_ptr == token_type::comment) {
+            if (current_is_newline() || (m_current_ptr < m_begin_ptr && *m_current_ptr == token_type::comment)) {
                 return;
             }
             
