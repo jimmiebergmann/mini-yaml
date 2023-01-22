@@ -477,7 +477,7 @@ namespace sax {
         };
 
         auto process_newline_indentation = [&]() {      
-            if (current_is_newline() || (m_current_ptr < m_begin_ptr && *m_current_ptr == token_type::comment)) {
+            if (current_is_newline() || (m_current_ptr < m_end_ptr && *m_current_ptr == token_type::comment)) {
                 return;
             }
             
@@ -566,14 +566,14 @@ namespace sax {
                 }
             }
 
-            if (m_stack.empty() || m_current_result_code != parse_result_code::success) {
+            if (m_stack.empty() || m_current_result_code != parse_result_code::success || m_current_ptr >= m_end_ptr) {
                 break;
             }
 
             if (!pre_process_line()) {
                 break;
             }
-            if (m_current_result_code != parse_result_code::success) {
+            if (m_current_result_code != parse_result_code::success || m_current_ptr >= m_end_ptr) {
                 break;
             }
 
