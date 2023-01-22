@@ -281,10 +281,13 @@ namespace sax {
         void execute_read_scalar_block();
         void execute_read_key();
 
+        void read_comment_until_newline();
+        void read_remaining_whitespaces();
         bool consume_only_whitespaces_until_newline_or_comment();
 
         bool has_min_tokens_left(size_t count);
         bool is_next_token(size_t increments, const value_type value);
+        bool is_prev_token_whitespace(int decrements = 1);
 
         void signal_start_scalar(yaml::block_style block_style, yaml::chomping comping);
         void signal_end_scalar();
@@ -300,6 +303,7 @@ namespace sax {
         void error(const parse_result_code result_code);
 
         stack_item_t& push_stack(state_function_t state_function);
+        void pop_stack();
         void pop_stack_from(stack_iterator_t it);
 
     };
@@ -473,7 +477,7 @@ namespace sax {
         };
 
         auto process_newline_indentation = [&]() {      
-            if (current_is_newline()) {
+            if (current_is_newline() || *m_current_ptr == token_type::comment) {
                 return;
             }
             
@@ -503,7 +507,7 @@ namespace sax {
                     {
                         m_current_ptr += 3;
                         if (consume_only_whitespaces_until_newline_or_comment()) {
-                            if (m_stack.front().type != stack_type_t::unknown) {
+                            if (m_stack.front().type != stack_type_t::unknown || m_current_ptr >= m_end_ptr) {
                                 return false;
                             }
                         }
@@ -517,7 +521,7 @@ namespace sax {
                     if (is_next_token(1, token_type::document_end) && is_next_token(2, token_type::document_end))
                     {
                         m_current_ptr += 3;
-                        if (consume_only_whitespaces_until_newline_or_comment()) {
+                        if (consume_only_whitespaces_until_newline_or_comment() || m_current_ptr >= m_end_ptr) {
                             return false;
                         }
                         else {
@@ -656,10 +660,6 @@ namespace sax {
     void parser<Tchar, Tsax_handler>::execute_find_value() {
         m_current_is_new_line = false;
 
-        if (m_current_ptr >= m_end_ptr) {
-            return;
-        }
-
         auto value_start_ptr = m_current_ptr;
         auto value_end_ptr = m_current_ptr;
 
@@ -764,6 +764,9 @@ namespace sax {
             switch (first_codepoint) {
                 case token_type::carriage:
                 case token_type::newline: return register_newline();
+                case token_type::comment: {
+                    read_comment_until_newline();
+                } return;
                 case token_type::object: {
                     if (on_object_token()) {
                         return;
@@ -785,6 +788,14 @@ namespace sax {
                 switch (codepoint) {
                     case token_type::space:
                     case token_type::tab: break;
+                    case token_type::comment: {
+                        if (is_prev_token_whitespace(2)) {
+                            on_newline_token();
+                            pop_stack();
+                            --m_current_ptr;
+                            return;
+                        }
+                    } break;
                     case token_type::carriage:
                     case token_type::newline: {
                         on_newline_token();
@@ -804,32 +815,7 @@ namespace sax {
             on_newline_token();
         };
 
-        auto process_remaining_value = [&]() {
-            if (m_current_is_new_line) {
-                return;
-            }
-
-            while (m_current_ptr < m_end_ptr) {
-                const auto codepoint = *(m_current_ptr++);
-                switch (codepoint) {
-                    case token_type::space:
-                    case token_type::tab: break;
-                    case token_type::carriage:
-                    case token_type::newline: return register_newline();
-                    default: --m_current_ptr; return;
-                }
-            }
-        };
-
         parse_value_type();
-        if (m_current_result_code != parse_result_code::success) {
-            return;
-        }
-        /*process_value_type();
-        if (m_current_result_code != parse_result_code::success) {
-            return;
-        }*/
-        process_remaining_value();
     }
 
     template<typename Tchar, typename Tsax_handler>
@@ -843,6 +829,13 @@ namespace sax {
                 switch (codepoint) {
                     case token_type::space:
                     case token_type::tab: break;
+                    case token_type::comment: {
+                        if (is_prev_token_whitespace(2)) {
+                            pop_stack();
+                            --m_current_ptr;
+                            return true;
+                        }
+                    } break;
                     case token_type::carriage:
                     case token_type::newline: {
                         register_newline();
@@ -922,21 +915,35 @@ namespace sax {
 
     template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::execute_read_key() {
-        auto& stack_item = m_stack.back();
-
-        if (stack_item.type_indention != m_current_line_indention) {
-            error(parse_result_code::bad_indentation);
-        }
-
         auto value_start_ptr = m_current_ptr;
-        auto value_end_ptr = m_current_ptr;     
+        auto value_end_ptr = m_current_ptr;
 
         auto process = [&]() {
+            const auto first_codepoint = *m_current_ptr;
+            if(first_codepoint == token_type::comment) {
+                ++m_current_ptr;
+                read_comment_until_newline();
+                return false;
+            }
+            else {
+                auto& stack_item = m_stack.back();
+                if (stack_item.type_indention != m_current_line_indention) {
+                    error(parse_result_code::bad_indentation);
+                    return false;
+                }
+            }
+
             while (m_current_ptr < m_end_ptr) {
                 const auto codepoint = *(m_current_ptr++);
                 switch (codepoint) {
                     case token_type::space:
                     case token_type::tab: break;
+                    case token_type::comment: {
+                        if (is_prev_token_whitespace(2)) {
+                            error(parse_result_code::expected_key);
+                            return false;
+                        }
+                    } break;
                     case token_type::carriage:
                     case token_type::newline: {
                         register_newline();
@@ -961,11 +968,11 @@ namespace sax {
                 }
             }
 
+            error(parse_result_code::expected_key);
             return false;
         };
 
         if (!process()) {
-            error(parse_result_code::expected_key);
             return;
         }
 
@@ -977,6 +984,50 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
+    void parser<Tchar, Tsax_handler>::read_comment_until_newline() {
+        
+        read_remaining_whitespaces();
+
+        auto comment_start_ptr = m_current_ptr;
+        auto comment_end_ptr = m_current_ptr;
+
+        auto read_comment = [&]() {
+            while (m_current_ptr < m_end_ptr) {
+                const auto codepoint = *(m_current_ptr++);
+                switch (codepoint) {
+                    case token_type::space:
+                    case token_type::tab: break;
+                    case token_type::carriage:
+                    case token_type::newline: {
+                        register_newline();
+                    } return;
+                    default: {
+                        comment_end_ptr = m_current_ptr;
+                    } break;
+                }
+            }
+        };
+  
+        read_comment();
+
+        const auto comment_length = static_cast<size_t>(comment_end_ptr - comment_start_ptr);
+        const auto comment_string_view = string_view_type{ comment_start_ptr, comment_length };
+        signal_comment(comment_string_view);
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    void parser<Tchar, Tsax_handler>::read_remaining_whitespaces() {
+        while (m_current_ptr < m_end_ptr) {
+            const auto codepoint = *m_current_ptr;
+            switch (codepoint) {
+                case token_type::space:
+                case token_type::tab: ++m_current_ptr; break;
+                default: return;
+            }
+        }
+    }
+
+    template<typename Tchar, typename Tsax_handler>
     bool parser<Tchar, Tsax_handler>::consume_only_whitespaces_until_newline_or_comment() {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
@@ -985,7 +1036,7 @@ namespace sax {
                 case token_type::tab: break;
                 case token_type::carriage:
                 case token_type::newline: register_newline(); return true;
-                case token_type::comment: --m_current_ptr; return true;
+                case token_type::comment: return true;
                 default: return false;
             }
         }
@@ -1000,10 +1051,28 @@ namespace sax {
     template<typename Tchar, typename Tsax_handler>
     bool parser<Tchar, Tsax_handler>::is_next_token(size_t increments, const value_type value) {
         if (m_current_ptr + increments >= m_end_ptr) {
-            return false;
+            return true;
         }
 
         return *(m_current_ptr + increments) == value;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    bool parser<Tchar, Tsax_handler>::is_prev_token_whitespace(int decrements) {
+        if (m_current_ptr - decrements < m_begin_ptr) {
+            return true;
+        }
+
+        const auto codepoint = *(m_current_ptr - decrements);
+        switch (codepoint) {
+            case token_type::space:
+            case token_type::tab:
+            case token_type::carriage:
+            case token_type::newline: return true;
+            default: break;
+        }
+
+        return false;  
     }
 
     template<typename Tchar, typename Tsax_handler>
@@ -1130,6 +1199,24 @@ namespace sax {
         new_stack.type_indention = type_indention;
         return new_stack;
     };
+
+    template<typename Tchar, typename Tsax_handler>
+    void parser<Tchar, Tsax_handler>::pop_stack() {
+        if (m_stack.empty()) {
+            return;
+        }
+
+        auto& stack_item = m_stack.back();  
+        switch (stack_item.type) {
+            case stack_type_t::unknown: signal_null(); break;
+            case stack_type_t::scalar:
+            case stack_type_t::scalar_block: signal_end_scalar(); break;
+            case stack_type_t::object: signal_end_object(); break;
+            case stack_type_t::sequence: signal_end_array(); break;
+        }
+
+        m_stack.pop_back();
+    }
 
     template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::pop_stack_from(stack_iterator_t it) {
