@@ -439,8 +439,11 @@ namespace sax {
         
         push_stack(&parser::execute_find_value);
 
-        auto current_is_newline = [&]() {
-            return m_current_ptr < m_end_ptr && (*m_current_ptr == token_type::newline || *m_current_ptr == token_type::carriage);
+        auto current_is_newline_or_comment = [&]() {
+            return m_current_ptr < m_end_ptr && (
+                *m_current_ptr == token_type::newline || 
+                *m_current_ptr == token_type::carriage || 
+                *m_current_ptr == token_type::comment);
         };
 
         auto read_line_indentation = [&]() {
@@ -477,7 +480,7 @@ namespace sax {
         };
 
         auto process_newline_indentation = [&]() {      
-            if (current_is_newline() || (m_current_ptr < m_end_ptr && *m_current_ptr == token_type::comment)) {
+            if (current_is_newline_or_comment()) {
                 return;
             }
             
