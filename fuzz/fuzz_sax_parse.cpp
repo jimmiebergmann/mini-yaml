@@ -13,7 +13,7 @@ struct test_sax_handler {
     void comment(yaml::basic_string_view<uint8_t>) {}
 };
 
-static volatile auto dummy_result = yaml::parse_result_code::success;
+static volatile auto dummy_result = yaml::sax::parse_result<uint8_t>{};
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     test_sax_handler handler = {};

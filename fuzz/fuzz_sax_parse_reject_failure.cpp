@@ -15,7 +15,8 @@ struct test_sax_handler {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     test_sax_handler handler = {};
-    if(yaml::sax::parse(data, size, handler) == yaml::parse_result_code::success) {
+    const auto result = yaml::sax::parse(data, size, handler);
+    if(result.result_code == yaml::parse_result_code::success) {
         return 0;
     }
     return -1;
