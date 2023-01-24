@@ -97,6 +97,21 @@ struct test_sax_handler {
         m_current_read_comment = comments.data();
     }
 
+    void reset() {
+        instructions.clear();
+        start_scalar_count = 0;
+        end_scalar_count = 0;
+        start_object_count = 0;
+        end_object_count = 0;
+        start_array_count = 0;
+        end_array_count = 0;
+        null_count = 0;
+        scalar_styles.clear();
+        keys.clear();
+        strings.clear();
+        comments.clear();
+    }
+
     test_sax_instruction get_next_instruction() {
         return *(m_current_read_instruction++);
     }
@@ -267,8 +282,9 @@ TEST(sax_parse, fail_bad_indention_objects_1)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::unexpected_token);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::unexpected_token);
 
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
@@ -302,8 +318,9 @@ TEST(sax_parse, fail_bad_indention_objects_2)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::bad_indentation);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::bad_indentation);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 30 });
@@ -379,8 +396,9 @@ TEST(sax_parse, fail_bad_indention_scalar_multiple_literal_1)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::unexpected_token);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::unexpected_token);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
@@ -407,8 +425,9 @@ TEST(sax_parse, fail_bad_indention_scalar_multiple_literal_2)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::unexpected_token);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::unexpected_token);
 
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
@@ -435,8 +454,9 @@ TEST(sax_parse, fail_forbidden_tab_indentation_empty_file)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::forbidden_tab_indentation);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::forbidden_tab_indentation);
 
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 0 });
@@ -451,8 +471,9 @@ TEST(sax_parse, fail_forbidden_tab_indentation_scalar_1)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::forbidden_tab_indentation);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::forbidden_tab_indentation);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 0 });
@@ -468,8 +489,9 @@ TEST(sax_parse, fail_forbidden_tab_indentation_scalar_2)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::forbidden_tab_indentation);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::forbidden_tab_indentation);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
@@ -489,8 +511,9 @@ TEST(sax_parse, fail_object_unexpected_key_1)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::unexpected_key);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::unexpected_key);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
@@ -510,8 +533,9 @@ TEST(sax_parse, fail_object_unexpected_key_2)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::unexpected_key);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::unexpected_key);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
@@ -534,8 +558,9 @@ TEST(sax_parse, fail_scalar_single_literal_expected_line_break)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::expected_line_break);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::expected_line_break);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 0 });
@@ -552,8 +577,9 @@ TEST(sax_parse, fail_scalar_unexpected_token_at_end)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::unexpected_token);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::unexpected_token);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
@@ -568,6 +594,89 @@ TEST(sax_parse, fail_scalar_unexpected_token_at_end)
         EXPECT_EQ(handler.get_next_comment(), "Comment");
     });
 }
+
+/*TEST(sax_parse, ok__reuse_parser)
+{
+    const std::string input =
+        "---\n"
+        "key 1: value 1\n"
+        "key 2: value 2\n"
+        "---\n"
+        "key 3: value 3\n"
+        "key 4: value 4\n"
+        "key 5: value 5\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        auto parser = yaml::sax::parser<char_type, test_sax_handler<char_type>>{ handler };
+
+        const auto parse_result_1 = parser.execute(input);
+        ASSERT_EQ(parse_result_1.result_code, yaml::parse_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 10 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+            EXPECT_EQ(handler.get_next_key(), "key 1");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+                EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+                EXPECT_EQ(handler.get_next_string(), "value 1");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+            EXPECT_EQ(handler.get_next_key(), "key 2");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+                EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+                EXPECT_EQ(handler.get_next_string(), "value 2");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+
+        handler.reset();
+        const auto parse_result_2 = parser.execute(parse_result_1.remaining_input);
+        ASSERT_EQ(parse_result_2.result_code, yaml::parse_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 14 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+            EXPECT_EQ(handler.get_next_key(), "key 3");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 3");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+            EXPECT_EQ(handler.get_next_key(), "key 4");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 4");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+            EXPECT_EQ(handler.get_next_key(), "key 5");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 5");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+
+    });
+}*/
 
 TEST(sax_parse, ok_comments__multiple)
 {
@@ -595,8 +704,9 @@ TEST(sax_parse, ok_comments__multiple)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 17 });
@@ -666,8 +776,9 @@ TEST(sax_parse, ok_comments_objects_null_values)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 35 });
@@ -769,8 +880,9 @@ TEST(sax_parse, ok_comments_objects_values)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 53 });
@@ -908,8 +1020,9 @@ TEST(sax_parse, ok_comments__single)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
@@ -930,8 +1043,9 @@ TEST(sax_parse, ok_document_end)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
 
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
@@ -953,8 +1067,9 @@ TEST(sax_parse, ok_document_end_at_start)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
 
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
@@ -974,8 +1089,9 @@ TEST(sax_parse, ok_document_start)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
@@ -998,8 +1114,9 @@ TEST(sax_parse, ok_document_start_as_end)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
@@ -1023,8 +1140,9 @@ TEST(sax_parse, ok_document_start_end)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
@@ -1044,8 +1162,9 @@ TEST(sax_parse, ok_empty_file)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
@@ -1061,8 +1180,9 @@ TEST(sax_parse, ok_empty_file_document_start)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
@@ -1078,8 +1198,9 @@ TEST(sax_parse, ok_empty_file_document_end)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
@@ -1097,8 +1218,9 @@ TEST(sax_parse, ok_empty_file_empty_lines)
 
     using char_type = typename decltype(input)::value_type;
 
-    test_sax_handler<char_type> handler = {};
-    ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+    auto handler = test_sax_handler<char_type>{};
+    const auto parse_result = yaml::sax::parse(input, handler);
+    ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
    
     handler.prepare_read();
     ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
@@ -1121,8 +1243,9 @@ TEST(sax_parse, ok_empty_file_empty_lines_with_spaces)
 
     using char_type = typename decltype(input)::value_type;
 
-    test_sax_handler<char_type> handler = {};
-    ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+    auto handler = test_sax_handler<char_type>{};
+    const auto parse_result = yaml::sax::parse(input, handler);
+    ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
     
     handler.prepare_read();
     ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
@@ -1148,8 +1271,9 @@ TEST(sax_parse, ok_object_multiple_nested_objects)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 30 });
@@ -1229,8 +1353,9 @@ TEST(sax_parse, ok_object_single_nested_objects)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 15 });
@@ -1272,8 +1397,9 @@ TEST(sax_parse, ok_object_single_with_scalar__inline)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
@@ -1306,34 +1432,35 @@ TEST(sax_parse, ok_object_single_with_scalar_with_with_comments)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-    ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
     
-    handler.prepare_read();
-    ASSERT_EQ(handler.instructions.size(), size_t{ 9 });
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 9 });
 
-    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
 
-    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
-    EXPECT_EQ(handler.get_next_key(), "key");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key");
 
-    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-    EXPECT_EQ(handler.get_next_comment(), "Comment before.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Comment before.");
 
-    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-    EXPECT_EQ(handler.get_next_comment(), "Another comment before.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Another comment before.");
 
-    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "hello world");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "hello world");
 
-    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
-    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-    EXPECT_EQ(handler.get_next_comment(), "Comment after.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Comment after.");
 
-    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
     });
 }
 
@@ -1347,8 +1474,9 @@ TEST(sax_parse, ok_scalar_multiple)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
@@ -1379,8 +1507,9 @@ TEST(sax_parse, ok_scalar_multiple__folded)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
 
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
@@ -1413,8 +1542,9 @@ TEST(sax_parse, ok_scalar_multiple__folded_keep)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
 
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
@@ -1447,8 +1577,9 @@ TEST(sax_parse, ok_scalar_multiple__folded_strip)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
@@ -1489,8 +1620,9 @@ TEST(sax_parse, ok_scalar_multiple__literal)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
 
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 14 });
@@ -1539,8 +1671,9 @@ TEST(sax_parse, ok_scalar_multiple__literal_keep)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
 
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
@@ -1573,8 +1706,9 @@ TEST(sax_parse, ok_scalar_multiple__literal_strip)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
@@ -1603,8 +1737,9 @@ TEST(sax_parse, ok_scalar_single)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
@@ -1628,8 +1763,9 @@ TEST(sax_parse, ok_scalar_single_literal)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
@@ -1653,8 +1789,9 @@ TEST(sax_parse, ok_scalar_single_literal_comment_after_token)
     using char_type = typename decltype(input)::value_type;
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
 
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
@@ -1685,8 +1822,9 @@ TEST(sax_parse, ok_u8_BOM_1)
     input[2] = static_cast<char_type>(bom_chars[2]);
 
     run_sax_parse_all_styles<char_type>(input, [](mini_yaml_test::u8_string_type input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 10 });
@@ -1729,8 +1867,9 @@ TEST(sax_parse, ok_u8_BOM_2)
     input[2] = static_cast<char_type>(bom_chars[2]);
 
     run_sax_parse_all_styles<char_type>(input, [](mini_yaml_test::u8_string_type input) {
-        test_sax_handler<char_type> handler = {};
-        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+        auto handler = test_sax_handler<char_type>{};
+        const auto parse_result = yaml::sax::parse(input, handler);
+        ASSERT_EQ(parse_result.result_code, yaml::parse_result_code::success);
         
         handler.prepare_read();
         ASSERT_EQ(handler.instructions.size(), size_t{ 10 });

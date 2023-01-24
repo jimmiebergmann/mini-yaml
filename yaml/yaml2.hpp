@@ -80,6 +80,8 @@ namespace MINIYAML_NAMESPACE {
 
     public:
 
+        using size_type = std::size_t;
+
         basic_string_view() :
             m_data(nullptr),
             m_size(0)
@@ -161,25 +163,33 @@ namespace MINIYAML_NAMESPACE {
 namespace MINIYAML_NAMESPACE {
 namespace sax {
 
+    template<typename Tchar>
+    struct parse_result {
+        parse_result_code result_code = parse_result_code::success;
+        basic_string_view<Tchar> remaining_input = {};
+        int64_t current_line = 0;
+        const Tchar* current_line_ptr = nullptr;
+    };
+
     /** Helper function for parsing via SAX style API. */
     template<typename Tchar, typename Tsax_handler>
-    parse_result_code parse(
+    parse_result<Tchar> parse(
         const Tchar* raw_input,
         size_t size,
         Tsax_handler& handler);
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result_code parse(
+    parse_result<Tchar> parse(
         const std::basic_string<Tchar>& string,
         Tsax_handler& handler);
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result_code parse(
+    parse_result<Tchar> parse(
         basic_string_view<Tchar> string_view,
         Tsax_handler& handler);
 
     template<typename Tsax_handler, typename Tit_begin, typename Tit_end>
-    parse_result_code parse(
+    parse_result<typename std::iterator_traits<Tit_begin>::value_type> parse(
         Tit_begin first,
         Tit_end last,
         Tsax_handler& handler);
@@ -212,21 +222,22 @@ namespace sax {
         using value_type = Tchar;
         using pointer = Tchar*;
         using const_pointer = const Tchar*;
-        using size_type = size_t;
-        using string_view_type = basic_string_view<Tchar>;
+        using size_type = std::size_t;
+        using string_view_type = MINIYAML_NAMESPACE::basic_string_view<Tchar>;
         using sax_handler_type = Tsax_handler;
         using token_type = token<Tchar>;
+        using result_type = parse_result<Tchar>;
 
         explicit parser(sax_handler_type& sax_handler, const parser_options& options = {});
 
-        parse_result_code execute(const_pointer raw_input, size_type size);
+        result_type execute(const_pointer raw_input, size_type size);
 
-        parse_result_code execute(std::basic_string<value_type> string);
+        result_type execute(std::basic_string<value_type> string);
 
-        parse_result_code execute(string_view_type string_view);
+        result_type execute(string_view_type string_view);
 
         template<typename Tit_begin, typename Tit_end>
-        parse_result_code execute(Tit_begin first, Tit_end last);
+        result_type execute(Tit_begin first, Tit_end last);
 
     private:
 
@@ -274,13 +285,16 @@ namespace sax {
 
         static const_pointer skip_utf8_bom(const_pointer begin, const_pointer end);
 
-        void register_newline();
-        void register_line_indentation();
-
+        parse_result_code process_execute(const_pointer raw_input, size_type size);
+        result_type process_execute_result(const_pointer raw_input, size_type size);
+        
         void execute_find_value();
         void execute_read_scalar();
         void execute_read_scalar_block();
         void execute_read_key();
+
+        void register_newline();
+        void register_line_indentation();
 
         void read_comment_until_newline();
         void read_remaining_whitespaces();
@@ -291,7 +305,7 @@ namespace sax {
         bool is_prev_token_whitespace(int decrements = 1);
         bool is_next_token_whitespace(int increments = 1);
 
-        void signal_start_scalar(yaml::block_style block_style, yaml::chomping comping);
+        void signal_start_scalar(block_style block_style, chomping comping);
         void signal_end_scalar();
         void signal_start_object();
         void signal_end_object();
@@ -339,7 +353,7 @@ namespace sax {
 #if MINIYAML_HAS_CONCEPTS
         template<typename Tsax_handler>
         constexpr bool sax_handler_has_start_scalar() {
-            return requires(Tsax_handler value) { { value.start_scalar(yaml::block_style::none, yaml::chomping::strip) }; };
+            return requires(Tsax_handler value) { { value.start_scalar(block_style::none, chomping::strip) }; };
         }
         template<typename Tsax_handler>
         constexpr bool sax_handler_has_end_scalar() {
@@ -429,7 +443,56 @@ namespace sax {
     {}
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result_code parser<Tchar, Tsax_handler>::execute(const_pointer raw_input, size_type size) {
+    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::execute(const_pointer raw_input, size_type size) {
+        return process_execute_result(raw_input, size);
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::execute(std::basic_string<value_type> string) {
+        return process_execute_result(string.c_str(), string.size());
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::execute(string_view_type string_view) {
+        return process_execute_result(string_view.data(), string_view.size());
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    template<typename Tit_begin, typename Tit_end>
+    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::execute(Tit_begin first, Tit_end last) {
+        auto raw_input = &*first;
+        auto size = static_cast<size_t>(std::distance(first, last));
+        return process_execute_result(raw_input, size);
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename parser<Tchar, Tsax_handler>::const_pointer parser<Tchar, Tsax_handler>::skip_utf8_bom(const_pointer begin, const_pointer end) {
+#if MINIYAML_HAS_IF_CONSTEXPR
+        if constexpr (sizeof(Tchar) == 1) {
+#else
+        // This is a stupid workaround for a MSVC bug, caused when compiling using C++14.
+        // "if constexpr" is expected even if __cpp_if_constexpr isn't defined,
+        //  if the expression "sizeof(Tchar) == 1" is used directly in if statement.
+        const auto char_size_test = sizeof(Tchar) == 1;
+        if (char_size_test) {
+#endif
+            const auto data_length = static_cast<size_t>(end - begin);
+            const std::array<uint8_t, 3> bom_chars = { 0xEF, 0xBB, 0xBF };
+
+            if (data_length >= 3 && 
+                static_cast<uint8_t>(begin[0]) == bom_chars[0] &&
+                static_cast<uint8_t>(begin[1]) == bom_chars[1] &&
+                static_cast<uint8_t>(begin[2]) == bom_chars[2])
+            {
+                return begin + 3;
+            }
+        }
+        
+        return begin;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    parse_result_code parser<Tchar, Tsax_handler>::process_execute(const_pointer raw_input, size_type size) {
         m_end_ptr = raw_input + size;
         m_begin_ptr = skip_utf8_bom(raw_input, m_end_ptr);
         m_current_ptr = m_begin_ptr;
@@ -440,13 +503,13 @@ namespace sax {
         m_current_line_indention = 0;
         m_current_line_indention_ptr = m_begin_ptr;
         m_current_is_new_line = true;
-        
+
         push_stack(&parser::execute_find_value);
 
         auto current_is_newline_or_comment = [&]() {
             return m_current_ptr < m_end_ptr && (
-                *m_current_ptr == token_type::newline || 
-                *m_current_ptr == token_type::carriage || 
+                *m_current_ptr == token_type::newline ||
+                *m_current_ptr == token_type::carriage ||
                 *m_current_ptr == token_type::comment);
         };
 
@@ -459,7 +522,7 @@ namespace sax {
                 if (codepoint != token_type::space) {
                     return true;
                 }
-                
+
                 ++m_current_ptr;
             }
 
@@ -523,7 +586,7 @@ namespace sax {
             return true;
         };
 
-        auto process_newline_indentation = [&]() {      
+        auto process_newline_indentation = [&]() {
             if (current_is_newline_or_comment()) {
                 return true;
             }
@@ -532,8 +595,8 @@ namespace sax {
                     return false;
                 }
             }
-            
-            auto it = std::find_if(m_stack.begin(), m_stack.end(), 
+
+            auto it = std::find_if(m_stack.begin(), m_stack.end(),
                 [&](const stack_item_t& stack_item) {
                     return stack_item.type_indention > m_current_line_indention;
                 }
@@ -560,18 +623,18 @@ namespace sax {
             while (m_current_ptr < m_end_ptr) {
                 const auto codepoint = *(m_current_ptr++);
                 switch (codepoint) {
-                    case token_type::space:
-                    case token_type::tab: break;
-                    case token_type::comment: {
-                        read_comment_until_newline();
-                    } break;
-                    case token_type::carriage:
-                    case token_type::newline: {
-                        register_newline();
-                    } return;
-                    default: {
-                        error(parse_result_code::unexpected_token);
-                    } return;
+                case token_type::space:
+                case token_type::tab: break;
+                case token_type::comment: {
+                    read_comment_until_newline();
+                } break;
+                case token_type::carriage:
+                case token_type::newline: {
+                    register_newline();
+                } return;
+                default: {
+                    error(parse_result_code::unexpected_token);
+                } return;
                 }
             }
         };
@@ -621,68 +684,17 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result_code parser<Tchar, Tsax_handler>::execute(std::basic_string<value_type> string) {
-        return execute(string.c_str(), string.size());
-    }
+    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::process_execute_result(const_pointer raw_input, size_type size) {
+        auto result = result_type{ };
+        result.result_code = process_execute(raw_input, size);
 
-    template<typename Tchar, typename Tsax_handler>
-    parse_result_code parser<Tchar, Tsax_handler>::execute(string_view_type string_view) {
-        return execute(string_view.data(), string_view.size());
-    }
+        auto remaining_ptr = std::min(m_current_ptr, raw_input + size);
+        auto remaining_size = static_cast<string_view_type::size_type>(size - (remaining_ptr - raw_input));
 
-    template<typename Tchar, typename Tsax_handler>
-    template<typename Tit_begin, typename Tit_end>
-    parse_result_code parser<Tchar, Tsax_handler>::execute(Tit_begin first, Tit_end last) {
-        auto raw_input = &*first;
-        auto size = static_cast<size_t>(std::distance(first, last));
-        return execute(raw_input, size);
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    typename parser<Tchar, Tsax_handler>::const_pointer parser<Tchar, Tsax_handler>::skip_utf8_bom(const_pointer begin, const_pointer end) {
-#if MINIYAML_HAS_IF_CONSTEXPR
-        if constexpr (sizeof(Tchar) == 1) {
-#else
-        // This is a stupid workaround for a MSVC bug, caused when compiling using C++14.
-        // "if constexpr" is expected even if __cpp_if_constexpr isn't defined,
-        //  if the expression "sizeof(Tchar) == 1" is used directly in if statement.
-        const auto char_size_test = sizeof(Tchar) == 1;
-        if (char_size_test) {
-#endif
-            const auto data_length = static_cast<size_t>(end - begin);
-            const std::array<uint8_t, 3> bom_chars = { 0xEF, 0xBB, 0xBF };
-
-            if (data_length >= 3 && 
-                static_cast<uint8_t>(begin[0]) == bom_chars[0] &&
-                static_cast<uint8_t>(begin[1]) == bom_chars[1] &&
-                static_cast<uint8_t>(begin[2]) == bom_chars[2])
-            {
-                return begin + 3;
-            }
-        }
-        
-        return begin;
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::register_newline() {
-        if (m_current_ptr > m_begin_ptr && *(m_current_ptr - 1) == token_type::carriage) { // DOS line break check.
-            if (m_current_ptr < m_end_ptr && *m_current_ptr == token_type::newline) {
-                ++m_current_ptr;
-            }
-        }
-
-        m_current_line += 1;
-        m_current_line_ptr = m_current_ptr;
-        m_current_line_indention = 0;
-        m_current_line_indention_ptr = m_current_ptr;
-        m_current_is_new_line = true;
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::register_line_indentation() {
-        ++m_current_line_indention;
-        ++m_current_line_indention_ptr;
+        result.remaining_input = string_view_type{ remaining_ptr, remaining_size };
+        result.current_line = m_current_line;
+        result.current_line_ptr = m_current_line_ptr;
+        return result;
     }
 
 
@@ -1008,6 +1020,27 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
+    void parser<Tchar, Tsax_handler>::register_newline() {
+        if (m_current_ptr > m_begin_ptr && *(m_current_ptr - 1) == token_type::carriage) { // DOS line break check.
+            if (m_current_ptr < m_end_ptr && *m_current_ptr == token_type::newline) {
+                ++m_current_ptr;
+            }
+        }
+
+        m_current_line += 1;
+        m_current_line_ptr = m_current_ptr;
+        m_current_line_indention = 0;
+        m_current_line_indention_ptr = m_current_ptr;
+        m_current_is_new_line = true;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    void parser<Tchar, Tsax_handler>::register_line_indentation() {
+        ++m_current_line_indention;
+        ++m_current_line_indention_ptr;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::read_comment_until_newline() {
         read_remaining_whitespaces();
 
@@ -1118,7 +1151,7 @@ namespace sax {
   
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_start_scalar(yaml::block_style block_style, yaml::chomping comping) {
+    void parser<Tchar, Tsax_handler>::signal_start_scalar(block_style block_style, chomping comping) {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_start_scalar<Tsax_handler>() == true) {
             m_sax_handler.start_scalar(block_style, comping);
@@ -1287,7 +1320,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result_code parse(
+    parse_result<Tchar> parse(
         const Tchar* raw_input,
         size_t size,
         Tsax_handler& handler)
@@ -1296,7 +1329,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result_code parse(
+    parse_result<Tchar> parse(
         const std::basic_string<Tchar>& string,
         Tsax_handler& handler)
     {
@@ -1304,7 +1337,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result_code parse(
+    parse_result<Tchar> parse(
         basic_string_view<Tchar> string_view,
         Tsax_handler& handler)
     {
@@ -1312,7 +1345,7 @@ namespace sax {
     }
 
     template<typename Tsax_handler, typename Tit_begin, typename Tit_end>
-    parse_result_code parse(
+    parse_result<typename std::iterator_traits<Tit_begin>::value_type> parse(
         Tit_begin first,
         Tit_end last,
         Tsax_handler& handler)
