@@ -1644,6 +1644,32 @@ TEST(sax_parse, ok_scalar_single_literal)
     });
 }
 
+TEST(sax_parse, ok_scalar_single_literal_comment_after_token)
+{
+    const std::string input =
+        "| #comment \n"
+        "    Value\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_parse_all_styles<char_type>(input, [](std::string input) {
+        test_sax_handler<char_type> handler = {};
+        ASSERT_EQ(yaml::sax::parse(input, handler), yaml::parse_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "comment");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "Value");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+    });
+}
+
 TEST(sax_parse, ok_u8_BOM_1)
 {    
     mini_yaml_test::u8_string_type input = 

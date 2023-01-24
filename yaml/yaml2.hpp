@@ -289,6 +289,7 @@ namespace sax {
         bool has_min_tokens_left(size_t count);
         bool is_next_token(size_t increments, const value_type value);
         bool is_prev_token_whitespace(int decrements = 1);
+        bool is_next_token_whitespace(int increments = 1);
 
         void signal_start_scalar(yaml::block_style block_style, yaml::chomping comping);
         void signal_end_scalar();
@@ -483,6 +484,9 @@ namespace sax {
         };
 
         auto process_zero_line_indention = [&]() {
+
+            const auto current_line_indention_ptr = m_current_line_indention_ptr;
+
             const auto codepoint = *m_current_line_indention_ptr;
             switch (codepoint) {
             case token_type::document_start: {
@@ -490,27 +494,27 @@ namespace sax {
                 {
                     m_current_ptr += 3;
                     if (consume_only_whitespaces_until_newline_or_comment()) {
-                        if (m_stack.front().type != stack_type_t::unknown || m_current_ptr >= m_end_ptr) {
-                            return false;
+                        if (m_stack.front().type == stack_type_t::unknown) {
+                            return true;
                         }
-                    }
-                    else {
-                        error(parse_result_code::expected_line_break);
+
+                        m_current_ptr = current_line_indention_ptr;
                         return false;
                     }
+
+                    m_current_ptr = current_line_indention_ptr;
                 }
             } break;
             case token_type::document_end: {
                 if (is_next_token(1, token_type::document_end) && is_next_token(2, token_type::document_end))
                 {
                     m_current_ptr += 3;
-                    if (consume_only_whitespaces_until_newline_or_comment() || m_current_ptr >= m_end_ptr) {
+                    if (is_next_token_whitespace(0)) {
+                        m_current_ptr = current_line_indention_ptr;
                         return false;
                     }
-                    else {
-                        error(parse_result_code::expected_line_break);
-                        return false;
-                    }
+
+                    m_current_ptr = current_line_indention_ptr;
                 }
             } break;
             default: break;
@@ -1055,7 +1059,7 @@ namespace sax {
                 case token_type::tab: break;
                 case token_type::carriage:
                 case token_type::newline: register_newline(); return true;
-                case token_type::comment: return true;
+                case token_type::comment: read_comment_until_newline(); return true;
                 default: return false;
             }
         }
@@ -1093,6 +1097,25 @@ namespace sax {
 
         return false;  
     }
+
+    template<typename Tchar, typename Tsax_handler>
+    bool parser<Tchar, Tsax_handler>::is_next_token_whitespace(int increments) {
+        if (m_current_ptr + increments >= m_end_ptr) {
+            return true;
+        }
+
+        const auto codepoint = *(m_current_ptr + increments);
+        switch (codepoint) {
+            case token_type::space:
+            case token_type::tab:
+            case token_type::carriage:
+            case token_type::newline: return true;
+            default: break;
+        }
+
+        return false;
+    }
+  
 
     template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::signal_start_scalar(yaml::block_style block_style, yaml::chomping comping) {
