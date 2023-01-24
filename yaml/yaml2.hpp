@@ -698,7 +698,7 @@ namespace sax {
         result.result_code = process_execute(raw_input, size);
 
         auto remaining_ptr = std::min(m_current_ptr, raw_input + size);
-        auto remaining_size = static_cast<string_view_type::size_type>(size - (remaining_ptr - raw_input));
+        auto remaining_size = static_cast<typename string_view_type::size_type>(size - (remaining_ptr - raw_input));
 
         result.remaining_input = string_view_type{ remaining_ptr, remaining_size };
         result.current_line = m_current_line;
