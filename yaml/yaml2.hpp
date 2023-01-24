@@ -232,7 +232,7 @@ namespace sax {
 
         result_type execute(const_pointer raw_input, size_type size);
 
-        result_type execute(std::basic_string<value_type> string);
+        result_type execute(const std::basic_string<value_type>& string);
 
         result_type execute(string_view_type string_view);
 
@@ -448,7 +448,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::execute(std::basic_string<value_type> string) {
+    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::execute(const std::basic_string<value_type>& string) {
         return process_execute_result(string.c_str(), string.size());
     }
 

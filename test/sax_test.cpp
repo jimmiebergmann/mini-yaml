@@ -595,7 +595,7 @@ TEST(sax_parse, fail_scalar_unexpected_token_at_end)
     });
 }
 
-/*TEST(sax_parse, ok__reuse_parser)
+TEST(sax_parse, ok__reuse_parser)
 {
     const std::string input =
         "---\n"
@@ -676,7 +676,7 @@ TEST(sax_parse, fail_scalar_unexpected_token_at_end)
 
 
     });
-}*/
+}
 
 TEST(sax_parse, ok_comments__multiple)
 {
