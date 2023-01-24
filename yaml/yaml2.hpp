@@ -115,7 +115,8 @@ namespace MINIYAML_NAMESPACE {
         bad_indentation,
         expected_line_break,
         expected_key,
-        unexpected_key
+        unexpected_key,
+        unexpected_token
     };
 
     template<typename T>
@@ -304,7 +305,9 @@ namespace sax {
 
         stack_item_t& push_stack(state_function_t state_function);
         void pop_stack();
+        void pop_stack_if_not_root();
         void pop_stack_from(stack_iterator_t it);
+        void signal_stack_item_pop(stack_item_t& stack_item);
 
     };
 
@@ -496,9 +499,11 @@ namespace sax {
 
             pop_stack_from(it);
 
-            const auto back_indention = !m_stack.empty() ? m_stack.back().type_indention : std::numeric_limits<int64_t>::max();
-            if (m_current_line_indention != back_indention) {
-                return error(parse_result_code::bad_indentation);
+            if (!m_stack.empty()) {
+                const auto back_indention = m_stack.back().type_indention;
+                if (m_current_line_indention != back_indention) {
+                    return error(parse_result_code::bad_indentation);
+                }
             }
         };
 
@@ -549,6 +554,26 @@ namespace sax {
             return true;
         };
 
+        auto read_remaining_document_buffer = [&]() {
+            while (m_current_ptr < m_end_ptr) {
+                const auto codepoint = *(m_current_ptr++);
+                switch (codepoint) {
+                    case token_type::space:
+                    case token_type::tab: break;
+                    case token_type::comment: {
+                        read_comment_until_newline();
+                    } break;
+                    case token_type::carriage:
+                    case token_type::newline: {
+                        register_newline();
+                    } return;
+                    default: {
+                        error(parse_result_code::unexpected_token);
+                    } return;
+                }
+            }
+        };
+
         while (m_current_result_code == parse_result_code::success && m_current_ptr < m_end_ptr && !m_stack.empty()) {
             if (m_stack.size() > m_options.max_depth) {
                 error(parse_result_code::reached_stack_max_depth);
@@ -585,9 +610,12 @@ namespace sax {
             (this->*(state_function))();
         }
 
-        if (m_current_result_code == parse_result_code::success) {
-            pop_stack_from(m_stack.begin());
+        if (m_current_result_code != parse_result_code::success) {
+            return m_current_result_code;
         }
+
+        pop_stack_from(m_stack.begin());
+        read_remaining_document_buffer();
 
         return m_current_result_code;
     }
@@ -666,7 +694,7 @@ namespace sax {
         auto value_start_ptr = m_current_ptr;
         auto value_end_ptr = m_current_ptr;
 
-        auto on_newline_token = [&]() {
+        auto on_found_scalar_end = [&]() {
             const auto scalar_length = static_cast<size_t>(value_end_ptr - value_start_ptr);
             if (scalar_length == 0) {
                 return;
@@ -793,15 +821,15 @@ namespace sax {
                     case token_type::tab: break;
                     case token_type::comment: {
                         if (is_prev_token_whitespace(2)) {
-                            on_newline_token();
-                            pop_stack();
-                            --m_current_ptr;
+                            on_found_scalar_end();
+                            pop_stack_if_not_root();
+                            read_comment_until_newline();
                             return;
                         }
                     } break;
                     case token_type::carriage:
                     case token_type::newline: {
-                        on_newline_token();
+                        on_found_scalar_end();
                         register_newline();
                     } return;
                     case token_type::object: {
@@ -815,7 +843,7 @@ namespace sax {
                 }
             }
 
-            on_newline_token();
+            on_found_scalar_end();
         };
 
         parse_value_type();
@@ -928,13 +956,6 @@ namespace sax {
                 read_comment_until_newline();
                 return false;
             }
-            else {
-                auto& stack_item = m_stack.back();
-                if (stack_item.type_indention != m_current_line_indention) {
-                    error(parse_result_code::bad_indentation);
-                    return false;
-                }
-            }
 
             while (m_current_ptr < m_end_ptr) {
                 const auto codepoint = *(m_current_ptr++);
@@ -988,7 +1009,6 @@ namespace sax {
 
     template<typename Tchar, typename Tsax_handler>
     void parser<Tchar, Tsax_handler>::read_comment_until_newline() {
-        
         read_remaining_whitespaces();
 
         auto comment_start_ptr = m_current_ptr;
@@ -1210,6 +1230,34 @@ namespace sax {
         }
 
         auto& stack_item = m_stack.back();  
+        signal_stack_item_pop(stack_item);
+        m_stack.pop_back();
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    void parser<Tchar, Tsax_handler>::pop_stack_if_not_root() {
+        if (m_stack.size() < 2) {
+            return;
+        }
+
+        auto& stack_item = m_stack.back();
+        signal_stack_item_pop(stack_item);
+        m_stack.pop_back();
+    }
+
+    void pop_stack_if_not_root();
+
+    template<typename Tchar, typename Tsax_handler>
+    void parser<Tchar, Tsax_handler>::pop_stack_from(stack_iterator_t it) {
+        const auto rit_end = stack_reverse_iterator_t(it);
+        for (auto rit = m_stack.rbegin(); rit != rit_end; ++rit) {
+            signal_stack_item_pop(*rit);
+        }
+        m_stack.erase(it, m_stack.end());
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    void parser<Tchar, Tsax_handler>::signal_stack_item_pop(stack_item_t& stack_item) {
         switch (stack_item.type) {
             case stack_type_t::unknown: signal_null(); break;
             case stack_type_t::scalar:
@@ -1217,23 +1265,6 @@ namespace sax {
             case stack_type_t::object: signal_end_object(); break;
             case stack_type_t::sequence: signal_end_array(); break;
         }
-
-        m_stack.pop_back();
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::pop_stack_from(stack_iterator_t it) {
-        const auto rit_end = stack_reverse_iterator_t(it);
-        for (auto rit = m_stack.rbegin(); rit != rit_end; ++rit) {
-            switch (rit->type) {
-                case stack_type_t::unknown: signal_null(); break;
-                case stack_type_t::scalar: 
-                case stack_type_t::scalar_block: signal_end_scalar(); break;
-                case stack_type_t::object: signal_end_object(); break;
-                case stack_type_t::sequence: signal_end_array(); break;
-            }
-        }
-        m_stack.erase(it, m_stack.end());
     }
 
     template<typename Tchar, typename Tsax_handler>
