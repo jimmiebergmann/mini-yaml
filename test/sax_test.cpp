@@ -598,10 +598,10 @@ TEST(sax_parse, fail_scalar_unexpected_token_at_end)
 TEST(sax_parse, ok__reuse_parser)
 {
     const std::string input =
-        "---\n"
+        "--- # test comment 1\n"
         "key 1: value 1\n"
         "key 2: value 2\n"
-        "---\n"
+        "--- # test comment 2\n"
         "key 3: value 3\n"
         "key 4: value 4\n"
         "key 5: value 5\n";
@@ -610,13 +610,18 @@ TEST(sax_parse, ok__reuse_parser)
 
     run_sax_parse_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        auto parser = yaml::sax::parser<char_type, test_sax_handler<char_type>>{ handler };
+        auto parser_options = yaml::sax::parser_options{};
+        auto parser = yaml::sax::parser<char_type, test_sax_handler<char_type>>{ handler, parser_options };
 
         const auto parse_result_1 = parser.execute(input);
         ASSERT_EQ(parse_result_1.result_code, yaml::parse_result_code::success);
+        ASSERT_EQ(parse_result_1.current_line, 3);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 10 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 11 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "test comment 1");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
 
@@ -640,11 +645,16 @@ TEST(sax_parse, ok__reuse_parser)
 
 
         handler.reset();
+        parser_options.start_line_number = parse_result_1.current_line;
         const auto parse_result_2 = parser.execute(parse_result_1.remaining_input);
         ASSERT_EQ(parse_result_2.result_code, yaml::parse_result_code::success);
+        ASSERT_EQ(parse_result_2.current_line, 7);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 14 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 15 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "test comment 2");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
 

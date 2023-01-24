@@ -211,6 +211,7 @@ namespace sax {
 
     struct parser_options {
         size_t max_depth = 128;
+        int64_t start_line_number = 0;
     };
 
     /** SAX style parser. */
@@ -298,6 +299,7 @@ namespace sax {
 
         void read_comment_until_newline();
         void read_remaining_whitespaces();
+        bool consume_only_whitespaces_until_newline();
         bool consume_only_whitespaces_until_newline_or_comment();
 
         bool has_min_tokens_left(size_t count);
@@ -498,7 +500,7 @@ namespace sax {
         m_current_ptr = m_begin_ptr;
         m_stack.clear();
         m_current_result_code = parse_result_code::success;
-        m_current_line = 0;
+        m_current_line = m_options.start_line_number;
         m_current_line_ptr = m_begin_ptr;
         m_current_line_indention = 0;
         m_current_line_indention_ptr = m_begin_ptr;
@@ -556,12 +558,19 @@ namespace sax {
                 if (is_next_token(1, token_type::document_start) && is_next_token(2, token_type::document_start))
                 {
                     m_current_ptr += 3;
-                    if (consume_only_whitespaces_until_newline_or_comment()) {
+                    auto old_line = m_current_line;
+                    if (is_next_token_whitespace(0)) {
                         if (m_stack.front().type == stack_type_t::unknown) {
+                            if (!consume_only_whitespaces_until_newline_or_comment()) {
+                                error(parse_result_code::unexpected_token);
+                                return false;
+                            }
+
                             return true;
                         }
 
                         m_current_ptr = current_line_indention_ptr;
+                        m_current_line = old_line;
                         return false;
                     }
 
@@ -753,7 +762,7 @@ namespace sax {
                 } return;
             }
 
-            if (!consume_only_whitespaces_until_newline_or_comment()) {
+            if (!consume_only_whitespaces_until_newline()) {
                 error(parse_result_code::expected_line_break);
                 return;
             }
@@ -1084,7 +1093,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool parser<Tchar, Tsax_handler>::consume_only_whitespaces_until_newline_or_comment() {
+    bool parser<Tchar, Tsax_handler>::consume_only_whitespaces_until_newline() {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
@@ -1093,6 +1102,22 @@ namespace sax {
                 case token_type::carriage:
                 case token_type::newline: register_newline(); return true;
                 case token_type::comment: read_comment_until_newline(); return true;
+                default: return false;
+            }
+        }
+        return true;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    bool parser<Tchar, Tsax_handler>::consume_only_whitespaces_until_newline_or_comment() {
+        while (m_current_ptr < m_end_ptr) {
+            const auto codepoint = *(m_current_ptr++);
+            switch (codepoint) {
+                case token_type::space:
+                case token_type::tab: break;
+                case token_type::carriage:
+                case token_type::newline: register_newline(); return true;
+                case token_type::comment: --m_current_ptr;  return true;
                 default: return false;
             }
         }
