@@ -482,9 +482,51 @@ namespace sax {
             return true;
         };
 
+        auto process_zero_line_indention = [&]() {
+            const auto codepoint = *m_current_line_indention_ptr;
+            switch (codepoint) {
+            case token_type::document_start: {
+                if (is_next_token(1, token_type::document_start) && is_next_token(2, token_type::document_start))
+                {
+                    m_current_ptr += 3;
+                    if (consume_only_whitespaces_until_newline_or_comment()) {
+                        if (m_stack.front().type != stack_type_t::unknown || m_current_ptr >= m_end_ptr) {
+                            return false;
+                        }
+                    }
+                    else {
+                        error(parse_result_code::expected_line_break);
+                        return false;
+                    }
+                }
+            } break;
+            case token_type::document_end: {
+                if (is_next_token(1, token_type::document_end) && is_next_token(2, token_type::document_end))
+                {
+                    m_current_ptr += 3;
+                    if (consume_only_whitespaces_until_newline_or_comment() || m_current_ptr >= m_end_ptr) {
+                        return false;
+                    }
+                    else {
+                        error(parse_result_code::expected_line_break);
+                        return false;
+                    }
+                }
+            } break;
+            default: break;
+            };
+
+            return true;
+        };
+
         auto process_newline_indentation = [&]() {      
             if (current_is_newline_or_comment()) {
-                return;
+                return true;
+            }
+            if (m_current_line_indention == 0 && m_current_ptr < m_end_ptr) {
+                if (!process_zero_line_indention()) {
+                    return false;
+                }
             }
             
             auto it = std::find_if(m_stack.begin(), m_stack.end(), 
@@ -494,7 +536,7 @@ namespace sax {
             );
 
             if (it == m_stack.end()) {
-                return;
+                return true;
             }
 
             pop_stack_from(it);
@@ -502,51 +544,7 @@ namespace sax {
             if (!m_stack.empty()) {
                 const auto back_indention = m_stack.back().type_indention;
                 if (m_current_line_indention != back_indention) {
-                    return error(parse_result_code::bad_indentation);
-                }
-            }
-        };
-
-        auto process_zero_line_indention = [&]() {
-            const auto codepoint = *m_current_line_indention_ptr;
-            switch (codepoint) {
-                case token_type::document_start: { 
-                    if (is_next_token(1, token_type::document_start) && is_next_token(2, token_type::document_start))
-                    {
-                        m_current_ptr += 3;
-                        if (consume_only_whitespaces_until_newline_or_comment()) {
-                            if (m_stack.front().type != stack_type_t::unknown || m_current_ptr >= m_end_ptr) {
-                                return false;
-                            }
-                        }
-                        else {
-                            error(parse_result_code::expected_line_break);
-                            return false;
-                        }
-                    }
-                } break;
-                case token_type::document_end: {
-                    if (is_next_token(1, token_type::document_end) && is_next_token(2, token_type::document_end))
-                    {
-                        m_current_ptr += 3;
-                        if (consume_only_whitespaces_until_newline_or_comment() || m_current_ptr >= m_end_ptr) {
-                            return false;
-                        }
-                        else {
-                            error(parse_result_code::expected_line_break);
-                            return false;
-                        }
-                    }
-                } break;
-                default: break;
-            };
-
-            return true;
-        };
-
-        auto pre_process_line = [&]() {
-            if (m_current_line_indention == 0) {
-                if (!process_zero_line_indention()) {
+                    error(parse_result_code::bad_indentation);
                     return false;
                 }
             }
@@ -585,7 +583,12 @@ namespace sax {
                     error(parse_result_code::forbidden_tab_indentation);
                     return m_current_result_code;
                 }
-                process_newline_indentation();
+                if (!process_newline_indentation()) {
+                    if (m_current_result_code == parse_result_code::success) {
+                        pop_stack_from(m_stack.begin());
+                    }
+                    return m_current_result_code;
+                }
             }
             else {
                 if (!read_line_indentation()) {
@@ -595,13 +598,6 @@ namespace sax {
             }
 
             if (m_stack.empty() || m_current_result_code != parse_result_code::success || m_current_ptr >= m_end_ptr) {
-                break;
-            }
-
-            if (!pre_process_line()) {
-                break;
-            }
-            if (m_current_result_code != parse_result_code::success || m_current_ptr >= m_end_ptr) {
                 break;
             }
 
