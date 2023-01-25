@@ -63,7 +63,7 @@ jobs:
         run: |
           cd bin
           mkdir corpus_new_1
-          ./fuzz_sax_parse${{matrix.output_name_postfix}} corpus corpus_new_1 -max_total_time=100
+          ./fuzz_sax_parse${{matrix.output_name_postfix}} corpus corpus_new_1 -max_total_time=100 -timeout=60
       - name: Fuzz reject failure
         run: |
           cd bin
