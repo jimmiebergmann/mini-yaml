@@ -17,7 +17,7 @@ static volatile auto dummy_result = 0;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     test_sax_handler handler = {};
-    const auto result = yaml::sax::parse(data, size, handler);
-    dummy_result = result.result_code == yaml::parse_result_code::success ? 1 : 0;
+    const auto result = yaml::sax::read(data, size, handler);
+    dummy_result = result.result_code == yaml::read_result_code::success ? 1 : 0;
     return 0;
 }

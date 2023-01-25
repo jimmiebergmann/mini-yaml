@@ -109,7 +109,7 @@ namespace MINIYAML_NAMESPACE {
 
 namespace MINIYAML_NAMESPACE {
 
-    enum class parse_result_code {
+    enum class read_result_code {
         success,
         reached_stack_max_depth,
         not_implemented,
@@ -119,6 +119,14 @@ namespace MINIYAML_NAMESPACE {
         expected_key,
         unexpected_key,
         unexpected_token
+    };
+
+    template<typename Tchar>
+    struct read_result {
+        read_result_code result_code = read_result_code::success;
+        basic_string_view<Tchar> remaining_input = {};
+        int64_t current_line = 0;
+        const Tchar* current_line_ptr = nullptr;
     };
 
     template<typename T>
@@ -163,33 +171,25 @@ namespace MINIYAML_NAMESPACE {
 namespace MINIYAML_NAMESPACE {
 namespace sax {
 
-    template<typename Tchar>
-    struct parse_result {
-        parse_result_code result_code = parse_result_code::success;
-        basic_string_view<Tchar> remaining_input = {};
-        int64_t current_line = 0;
-        const Tchar* current_line_ptr = nullptr;
-    };
-
     /** Helper function for parsing via SAX style API. */
     template<typename Tchar, typename Tsax_handler>
-    parse_result<Tchar> parse(
+    read_result<Tchar> read(
         const Tchar* raw_input,
         size_t size,
         Tsax_handler& handler);
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result<Tchar> parse(
+    read_result<Tchar> read(
         const std::basic_string<Tchar>& string,
         Tsax_handler& handler);
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result<Tchar> parse(
+    read_result<Tchar> read(
         basic_string_view<Tchar> string_view,
         Tsax_handler& handler);
 
     template<typename Tsax_handler, typename Tit_begin, typename Tit_end>
-    parse_result<typename std::iterator_traits<Tit_begin>::value_type> parse(
+    read_result<typename std::iterator_traits<Tit_begin>::value_type> read(
         Tit_begin first,
         Tit_end last,
         Tsax_handler& handler);
@@ -209,14 +209,14 @@ namespace sax {
         virtual void comment(basic_string_view<uint8_t>) {}
     };
 
-    struct parser_options {
+    struct reader_options {
         size_t max_depth = 128;
         int64_t start_line_number = 0;
     };
 
-    /** SAX style parser. */
+    /** SAX reader. */
     template<typename Tchar, typename Tsax_handler>
-    class parser {
+    class reader {
 
     public:
 
@@ -227,9 +227,9 @@ namespace sax {
         using string_view_type = MINIYAML_NAMESPACE::basic_string_view<Tchar>;
         using sax_handler_type = Tsax_handler;
         using token_type = token<Tchar>;
-        using result_type = parse_result<Tchar>;
+        using result_type = read_result<Tchar>;
 
-        explicit parser(sax_handler_type& sax_handler, const parser_options& options = {});
+        explicit reader(sax_handler_type& sax_handler, const reader_options& options = {});
 
         result_type execute(const_pointer raw_input, size_type size);
 
@@ -242,7 +242,7 @@ namespace sax {
 
     private:
 
-        using state_function_t = void (parser::*)();
+        using state_function_t = void (reader::*)();
 
         enum class stack_type_t {
             unknown,
@@ -275,18 +275,18 @@ namespace sax {
         const_pointer m_end_ptr;
         const_pointer m_begin_ptr;
         stack_t m_stack;
-        parse_result_code m_current_result_code;
+        read_result_code m_current_result_code;
         sax_handler_type& m_sax_handler;
         int64_t m_current_line;
         const_pointer m_current_line_ptr;
         int64_t m_current_line_indention;
         const_pointer m_current_line_indention_ptr;
         bool m_current_is_new_line;
-        const parser_options& m_options;
+        const reader_options& m_options;
 
         static const_pointer skip_utf8_bom(const_pointer begin, const_pointer end);
 
-        parse_result_code process_execute(const_pointer raw_input, size_type size);
+        read_result_code process_execute(const_pointer raw_input, size_type size);
         result_type process_execute_result(const_pointer raw_input, size_type size);
         
         void execute_find_value();
@@ -318,7 +318,7 @@ namespace sax {
         void signal_key(string_view_type value);
         void signal_comment(string_view_type value);
 
-        void error(const parse_result_code result_code);
+        void error(const read_result_code result_code);
 
         stack_item_t& push_stack(state_function_t state_function);
         void pop_stack();
@@ -383,15 +383,15 @@ namespace sax {
         }
         template<typename Tchar, typename Tsax_handler>
         constexpr bool sax_handler_has_string() {
-            return requires(Tsax_handler handler) { { handler.string(typename parser<Tchar, Tsax_handler>::string_view_type{}) }; };
+            return requires(Tsax_handler handler) { { handler.string(typename reader<Tchar, Tsax_handler>::string_view_type{}) }; };
         }
         template<typename Tchar, typename Tsax_handler>
         constexpr bool sax_handler_has_key() {
-            return requires(Tsax_handler handler) { { handler.key(typename parser<Tchar, Tsax_handler>::string_view_type{}) }; };
+            return requires(Tsax_handler handler) { { handler.key(typename reader<Tchar, Tsax_handler>::string_view_type{}) }; };
         }
         template<typename Tchar, typename Tsax_handler>
         constexpr bool sax_handler_has_comment() {
-            return requires(Tsax_handler handler) { { handler.comment(typename parser<Tchar, Tsax_handler>::string_view_type{}) }; };
+            return requires(Tsax_handler handler) { { handler.comment(typename reader<Tchar, Tsax_handler>::string_view_type{}) }; };
         }
 #else
         template<typename Tsax_handler> constexpr bool sax_handler_has_start_scalar() {
@@ -429,12 +429,12 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    parser<Tchar, Tsax_handler>::parser(sax_handler_type& sax_handler, const parser_options& options) :
+    reader<Tchar, Tsax_handler>::reader(sax_handler_type& sax_handler, const reader_options& options) :
         m_current_ptr(nullptr),
         m_end_ptr(nullptr),
         m_begin_ptr(nullptr),
         m_stack{},
-        m_current_result_code(parse_result_code::success),
+        m_current_result_code(read_result_code::success),
         m_sax_handler(sax_handler),
         m_current_line(0),
         m_current_line_ptr(nullptr),
@@ -445,30 +445,30 @@ namespace sax {
     {}
 
     template<typename Tchar, typename Tsax_handler>
-    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::execute(const_pointer raw_input, size_type size) {
+    typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::execute(const_pointer raw_input, size_type size) {
         return process_execute_result(raw_input, size);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::execute(const std::basic_string<value_type>& string) {
+    typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::execute(const std::basic_string<value_type>& string) {
         return process_execute_result(string.c_str(), string.size());
     }
 
     template<typename Tchar, typename Tsax_handler>
-    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::execute(string_view_type string_view) {
+    typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::execute(string_view_type string_view) {
         return process_execute_result(string_view.data(), string_view.size());
     }
 
     template<typename Tchar, typename Tsax_handler>
     template<typename Tit_begin, typename Tit_end>
-    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::execute(Tit_begin first, Tit_end last) {
+    typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::execute(Tit_begin first, Tit_end last) {
         auto raw_input = &*first;
         auto size = static_cast<size_t>(std::distance(first, last));
         return process_execute_result(raw_input, size);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    typename parser<Tchar, Tsax_handler>::const_pointer parser<Tchar, Tsax_handler>::skip_utf8_bom(const_pointer begin, const_pointer end) {
+    typename reader<Tchar, Tsax_handler>::const_pointer reader<Tchar, Tsax_handler>::skip_utf8_bom(const_pointer begin, const_pointer end) {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (sizeof(Tchar) == 1) {
 #else
@@ -494,19 +494,19 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result_code parser<Tchar, Tsax_handler>::process_execute(const_pointer raw_input, size_type size) {
+    read_result_code reader<Tchar, Tsax_handler>::process_execute(const_pointer raw_input, size_type size) {
         m_end_ptr = raw_input + size;
         m_begin_ptr = skip_utf8_bom(raw_input, m_end_ptr);
         m_current_ptr = m_begin_ptr;
         m_stack.clear();
-        m_current_result_code = parse_result_code::success;
+        m_current_result_code = read_result_code::success;
         m_current_line = m_options.start_line_number;
         m_current_line_ptr = m_begin_ptr;
         m_current_line_indention = 0;
         m_current_line_indention_ptr = m_begin_ptr;
         m_current_is_new_line = true;
 
-        push_stack(&parser::execute_find_value);
+        push_stack(&reader::execute_find_value);
 
         auto current_is_newline_or_comment = [&]() {
             return m_current_ptr < m_end_ptr && (
@@ -562,7 +562,7 @@ namespace sax {
                     if (is_next_token_whitespace(0)) {
                         if (m_stack.front().type == stack_type_t::unknown) {
                             if (!consume_only_whitespaces_until_newline_or_comment()) {
-                                error(parse_result_code::unexpected_token);
+                                error(read_result_code::unexpected_token);
                                 return false;
                             }
 
@@ -620,7 +620,7 @@ namespace sax {
             if (!m_stack.empty()) {
                 const auto back_indention = m_stack.back().type_indention;
                 if (m_current_line_indention != back_indention) {
-                    error(parse_result_code::bad_indentation);
+                    error(read_result_code::bad_indentation);
                     return false;
                 }
             }
@@ -642,25 +642,25 @@ namespace sax {
                     register_newline();
                 } return;
                 default: {
-                    error(parse_result_code::unexpected_token);
+                    error(read_result_code::unexpected_token);
                 } return;
                 }
             }
         };
 
-        while (m_current_result_code == parse_result_code::success && m_current_ptr < m_end_ptr && !m_stack.empty()) {
+        while (m_current_result_code == read_result_code::success && m_current_ptr < m_end_ptr && !m_stack.empty()) {
             if (m_stack.size() > m_options.max_depth) {
-                error(parse_result_code::reached_stack_max_depth);
+                error(read_result_code::reached_stack_max_depth);
                 return m_current_result_code;
             }
 
             if (m_current_is_new_line) {
                 if (!read_newline_indentation()) {
-                    error(parse_result_code::forbidden_tab_indentation);
+                    error(read_result_code::forbidden_tab_indentation);
                     return m_current_result_code;
                 }
                 if (!process_newline_indentation()) {
-                    if (m_current_result_code == parse_result_code::success) {
+                    if (m_current_result_code == read_result_code::success) {
                         pop_stack_from(m_stack.begin());
                     }
                     return m_current_result_code;
@@ -668,12 +668,12 @@ namespace sax {
             }
             else {
                 if (!read_line_indentation()) {
-                    error(parse_result_code::forbidden_tab_indentation);
+                    error(read_result_code::forbidden_tab_indentation);
                     return m_current_result_code;
                 }
             }
 
-            if (m_stack.empty() || m_current_result_code != parse_result_code::success || m_current_ptr >= m_end_ptr) {
+            if (m_stack.empty() || m_current_result_code != read_result_code::success || m_current_ptr >= m_end_ptr) {
                 break;
             }
 
@@ -682,7 +682,7 @@ namespace sax {
             (this->*(state_function))();
         }
 
-        if (m_current_result_code != parse_result_code::success) {
+        if (m_current_result_code != read_result_code::success) {
             return m_current_result_code;
         }
 
@@ -693,7 +693,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    typename parser<Tchar, Tsax_handler>::result_type parser<Tchar, Tsax_handler>::process_execute_result(const_pointer raw_input, size_type size) {
+    typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::process_execute_result(const_pointer raw_input, size_type size) {
         auto result = result_type{ };
         result.result_code = process_execute(raw_input, size);
 
@@ -709,7 +709,7 @@ namespace sax {
 
     // State execute functions.
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::execute_find_value() {
+    void reader<Tchar, Tsax_handler>::execute_find_value() {
         m_current_is_new_line = false;
 
         auto value_start_ptr = m_current_ptr;
@@ -723,7 +723,7 @@ namespace sax {
 
             auto& stack_item = m_stack.back();
             stack_item.type = stack_type_t::scalar;
-            stack_item.state_function = &parser::execute_read_scalar;
+            stack_item.state_function = &reader::execute_read_scalar;
             signal_start_scalar(block_style::none, chomping::strip);
        
             const auto scalar_string_view = string_view_type{ value_start_ptr, scalar_length };
@@ -751,46 +751,46 @@ namespace sax {
                         case token_type::carriage:
                         case token_type::newline: break;
                         default: {
-                            error(parse_result_code::expected_line_break);
+                            error(read_result_code::expected_line_break);
                         } return;
                     }
 
                     chomping_type = next_codepoint == token_type::chomping_strip ? chomping::strip : chomping::keep;
                 } break;
                 default: {
-                    error(parse_result_code::expected_line_break);
+                    error(read_result_code::expected_line_break);
                 } return;
             }
 
             if (!consume_only_whitespaces_until_newline()) {
-                error(parse_result_code::expected_line_break);
+                error(read_result_code::expected_line_break);
                 return;
             }
 
             auto& stack_item = m_stack.back();
             stack_item.type = stack_type_t::scalar_block;
-            stack_item.state_function = &parser::execute_read_scalar_block;
+            stack_item.state_function = &reader::execute_read_scalar_block;
             signal_start_scalar(block_type, chomping_type);
         };
 
         auto on_object_token = [&]() {
             auto process_new_object = [&]() {
                 if (value_start_ptr != m_current_line_indention_ptr) {
-                    error(parse_result_code::unexpected_key);
+                    error(read_result_code::unexpected_key);
                     return;
                 }
 
                 auto& stack_item = m_stack.back();
                 stack_item.type = stack_type_t::object;
                 stack_item.type_indention = m_current_line_indention;
-                stack_item.state_function = &parser::execute_read_key;
+                stack_item.state_function = &reader::execute_read_key;
                 signal_start_object();
 
                 const auto key_length = static_cast<size_t>(value_end_ptr - value_start_ptr);
                 const auto key_string_view = string_view_type{ value_start_ptr, key_length };
                 signal_key(key_string_view);
 
-                push_stack(&parser::execute_find_value);
+                push_stack(&reader::execute_find_value);
             };
 
             const auto next_codepoint = m_current_ptr < m_end_ptr ? *m_current_ptr : token_type::eof;
@@ -871,7 +871,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::execute_read_scalar() {
+    void reader<Tchar, Tsax_handler>::execute_read_scalar() {
         auto value_start_ptr = m_current_ptr;
         auto value_end_ptr = m_current_ptr;
 
@@ -899,7 +899,7 @@ namespace sax {
                             case token_type::space:
                             case token_type::tab:
                             case token_type::carriage: {
-                                error(parse_result_code::unexpected_key);
+                                error(read_result_code::unexpected_key);
                             } return false;
                             default: {
                                 value_end_ptr = m_current_ptr;
@@ -927,7 +927,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::execute_read_scalar_block() {
+    void reader<Tchar, Tsax_handler>::execute_read_scalar_block() {
         const auto current_line_indention = m_current_line_indention;
         auto value_start_ptr = m_current_ptr;
         auto value_end_ptr = m_current_ptr;
@@ -966,7 +966,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::execute_read_key() {
+    void reader<Tchar, Tsax_handler>::execute_read_key() {
         auto value_start_ptr = m_current_ptr;
         auto value_end_ptr = m_current_ptr;
 
@@ -985,7 +985,7 @@ namespace sax {
                     case token_type::tab: break;
                     case token_type::comment: {
                         if (is_prev_token_whitespace(2)) {
-                            error(parse_result_code::expected_key);
+                            error(read_result_code::expected_key);
                             return false;
                         }
                     } break;
@@ -1013,7 +1013,7 @@ namespace sax {
                 }
             }
 
-            error(parse_result_code::expected_key);
+            error(read_result_code::expected_key);
             return false;
         };
 
@@ -1025,11 +1025,11 @@ namespace sax {
         const auto key_string_view = string_view_type{ value_start_ptr, key_length };
         signal_key(key_string_view);
 
-        push_stack(&parser::execute_find_value);
+        push_stack(&reader::execute_find_value);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::register_newline() {
+    void reader<Tchar, Tsax_handler>::register_newline() {
         if (m_current_ptr > m_begin_ptr && *(m_current_ptr - 1) == token_type::carriage) { // DOS line break check.
             if (m_current_ptr < m_end_ptr && *m_current_ptr == token_type::newline) {
                 ++m_current_ptr;
@@ -1044,13 +1044,13 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::register_line_indentation() {
+    void reader<Tchar, Tsax_handler>::register_line_indentation() {
         ++m_current_line_indention;
         ++m_current_line_indention_ptr;
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::read_comment_until_newline() {
+    void reader<Tchar, Tsax_handler>::read_comment_until_newline() {
         read_remaining_whitespaces();
 
         auto comment_start_ptr = m_current_ptr;
@@ -1081,7 +1081,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::read_remaining_whitespaces() {
+    void reader<Tchar, Tsax_handler>::read_remaining_whitespaces() {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *m_current_ptr;
             switch (codepoint) {
@@ -1093,7 +1093,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool parser<Tchar, Tsax_handler>::consume_only_whitespaces_until_newline() {
+    bool reader<Tchar, Tsax_handler>::consume_only_whitespaces_until_newline() {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
@@ -1109,7 +1109,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool parser<Tchar, Tsax_handler>::consume_only_whitespaces_until_newline_or_comment() {
+    bool reader<Tchar, Tsax_handler>::consume_only_whitespaces_until_newline_or_comment() {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *(m_current_ptr++);
             switch (codepoint) {
@@ -1125,12 +1125,12 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool parser<Tchar, Tsax_handler>::has_min_tokens_left(size_t count) {
+    bool reader<Tchar, Tsax_handler>::has_min_tokens_left(size_t count) {
         return m_current_ptr + count < m_end_ptr;
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool parser<Tchar, Tsax_handler>::is_next_token(size_t increments, const value_type value) {
+    bool reader<Tchar, Tsax_handler>::is_next_token(size_t increments, const value_type value) {
         if (m_current_ptr + increments >= m_end_ptr) {
             return true;
         }
@@ -1139,7 +1139,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool parser<Tchar, Tsax_handler>::is_prev_token_whitespace(int decrements) {
+    bool reader<Tchar, Tsax_handler>::is_prev_token_whitespace(int decrements) {
         if (m_current_ptr - decrements < m_begin_ptr) {
             return true;
         }
@@ -1157,7 +1157,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool parser<Tchar, Tsax_handler>::is_next_token_whitespace(int increments) {
+    bool reader<Tchar, Tsax_handler>::is_next_token_whitespace(int increments) {
         if (m_current_ptr + increments >= m_end_ptr) {
             return true;
         }
@@ -1176,7 +1176,7 @@ namespace sax {
   
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_start_scalar(block_style block_style, chomping comping) {
+    void reader<Tchar, Tsax_handler>::signal_start_scalar(block_style block_style, chomping comping) {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_start_scalar<Tsax_handler>() == true) {
             m_sax_handler.start_scalar(block_style, comping);
@@ -1187,7 +1187,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_end_scalar() {
+    void reader<Tchar, Tsax_handler>::signal_end_scalar() {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_end_scalar<Tsax_handler>() == true) {
             m_sax_handler.end_scalar();
@@ -1198,7 +1198,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_start_object() {
+    void reader<Tchar, Tsax_handler>::signal_start_object() {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_start_object<Tsax_handler>() == true) {
             m_sax_handler.start_object();
@@ -1209,7 +1209,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_end_object() {
+    void reader<Tchar, Tsax_handler>::signal_end_object() {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_end_object<Tsax_handler>() == true) {
             m_sax_handler.end_object();
@@ -1220,7 +1220,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_start_array() {
+    void reader<Tchar, Tsax_handler>::signal_start_array() {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_start_array<Tsax_handler>() == true) {
             m_sax_handler.start_array();
@@ -1231,7 +1231,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_end_array() {
+    void reader<Tchar, Tsax_handler>::signal_end_array() {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_end_array<Tsax_handler>() == true) {
             m_sax_handler.end_array();
@@ -1242,7 +1242,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_null() {
+    void reader<Tchar, Tsax_handler>::signal_null() {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_null<Tsax_handler>() == true) {
             m_sax_handler.null();
@@ -1253,7 +1253,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_string(string_view_type value) {
+    void reader<Tchar, Tsax_handler>::signal_string(string_view_type value) {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_string<Tchar, Tsax_handler>() == true) {
             m_sax_handler.string(value);
@@ -1264,7 +1264,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_key(string_view_type value) {
+    void reader<Tchar, Tsax_handler>::signal_key(string_view_type value) {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_key<Tchar, Tsax_handler>() == true) {
             m_sax_handler.key(value);
@@ -1275,7 +1275,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_comment(string_view_type value) {
+    void reader<Tchar, Tsax_handler>::signal_comment(string_view_type value) {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_comment<Tchar, Tsax_handler>() == true) {
             m_sax_handler.comment(value);
@@ -1286,12 +1286,12 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::error(const parse_result_code result_code) {
+    void reader<Tchar, Tsax_handler>::error(const read_result_code result_code) {
         m_current_result_code = result_code;
     }
 
     template<typename Tchar, typename Tsax_handler>
-    typename parser<Tchar, Tsax_handler>::stack_item_t& parser<Tchar, Tsax_handler>::push_stack(state_function_t state_function) {
+    typename reader<Tchar, Tsax_handler>::stack_item_t& reader<Tchar, Tsax_handler>::push_stack(state_function_t state_function) {
         const auto type_indention = m_stack.empty() ? size_t{ 0 } : m_stack.back().type_indention + 1;
         m_stack.emplace_back();
         auto& new_stack = m_stack.back();
@@ -1301,7 +1301,7 @@ namespace sax {
     };
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::pop_stack() {
+    void reader<Tchar, Tsax_handler>::pop_stack() {
         if (m_stack.empty()) {
             return;
         }
@@ -1312,7 +1312,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::pop_stack_if_not_root() {
+    void reader<Tchar, Tsax_handler>::pop_stack_if_not_root() {
         if (m_stack.size() < 2) {
             return;
         }
@@ -1325,7 +1325,7 @@ namespace sax {
     void pop_stack_if_not_root();
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::pop_stack_from(stack_iterator_t it) {
+    void reader<Tchar, Tsax_handler>::pop_stack_from(stack_iterator_t it) {
         const auto rit_end = stack_reverse_iterator_t(it);
         for (auto rit = m_stack.rbegin(); rit != rit_end; ++rit) {
             signal_stack_item_pop(*rit);
@@ -1334,7 +1334,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void parser<Tchar, Tsax_handler>::signal_stack_item_pop(stack_item_t& stack_item) {
+    void reader<Tchar, Tsax_handler>::signal_stack_item_pop(stack_item_t& stack_item) {
         switch (stack_item.type) {
             case stack_type_t::unknown: signal_null(); break;
             case stack_type_t::scalar:
@@ -1345,32 +1345,32 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result<Tchar> parse(
+    read_result<Tchar> read(
         const Tchar* raw_input,
         size_t size,
         Tsax_handler& handler)
     {
-        return parser<Tchar, Tsax_handler>{ handler }.execute(raw_input, size);
+        return reader<Tchar, Tsax_handler>{ handler }.execute(raw_input, size);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result<Tchar> parse(
+    read_result<Tchar> read(
         const std::basic_string<Tchar>& string,
         Tsax_handler& handler)
     {
-        return parser<Tchar, Tsax_handler>{ handler }.execute(string);
+        return reader<Tchar, Tsax_handler>{ handler }.execute(string);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    parse_result<Tchar> parse(
+    read_result<Tchar> read(
         basic_string_view<Tchar> string_view,
         Tsax_handler& handler)
     {
-        return parser<Tchar, Tsax_handler>{ handler }.execute(string_view);
+        return reader<Tchar, Tsax_handler>{ handler }.execute(string_view);
     }
 
     template<typename Tsax_handler, typename Tit_begin, typename Tit_end>
-    parse_result<typename std::iterator_traits<Tit_begin>::value_type> parse(
+    read_result<typename std::iterator_traits<Tit_begin>::value_type> read(
         Tit_begin first,
         Tit_end last,
         Tsax_handler& handler)
@@ -1379,9 +1379,9 @@ namespace sax {
         using end_char_type = typename std::iterator_traits<Tit_end>::value_type;
 
         static_assert(std::is_same<begin_char_type, end_char_type>::value, 
-            "Mismatching iterator value types for sax::parse(first, last, handler).");
+            "Mismatching iterator value types for sax::read(first, last, handler).");
 
-        return parser<begin_char_type, Tsax_handler>{ handler }.execute(first, last);
+        return reader<begin_char_type, Tsax_handler>{ handler }.execute(first, last);
     }
 
 } }
