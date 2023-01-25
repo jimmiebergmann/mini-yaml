@@ -550,9 +550,9 @@ namespace sax {
 
         auto process_zero_line_indention = [&]() {
 
-            const auto current_line_indention_ptr = m_current_line_indention_ptr;
+            const auto current_line_ptr = m_current_line_ptr;
 
-            const auto codepoint = *m_current_line_indention_ptr;
+            const auto codepoint = *m_current_line_ptr;
             switch (codepoint) {
             case token_type::document_start: {
                 if (is_next_token(1, token_type::document_start) && is_next_token(2, token_type::document_start))
@@ -569,12 +569,12 @@ namespace sax {
                             return true;
                         }
 
-                        m_current_ptr = current_line_indention_ptr;
+                        m_current_ptr = current_line_ptr;
                         m_current_line = old_line;
                         return false;
                     }
 
-                    m_current_ptr = current_line_indention_ptr;
+                    m_current_ptr = current_line_ptr;
                 }
             } break;
             case token_type::document_end: {
@@ -582,11 +582,11 @@ namespace sax {
                 {
                     m_current_ptr += 3;
                     if (is_next_token_whitespace(0)) {
-                        m_current_ptr = current_line_indention_ptr;
+                        m_current_ptr = current_line_ptr;
                         return false;
                     }
 
-                    m_current_ptr = current_line_indention_ptr;
+                    m_current_ptr = current_line_ptr;
                 }
             } break;
             default: break;
@@ -599,7 +599,7 @@ namespace sax {
             if (current_is_newline_or_comment()) {
                 return true;
             }
-            if (m_current_line_indention == 0 && m_current_ptr < m_end_ptr) {
+            if (m_current_ptr == m_current_line_ptr) {
                 if (!process_zero_line_indention()) {
                     return false;
                 }
