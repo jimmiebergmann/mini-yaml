@@ -1,5 +1,4 @@
 #include "yaml/yaml2.hpp"
-#include <iostream>
 
 struct test_sax_handler {
     void null() {}
@@ -14,9 +13,11 @@ struct test_sax_handler {
     void comment(yaml::basic_string_view<uint8_t>) {}
 };
 
+static volatile auto dummy_result = 0;
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     test_sax_handler handler = {};
     const auto result = yaml::sax::parse(data, size, handler);
-    std::cout << static_cast<int>(result.result_code) << " ";
+    dummy_result = result.result_code == yaml::parse_result_code::success ? 1 : 0;
     return 0;
 }
