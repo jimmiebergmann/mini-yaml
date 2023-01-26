@@ -121,14 +121,6 @@ namespace MINIYAML_NAMESPACE {
         unexpected_token
     };
 
-    template<typename Tchar>
-    struct read_result {
-        read_result_code result_code = read_result_code::success;
-        basic_string_view<Tchar> remaining_input = {};
-        int64_t current_line = 0;
-        const Tchar* current_line_ptr = nullptr;
-    };
-
     template<typename T>
     struct token {
         MINIYAML_INLINE_VARIABLE constexpr static T eof = '\0';
@@ -170,6 +162,14 @@ namespace MINIYAML_NAMESPACE {
 
 namespace MINIYAML_NAMESPACE {
 namespace sax {
+
+    template<typename Tchar>
+    struct read_result {
+        read_result_code result_code = read_result_code::success;
+        basic_string_view<Tchar> remaining_input = {};
+        int64_t current_line = 0;
+        const Tchar* current_line_ptr = nullptr;
+    };
 
     struct reader_options {
         size_t max_depth = 128;
