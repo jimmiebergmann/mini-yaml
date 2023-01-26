@@ -398,21 +398,6 @@ namespace sax {
 
     };
 
-
-    /** Private implementation detials. */
-    /*namespace impl {
-        template<typename Tsax_handler> constexpr bool sax_handler_has_start_scalar();
-        template<typename Tsax_handler> constexpr bool sax_handler_has_end_scalar();
-        template<typename Tsax_handler> constexpr bool sax_handler_has_start_object();
-        template<typename Tsax_handler> constexpr bool sax_handler_has_end_object();
-        template<typename Tsax_handler> constexpr bool sax_handler_has_start_array();
-        template<typename Tsax_handler> constexpr bool sax_handler_has_end_array();
-        template<typename Tsax_handler> constexpr bool sax_handler_has_null();
-        template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_string();
-        template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_key();      
-        template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_comment();
-    }*/
-
 } }
 
 
