@@ -400,7 +400,7 @@ namespace sax {
 
 
     /** Private implementation detials. */
-    namespace impl {
+    /*namespace impl {
         template<typename Tsax_handler> constexpr bool sax_handler_has_start_scalar();
         template<typename Tsax_handler> constexpr bool sax_handler_has_end_scalar();
         template<typename Tsax_handler> constexpr bool sax_handler_has_start_object();
@@ -411,7 +411,7 @@ namespace sax {
         template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_string();
         template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_key();      
         template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_comment();
-    }
+    }*/
 
 } }
 
