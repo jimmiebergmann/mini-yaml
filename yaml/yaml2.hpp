@@ -230,15 +230,15 @@ namespace sax {
         const reader_options& options = {});
 
 
-    /** Helper base struct for sax handler. */
+    /** Helper base struct for SAX handler. */
     struct handler_base {
-        virtual void null() {}
         virtual void start_scalar(block_style, chomping) {}
         virtual void end_scalar() {}
         virtual void start_object() {}
         virtual void end_object() {}
         virtual void start_array() {}
         virtual void end_array() {}
+        virtual void null() {}
         virtual void string(basic_string_view<uint8_t>) {}
         virtual void key(basic_string_view<uint8_t>) {}
         virtual void comment(basic_string_view<uint8_t>) {}
@@ -358,7 +358,7 @@ namespace sax {
 
     };
 
-    /** SAX reader. */
+    /** SAX document reader. */
     template<typename Tchar, typename Tsax_handler>
     class document_reader {
 
@@ -1500,7 +1500,7 @@ namespace sax {
 #endif  
     }
 
-    // Global function implementations.
+    // Global SAX function implementations.
     template<typename Tchar, typename Tsax_handler>
     read_result<Tchar> read(
         const Tchar* raw_input,
