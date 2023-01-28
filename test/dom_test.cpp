@@ -1,7 +1,7 @@
 /*
 * MIT License
 *
-* Copyright(c) 2022 Jimmie Bergmann
+* Copyright(c) 2023 Jimmie Bergmann
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files(the "Software"), to deal
@@ -24,27 +24,12 @@
 */
 
 
-#include "gtest/gtest.h"
+#include "test_utility.hpp"
 
-//#define MINIYAML_NO_STD_STRING_VIEW
-//#define MINIYAML_CUSTOM_NAMESPACE yaml2
-#include "../yaml/yaml2.hpp"
+// =====================================================================
+// Tests
 
-#include <array>
-#include <algorithm>
-#include <iostream>
-
-namespace mini_yaml_test {
-
-#if defined(__cpp_char8_t)
-    using u8_string_type = std::u8string;
-#else
-    using u8_string_type = std::string;
-#endif
-
-    inline void print_info(const std::string& message) {
-        std::cout << "\033[0;1;32m" << "[          ] " << "\033[0m";
-        std::cout << "\033[0;36m" << message << "\033[0m" << std::endl;
-    }
+TEST(dom_read, ok)
+{
 
 }

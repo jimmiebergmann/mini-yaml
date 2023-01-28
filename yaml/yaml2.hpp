@@ -160,6 +160,7 @@ namespace MINIYAML_NAMESPACE {
 }
 
 
+// SAX declarations.
 namespace MINIYAML_NAMESPACE {
 namespace sax {
 
@@ -262,11 +263,8 @@ namespace sax {
         explicit reader(sax_handler_type& sax_handler, const reader_options& options = {});
 
         result_type execute(const_pointer raw_input, size_type size);
-
         result_type execute(const std::basic_string<value_type>& string);
-
         result_type execute(string_view_type string_view);
-
         template<typename Tit_begin, typename Tit_end>
         result_type execute(Tit_begin first, Tit_end last);
 
@@ -400,8 +398,80 @@ namespace sax {
 
 } }
 
+// DOM declarations.
+namespace MINIYAML_NAMESPACE {
+namespace dom {
 
-// Implementations.
+    using reader_options = sax::reader_options;
+
+    template<typename Tchar>
+    struct read_result {
+        read_result_code result_code = read_result_code::success;
+        basic_string_view<Tchar> remaining_input = {};
+        int64_t current_line = 0;
+        const Tchar* current_line_ptr = nullptr;
+        // ... Root node here.
+    };
+
+    /** DOM reader. */
+    template<typename Tchar>
+    class reader {
+
+    public:
+
+        using value_type = Tchar;
+        using pointer = Tchar*;
+        using const_pointer = const Tchar*;
+        using size_type = std::size_t;
+        using string_view_type = MINIYAML_NAMESPACE::basic_string_view<Tchar>;
+        using token_type = token<Tchar>;
+        using result_type = read_result<Tchar>;
+
+        explicit reader(const reader_options& options = {});
+
+        result_type execute(const_pointer raw_input, size_type size);
+        result_type execute(const std::basic_string<value_type>& string);
+        result_type execute(string_view_type string_view);
+        template<typename Tit_begin, typename Tit_end>
+        result_type execute(Tit_begin first, Tit_end last);
+
+    private:
+
+        class sax_handler {
+
+        public:
+
+            sax_handler(reader& p_reader);
+
+            void start_scalar(block_style, chomping);
+            void end_scalar();
+            void start_object();
+            void end_object();
+            void start_array();
+            void end_array();
+            void null();
+            void string(string_view_type);
+            void key(string_view_type);
+            void comment(string_view_type);
+
+        private:
+
+            reader& m_reader;
+        };
+
+        friend class sax_handler;
+
+        using sax_handler_type = sax_handler;
+
+        sax_handler_type m_sax_handler;
+        sax::reader<Tchar, sax_handler_type> m_sax_reader;
+
+    };
+
+} }
+
+
+// SAX Implementations.
 namespace MINIYAML_NAMESPACE {
 namespace sax {
 
@@ -1588,5 +1658,84 @@ namespace sax {
 
         return document_reader<begin_char_type, Tsax_handler>{ handler, options }.execute(first, last);
     }
+
+} }
+
+// DOM implementations
+namespace MINIYAML_NAMESPACE {
+namespace dom {
+
+    template<typename Tchar>
+    reader<Tchar>::reader(const reader_options& options) :
+        m_sax_handler(*this),
+        m_sax_reader(m_sax_handler, options)
+    {}
+
+    template<typename Tchar>
+    typename reader<Tchar>::result_type reader<Tchar>::execute(const_pointer raw_input, size_type size) {
+        return {};
+    }
+
+    template<typename Tchar>
+    typename reader<Tchar>::result_type reader<Tchar>::execute(const std::basic_string<value_type>& string) {
+        return {};
+    }
+
+    template<typename Tchar>
+    typename reader<Tchar>::result_type reader<Tchar>::execute(string_view_type string_view) {
+        return {};
+    }
+
+    template<typename Tchar>
+    template<typename Tit_begin, typename Tit_end>
+    typename reader<Tchar>::result_type reader<Tchar>::execute(Tit_begin first, Tit_end last) {
+        return {};
+    }
+
+    // DOM's sax handler implementations
+    template<typename Tchar>
+    reader<Tchar>::sax_handler::sax_handler(reader& p_reader) :
+        m_reader(p_reader)
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::start_scalar(block_style, chomping)
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::end_scalar()
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::start_object()
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::end_object()
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::start_array()
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::end_array()
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::null()
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::string(string_view_type)
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::key(string_view_type)
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::comment(string_view_type)
+    {}
 
 } }
