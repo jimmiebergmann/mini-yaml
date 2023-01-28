@@ -177,6 +177,7 @@ namespace sax {
         int64_t start_line_number = 0;
     };
 
+
     /** Helper function for parsing via SAX style API. */
     template<typename Tchar, typename Tsax_handler>
     read_result<Tchar> read(
@@ -197,13 +198,6 @@ namespace sax {
         Tsax_handler& handler,
         const reader_options& options = {});
 
-    template<typename Tsax_handler, typename Tit_begin, typename Tit_end>
-    read_result<typename std::iterator_traits<Tit_begin>::value_type> read(
-        Tit_begin first,
-        Tit_end last,
-        Tsax_handler& handler,
-        const reader_options& options = {});
-
     template<typename Tchar, typename Tsax_handler>
     read_result<Tchar> read_documents(
         const Tchar* raw_input,
@@ -223,13 +217,6 @@ namespace sax {
         Tsax_handler& handler,
         const reader_options& options = {});
 
-    template<typename Tsax_handler, typename Tit_begin, typename Tit_end>
-    read_result<typename std::iterator_traits<Tit_begin>::value_type> read_documents(
-        Tit_begin first,
-        Tit_end last,
-        Tsax_handler& handler,
-        const reader_options& options = {});
-
 
     /** Helper base struct for SAX handler. */
     struct handler_base {
@@ -244,6 +231,7 @@ namespace sax {
         virtual void key(basic_string_view<uint8_t>) {}
         virtual void comment(basic_string_view<uint8_t>) {}
     };
+
 
     /** SAX reader. */
     template<typename Tchar, typename Tsax_handler>
@@ -265,8 +253,6 @@ namespace sax {
         result_type execute(const_pointer raw_input, size_type size);
         result_type execute(const std::basic_string<value_type>& string);
         result_type execute(string_view_type string_view);
-        template<typename Tit_begin, typename Tit_end>
-        result_type execute(Tit_begin first, Tit_end last);
 
     private:
 
@@ -356,6 +342,7 @@ namespace sax {
 
     };
 
+
     /** SAX document reader. */
     template<typename Tchar, typename Tsax_handler>
     class document_reader {
@@ -379,9 +366,6 @@ namespace sax {
 
         result_type execute(string_view_type string_view);
 
-        template<typename Tit_begin, typename Tit_end>
-        result_type execute(Tit_begin first, Tit_end last);
-
     private:
 
         result_type process_execute_result(const_pointer raw_input, size_type size);
@@ -398,6 +382,7 @@ namespace sax {
 
 } }
 
+
 // DOM declarations.
 namespace MINIYAML_NAMESPACE {
 namespace dom {
@@ -412,6 +397,7 @@ namespace dom {
         const Tchar* current_line_ptr = nullptr;
         // ... Root node here.
     };
+
 
     /** DOM reader. */
     template<typename Tchar>
@@ -432,8 +418,6 @@ namespace dom {
         result_type execute(const_pointer raw_input, size_type size);
         result_type execute(const std::basic_string<value_type>& string);
         result_type execute(string_view_type string_view);
-        template<typename Tit_begin, typename Tit_end>
-        result_type execute(Tit_begin first, Tit_end last);
 
     private:
 
@@ -597,14 +581,6 @@ namespace sax {
     template<typename Tchar, typename Tsax_handler>
     typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::execute(string_view_type string_view) {
         return process_execute_result(string_view.data(), string_view.size());
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    template<typename Tit_begin, typename Tit_end>
-    typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::execute(Tit_begin first, Tit_end last) {
-        auto raw_input = &*first;
-        auto size = static_cast<size_t>(std::distance(first, last));
-        return process_execute_result(raw_input, size);
     }
 
     template<typename Tchar, typename Tsax_handler>
@@ -1510,14 +1486,6 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    template<typename Tit_begin, typename Tit_end>
-    typename document_reader<Tchar, Tsax_handler>::result_type document_reader<Tchar, Tsax_handler>::execute(Tit_begin first, Tit_end last) {
-        auto raw_input = &*first;
-        auto size = static_cast<size_t>(std::distance(first, last));
-        return process_execute_result(raw_input, size);
-    }
-
-    template<typename Tchar, typename Tsax_handler>
     typename document_reader<Tchar, Tsax_handler>::result_type document_reader<Tchar, Tsax_handler>::process_execute_result(const_pointer raw_input, size_type size) {
         m_options_copy = m_options;
         
@@ -1599,22 +1567,6 @@ namespace sax {
         return reader<Tchar, Tsax_handler>{ handler, options }.execute(string_view);
     }
 
-    template<typename Tsax_handler, typename Tit_begin, typename Tit_end>
-    read_result<typename std::iterator_traits<Tit_begin>::value_type> read(
-        Tit_begin first,
-        Tit_end last,
-        Tsax_handler& handler,
-        const reader_options& options)
-    {
-        using begin_char_type = typename std::iterator_traits<Tit_begin>::value_type;
-        using end_char_type = typename std::iterator_traits<Tit_end>::value_type;
-
-        static_assert(std::is_same<begin_char_type, end_char_type>::value, 
-            "Mismatching iterator value types for sax::read(first, last, handler).");
-
-        return reader<begin_char_type, Tsax_handler>{ handler, options }.execute(first, last);
-    }
-
     template<typename Tchar, typename Tsax_handler>
     read_result<Tchar> read_documents(
         const Tchar* raw_input,
@@ -1641,22 +1593,6 @@ namespace sax {
         const reader_options& options)
     {
         return document_reader<Tchar, Tsax_handler>{ handler, options }.execute(string_view);
-    }
-
-    template<typename Tsax_handler, typename Tit_begin, typename Tit_end>
-    read_result<typename std::iterator_traits<Tit_begin>::value_type> read_documents(
-        Tit_begin first,
-        Tit_end last,
-        Tsax_handler& handler,
-        const reader_options& options)
-    {
-        using begin_char_type = typename std::iterator_traits<Tit_begin>::value_type;
-        using end_char_type = typename std::iterator_traits<Tit_end>::value_type;
-
-        static_assert(std::is_same<begin_char_type, end_char_type>::value,
-            "Mismatching iterator value types for sax::read(first, last, handler).");
-
-        return document_reader<begin_char_type, Tsax_handler>{ handler, options }.execute(first, last);
     }
 
 } }
@@ -1686,11 +1622,6 @@ namespace dom {
         return {};
     }
 
-    template<typename Tchar>
-    template<typename Tit_begin, typename Tit_end>
-    typename reader<Tchar>::result_type reader<Tchar>::execute(Tit_begin first, Tit_end last) {
-        return {};
-    }
 
     // DOM's sax handler implementations
     template<typename Tchar>
