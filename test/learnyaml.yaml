@@ -46,7 +46,7 @@ enclosed: "yes"   # evaluates to "enclosed": yes
 Superscript two: \u00B2
 
 # Special characters must be enclosed in single or double quotes
-special_characters: "[ John ] & { Jane } - <Doe>"
+###special_characters: "[ John ] & { Jane } - <Doe>"
 
 # Multiple-line strings can be written either as a 'literal block' (using |), 
 # or a 'folded block' (using '>').

@@ -29,6 +29,7 @@
 #include <string>
 #include <limits>
 #include <algorithm>
+#include <fstream>
 #include <cstdlib>
 
 #if defined(MINIYAML_CUSTOM_NAMESPACE)
@@ -111,6 +112,7 @@ namespace MINIYAML_NAMESPACE {
 
     enum class read_result_code {
         success,
+        cannot_open_file,
         reached_stack_max_depth,
         not_implemented,
         forbidden_tab_indentation,
@@ -172,6 +174,11 @@ namespace sax {
         const Tchar* current_line_ptr = nullptr;
     };
 
+    template<typename Tchar>
+    struct read_file_result {
+        read_result_code result_code = read_result_code::success;
+    };
+
     struct reader_options {
         size_t max_depth = 128;
         int64_t start_line_number = 0;
@@ -199,6 +206,12 @@ namespace sax {
         const reader_options& options = {});
 
     template<typename Tchar, typename Tsax_handler>
+    read_file_result<Tchar> read_from_file(
+        const std::string& filename,
+        Tsax_handler& handler,
+        const reader_options& options = {});
+
+    template<typename Tchar, typename Tsax_handler>
     read_result<Tchar> read_documents(
         const Tchar* raw_input,
         size_t size,
@@ -214,6 +227,12 @@ namespace sax {
     template<typename Tchar, typename Tsax_handler>
     read_result<Tchar> read_documents(
         basic_string_view<Tchar> string_view,
+        Tsax_handler& handler,
+        const reader_options& options = {});
+
+    template<typename Tchar, typename Tsax_handler>
+    read_file_result<Tchar> read_documents_from_file(
+        const std::string& filename,
         Tsax_handler& handler,
         const reader_options& options = {});
 
@@ -247,12 +266,14 @@ namespace sax {
         using sax_handler_type = Tsax_handler;
         using token_type = token<Tchar>;
         using result_type = read_result<Tchar>;
+        using file_result_type = read_file_result<Tchar>;
 
         explicit reader(sax_handler_type& sax_handler, const reader_options& options = {});
 
         result_type execute(const_pointer raw_input, size_type size);
         result_type execute(const std::basic_string<value_type>& string);
         result_type execute(string_view_type string_view);
+        file_result_type execute_from_file(const std::string& filename);
 
     private:
 
@@ -357,14 +378,14 @@ namespace sax {
         using sax_handler_type = typename reader<Tchar, Tsax_handler>::sax_handler_type;
         using token_type = typename reader<Tchar, Tsax_handler>::token_type;
         using result_type = typename reader<Tchar, Tsax_handler>::result_type;
+        using file_result_type = typename reader<Tchar, Tsax_handler>::file_result_type;
 
         explicit document_reader(sax_handler_type& sax_handler, const reader_options& options = {});
 
         result_type execute(const_pointer raw_input, size_type size);
-
         result_type execute(const std::basic_string<value_type>& string);
-
         result_type execute(string_view_type string_view);
+        file_result_type execute_from_file(const std::string& filename);
 
     private:
 
@@ -455,101 +476,148 @@ namespace dom {
 } }
 
 
+// Hidden implementation details.
+namespace MINIYAML_NAMESPACE {
+namespace impl {
+
+    enum class read_file_result_code {
+        success,
+        cannot_open_file
+    };
+
+    template<typename Tchar>
+    struct read_file_result {
+        read_file_result_code result_code = read_file_result_code::success;
+        std::vector<Tchar> data = {};
+    };
+
+    template<typename Tchar>
+    read_file_result<Tchar> read_file(const std::string& filename) {
+        static_assert(sizeof(Tchar) == sizeof(char), "Tchar is not compatible with ifstream::read.");
+
+        auto result = read_file_result<Tchar>{};
+        auto file = std::ifstream(filename);
+        if (!file.is_open()) {
+            result.result_code = read_file_result_code::cannot_open_file;
+            return result;
+        }
+
+        file.seekg(0, std::ifstream::end);
+        const auto data_size = static_cast<size_t>(file.tellg());
+        if (data_size == 0) {
+            return result;
+        }
+
+        result.data.resize(data_size);
+
+        file.seekg(0, std::ifstream::beg);
+        file.read(reinterpret_cast<char*>(result.data.data()), data_size);
+
+        return result;
+    }
+
+} }
+
+
+// Hidden SAX implementation details.
+namespace MINIYAML_NAMESPACE {
+namespace sax {
+namespace impl {
+
+#if MINIYAML_HAS_CONCEPTS
+    template<typename Tsax_handler>
+    constexpr bool sax_handler_has_start_document() {
+        return requires(Tsax_handler value) { { value.start_document() }; };
+    }
+    template<typename Tsax_handler>
+    constexpr bool sax_handler_has_end_document() {
+        return requires(Tsax_handler value) { { value.end_document() }; };
+    }
+    template<typename Tsax_handler>
+    constexpr bool sax_handler_has_start_scalar() {
+        return requires(Tsax_handler value) { { value.start_scalar(block_style::none, chomping::strip) }; };
+    }
+    template<typename Tsax_handler>
+    constexpr bool sax_handler_has_end_scalar() {
+        return requires(Tsax_handler value) { { value.end_scalar() }; };
+    }
+    template<typename Tsax_handler>
+    constexpr bool sax_handler_has_start_object() {
+        return requires(Tsax_handler value) { { value.start_object() }; };
+    }
+    template<typename Tsax_handler>
+    constexpr bool sax_handler_has_end_object() {
+        return requires(Tsax_handler value) { { value.end_object() }; };
+    }
+    template<typename Tsax_handler>
+    constexpr bool sax_handler_has_start_array() {
+        return requires(Tsax_handler value) { { value.start_array() }; };
+    }
+    template<typename Tsax_handler>
+    constexpr bool sax_handler_has_end_array() {
+        return requires(Tsax_handler value) { { value.end_array() }; };
+    }
+    template<typename Tsax_handler>
+    constexpr bool sax_handler_has_null() {
+        return requires(Tsax_handler value) { { value.null() }; };
+    }
+    template<typename Tchar, typename Tsax_handler>
+    constexpr bool sax_handler_has_string() {
+        return requires(Tsax_handler handler) { { handler.string(typename reader<Tchar, Tsax_handler>::string_view_type{}) }; };
+    }
+    template<typename Tchar, typename Tsax_handler>
+    constexpr bool sax_handler_has_key() {
+        return requires(Tsax_handler handler) { { handler.key(typename reader<Tchar, Tsax_handler>::string_view_type{}) }; };
+    }
+    template<typename Tchar, typename Tsax_handler>
+    constexpr bool sax_handler_has_comment() {
+        return requires(Tsax_handler handler) { { handler.comment(typename reader<Tchar, Tsax_handler>::string_view_type{}) }; };
+    }
+#else
+    template<typename Tsax_handler> constexpr bool sax_handler_has_start_document() {
+        return true;
+    }
+    template<typename Tsax_handler> constexpr bool sax_handler_has_end_document() {
+        return true;
+    }
+    template<typename Tsax_handler> constexpr bool sax_handler_has_start_scalar() {
+        return true;
+    }
+    template<typename Tsax_handler> constexpr bool sax_handler_has_end_scalar() {
+        return true;
+    }
+    template<typename Tsax_handler> constexpr bool sax_handler_has_start_object() {
+        return true;
+    }
+    template<typename Tsax_handler> constexpr bool sax_handler_has_end_object() {
+        return true;
+    }
+    template<typename Tsax_handler> constexpr bool sax_handler_has_start_array() {
+        return true;
+    }
+    template<typename Tsax_handler> constexpr bool sax_handler_has_end_array() {
+        return true;
+    }
+    template<typename Tsax_handler> constexpr bool sax_handler_has_null() {
+        return true;
+    }
+    template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_string() {
+        return true;
+    }
+    template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_key() {
+        return true;
+    }
+    template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_comment() {
+        return true;
+    }
+#endif
+
+} } }
+
+
 // SAX Implementations.
 namespace MINIYAML_NAMESPACE {
 namespace sax {
-
-    namespace impl {
-
-#if MINIYAML_HAS_CONCEPTS
-        template<typename Tsax_handler>
-        constexpr bool sax_handler_has_start_document() {
-            return requires(Tsax_handler value) { { value.start_document() }; };
-        }
-        template<typename Tsax_handler>
-        constexpr bool sax_handler_has_end_document() {
-            return requires(Tsax_handler value) { { value.end_document() }; };
-        }
-        template<typename Tsax_handler>
-        constexpr bool sax_handler_has_start_scalar() {
-            return requires(Tsax_handler value) { { value.start_scalar(block_style::none, chomping::strip) }; };
-        }
-        template<typename Tsax_handler>
-        constexpr bool sax_handler_has_end_scalar() {
-            return requires(Tsax_handler value) { { value.end_scalar() }; };
-        }
-        template<typename Tsax_handler>
-        constexpr bool sax_handler_has_start_object() {
-            return requires(Tsax_handler value) { { value.start_object() }; };
-        }
-        template<typename Tsax_handler>
-        constexpr bool sax_handler_has_end_object() {
-            return requires(Tsax_handler value) { { value.end_object() }; };
-        }
-        template<typename Tsax_handler>
-        constexpr bool sax_handler_has_start_array() {
-            return requires(Tsax_handler value) { { value.start_array() }; };
-        }
-        template<typename Tsax_handler>
-        constexpr bool sax_handler_has_end_array() {
-            return requires(Tsax_handler value) { { value.end_array() }; };
-        }
-        template<typename Tsax_handler>
-        constexpr bool sax_handler_has_null() {
-            return requires(Tsax_handler value) { { value.null() }; };
-        }
-        template<typename Tchar, typename Tsax_handler>
-        constexpr bool sax_handler_has_string() {
-            return requires(Tsax_handler handler) { { handler.string(typename reader<Tchar, Tsax_handler>::string_view_type{}) }; };
-        }
-        template<typename Tchar, typename Tsax_handler>
-        constexpr bool sax_handler_has_key() {
-            return requires(Tsax_handler handler) { { handler.key(typename reader<Tchar, Tsax_handler>::string_view_type{}) }; };
-        }
-        template<typename Tchar, typename Tsax_handler>
-        constexpr bool sax_handler_has_comment() {
-            return requires(Tsax_handler handler) { { handler.comment(typename reader<Tchar, Tsax_handler>::string_view_type{}) }; };
-        }
-#else
-        template<typename Tsax_handler> constexpr bool sax_handler_has_start_document() {
-            return true;
-        }
-        template<typename Tsax_handler> constexpr bool sax_handler_has_end_document() {
-            return true;
-        }
-        template<typename Tsax_handler> constexpr bool sax_handler_has_start_scalar() {
-            return true;
-        }
-        template<typename Tsax_handler> constexpr bool sax_handler_has_end_scalar() {
-            return true;
-        }
-        template<typename Tsax_handler> constexpr bool sax_handler_has_start_object() {
-            return true;
-        }
-        template<typename Tsax_handler> constexpr bool sax_handler_has_end_object() {
-            return true;
-        }
-        template<typename Tsax_handler> constexpr bool sax_handler_has_start_array() {
-            return true;
-        }
-        template<typename Tsax_handler> constexpr bool sax_handler_has_end_array() {
-            return true;
-        }
-        template<typename Tsax_handler> constexpr bool sax_handler_has_null() {
-            return true;
-        }
-        template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_string() {
-            return true;
-        }
-        template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_key() {
-            return true;
-        }
-        template<typename Tchar, typename Tsax_handler> constexpr bool sax_handler_has_comment() {
-            return true;
-        }
-#endif
-
-    }
 
     // Read implementations.
     template<typename Tchar, typename Tsax_handler>
@@ -581,6 +649,21 @@ namespace sax {
     template<typename Tchar, typename Tsax_handler>
     typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::execute(string_view_type string_view) {
         return process_execute_result(string_view.data(), string_view.size());
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename reader<Tchar, Tsax_handler>::file_result_type reader<Tchar, Tsax_handler>::execute_from_file(const std::string& filename) {
+        auto result = file_result_type{};
+
+        auto file_result = MINIYAML_NAMESPACE::impl::read_file<Tchar>(filename);
+        if (file_result.result_code != MINIYAML_NAMESPACE::impl::read_file_result_code::success) {  
+            result.result_code = read_result_code::cannot_open_file;
+            return result;
+        }
+
+        auto execute_result = process_execute_result(file_result.data.data(), file_result.data.size());
+        result.result_code = execute_result.result_code;
+        return result;
     }
 
     template<typename Tchar, typename Tsax_handler>
@@ -1486,6 +1569,21 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
+    typename reader<Tchar, Tsax_handler>::file_result_type document_reader<Tchar, Tsax_handler>::execute_from_file(const std::string& filename) {
+        auto result = file_result_type{};
+
+        auto file_result = MINIYAML_NAMESPACE::impl::read_file<Tchar>(filename);
+        if (file_result.result_code != MINIYAML_NAMESPACE::impl::read_file_result_code::success) {
+            result.result_code = read_result_code::cannot_open_file;
+            return result;
+        }
+
+        auto execute_result = process_execute_result(file_result.data.data(), file_result.data.size());
+        result.result_code = execute_result.result_code;
+        return result;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
     typename document_reader<Tchar, Tsax_handler>::result_type document_reader<Tchar, Tsax_handler>::process_execute_result(const_pointer raw_input, size_type size) {
         m_options_copy = m_options;
         
@@ -1568,6 +1666,15 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
+    read_file_result<Tchar> read_from_file(
+        const std::string& filename,
+        Tsax_handler& handler,
+        const reader_options& options)
+    {
+        return reader<Tchar, Tsax_handler>{ handler, options }.execute_from_file(filename);
+    }
+
+    template<typename Tchar, typename Tsax_handler>
     read_result<Tchar> read_documents(
         const Tchar* raw_input,
         size_t size,
@@ -1593,6 +1700,15 @@ namespace sax {
         const reader_options& options)
     {
         return document_reader<Tchar, Tsax_handler>{ handler, options }.execute(string_view);
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    read_file_result<Tchar> read_documents_from_file(
+        const std::string& filename,
+        Tsax_handler& handler,
+        const reader_options& options)
+    {
+        return document_reader<Tchar, Tsax_handler>{ handler, options }.execute_from_file(filename);
     }
 
 } }
