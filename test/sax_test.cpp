@@ -1598,6 +1598,41 @@ TEST(sax_read, ok_scalar_multiple__folded_keep)
     });
 }
 
+TEST(sax_read, ok_scalar_multiple__folded_keep_end_with_comment)
+{
+    const std::string input =
+        ">+\n"
+        "    Row 1 here.\n"
+        "    Row 2 here.\n"
+        "    Row 3 here. After empty row.\n"
+        "# goofy";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read(input, handler);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::folded, yaml::chomping::keep));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "Row 1 here.");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "Row 2 here.");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "goofy");
+
+    });
+}
+
 TEST(sax_read, ok_scalar_multiple__folded_strip)
 {
     const std::string input =
@@ -1940,7 +1975,7 @@ TEST(sax_read_documents, ok_file_learnyaml)
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
     handler.prepare_read();
-    ASSERT_GE(handler.instructions.size(), size_t{ /*118*/ 200 });
+    ASSERT_EQ(handler.instructions.size(), size_t{ 284 });
 
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
@@ -2193,15 +2228,320 @@ TEST(sax_read_documents, ok_file_learnyaml)
         EXPECT_EQ(handler.get_next_string(), "    this text will appear over two lines.");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
         EXPECT_EQ(handler.get_next_string(), "");
-/*
-        [[maybe_unused]] auto a = handler.get_next_string();
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
     EXPECT_EQ(handler.get_next_comment(), "|- and >- removes the trailing blank lines (also called literal/block \"strip\")");
 
-    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);*/
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "literal_strip");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This entire block of text will be the value of the 'literal_block' key,");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "with trailing blank line being stripped.");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
-    //ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "block_strip");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::folded, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This entire block of text will be the value of 'folded_style', but this");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "time, all newlines will be replaced with a single space and ");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "trailing blank line being stripped.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "|+ and >+ keeps trailing blank lines (also called literal/block \"keep\")");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "literal_keep");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::keep));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This entire block of text will be the value of the 'literal_block' key,");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "with trailing blank line being kept.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "block_keep");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::folded, yaml::chomping::keep));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "This entire block of text will be the value of 'folded_style', but this");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "time, all newlines will be replaced with a single space and ");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "trailing blank line being kept.");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "###################");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "COLLECTION TYPES #");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "###################");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Nesting uses indentation. 2 space indent is preferred (but not required).");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "a_nested_map");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key");
+      
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "another_key");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "Another Value");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "another_nested_map");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+            EXPECT_EQ(handler.get_next_key(), "hello");
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+                EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+                EXPECT_EQ(handler.get_next_string(), "hello");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+            EXPECT_EQ(handler.get_next_comment(), "Maps don't have to have string keys.");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "0.25");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "a float key");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Keys can also be complex, like multi-line objects");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "We use ? followed by a space to indicate the start of a complex key.");
+
+    for (size_t i = 0; i < 4; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "YAML also allows mapping between sequences with the complex key syntax");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Some language parsers might complain");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "An example");
+
+    for (size_t i = 0; i < 3; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Sequences (equivalent to lists or arrays) look like this");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "(note that the '-' counts as indentation):");
+    
+    for (size_t i = 0; i < 11; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Since YAML is a superset of JSON, you can also write JSON-style maps and");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "sequences:");
+
+    for (size_t i = 0; i < 3; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "######################");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "EXTRA YAML FEATURES #");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "######################");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "YAML also has a handy feature called 'anchors', which let you easily duplicate");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "content across your document.");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Anchors identified by & character which define the value.");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Aliases identified by * character which acts as \"see above\" command.");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Both of these keys will have the same value:");
+
+    for (size_t i = 0; i < 2; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Anchors can be used to duplicate/inherit properties");
+
+    for (size_t i = 0; i < 2; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "The regexp << is called 'Merge Key Language-Independent Type'. It is used to");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "indicate that all the keys of one or more specified maps should be inserted");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "into the current map.");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "NOTE: If key already exists alias will not be merged");
+
+    for (size_t i = 0; i < 7; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "foo and bar would also have name: Everyone has same name");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "YAML also has tags, which you can use to explicitly declare types.");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Syntax: !![typeName] [value]");
+
+    for (size_t i = 0; i < 6; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Some parsers implement language specific tags, like this one for Python's");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "complex number type.");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+    handler.get_next_comment();
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "We can also use yaml complex keys with language specific tags");
+
+    for (size_t i = 0; i < 2; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Would be {(5, 7): 'Fifty Seven'} in Python");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "###################");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "EXTRA YAML TYPES #");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "###################");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Strings and numbers aren't the only scalars that YAML can understand.");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "ISO-formatted date and datetime literals are also parsed.");
+
+    for (size_t i = 0; i < 4; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "The !!binary tag indicates that a string is actually a base64-encoded");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "representation of a binary blob.");
+
+    for (size_t i = 0; i < 5; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "YAML also has a set type, which looks like this:");
+
+    for (size_t i = 0; i < 5; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Sets are just maps with null values; the above is equivalent to:");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "set2");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "item1");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "null");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "item2");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "null");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "item3");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "null");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
 }
 
 TEST(sax_read_documents, ok_read_documents)

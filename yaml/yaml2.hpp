@@ -1132,21 +1132,31 @@ namespace sax {
         auto value_end_ptr = m_current_ptr;
 
         auto process = [&]() {
+            const auto first_codepoint = *m_current_ptr;
+            if (first_codepoint == token_type::comment) {
+                pop_stack();
+                return false;
+            }
+
             while (m_current_ptr < m_end_ptr) {
                 const auto codepoint = *(m_current_ptr++);
                 switch (codepoint) {
                     case token_type::carriage:
                     case token_type::newline: {
                         register_newline();
-                    } return;
+                    } return true;
                     default: {
                         value_end_ptr = m_current_ptr;
                     } break;
                 }
             }
+
+            return true;
         };
 
-        process();
+        if (!process()) {
+            return;
+        }
 
         auto& stack_item = m_stack.back();
         const auto scalar_length = static_cast<size_t>(value_end_ptr - value_start_ptr);
