@@ -299,7 +299,7 @@ TEST(sax_read, fail_bad_indention_objects_1)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_token);
 
         handler.prepare_read();
@@ -335,7 +335,7 @@ TEST(sax_read, fail_bad_indention_objects_2)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::bad_indentation);
         
         handler.prepare_read();
@@ -413,7 +413,7 @@ TEST(sax_read, fail_bad_indention_scalar_multiple_literal_1)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_token);
         
         handler.prepare_read();
@@ -442,7 +442,7 @@ TEST(sax_read, fail_bad_indention_scalar_multiple_literal_2)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_token);
 
         handler.prepare_read();
@@ -471,7 +471,7 @@ TEST(sax_read, fail_forbidden_tab_indentation_empty_file)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::forbidden_tab_indentation);
 
         handler.prepare_read();
@@ -488,7 +488,7 @@ TEST(sax_read, fail_forbidden_tab_indentation_scalar_1)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::forbidden_tab_indentation);
         
         handler.prepare_read();
@@ -506,7 +506,7 @@ TEST(sax_read, fail_forbidden_tab_indentation_scalar_2)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::forbidden_tab_indentation);
         
         handler.prepare_read();
@@ -528,7 +528,7 @@ TEST(sax_read, fail_object_unexpected_key_1)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_key);
         
         handler.prepare_read();
@@ -550,7 +550,7 @@ TEST(sax_read, fail_object_unexpected_key_2)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_key);
         
         handler.prepare_read();
@@ -575,7 +575,7 @@ TEST(sax_read, fail_scalar_single_literal_expected_line_break)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::expected_line_break);
         
         handler.prepare_read();
@@ -594,7 +594,7 @@ TEST(sax_read, fail_scalar_unexpected_token_at_end)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_token);
         
         handler.prepare_read();
@@ -638,7 +638,7 @@ TEST(sax_read, ok_comments__multiple)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -710,7 +710,7 @@ TEST(sax_read, ok_comments_objects_null_values)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -814,7 +814,7 @@ TEST(sax_read, ok_comments_objects_values)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -954,7 +954,7 @@ TEST(sax_read, ok_comments__single)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -977,7 +977,7 @@ TEST(sax_read, ok_document_end)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
@@ -1001,7 +1001,7 @@ TEST(sax_read, ok_document_end_at_start)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
@@ -1023,7 +1023,7 @@ TEST(sax_read, ok_document_start)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1048,7 +1048,7 @@ TEST(sax_read, ok_document_start_as_end)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1074,7 +1074,7 @@ TEST(sax_read, ok_document_start_end)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1096,7 +1096,7 @@ TEST(sax_read, ok_empty_file)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1114,7 +1114,7 @@ TEST(sax_read, ok_empty_file_document_start)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1132,7 +1132,7 @@ TEST(sax_read, ok_empty_file_document_end)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1152,7 +1152,7 @@ TEST(sax_read, ok_empty_file_empty_lines)
     using char_type = typename decltype(input)::value_type;
 
     auto handler = test_sax_handler<char_type>{};
-    const auto read_result = yaml::sax::read(input, handler);
+    const auto read_result = yaml::sax::read_document(input, handler);
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
    
     handler.prepare_read();
@@ -1177,7 +1177,7 @@ TEST(sax_read, ok_empty_file_empty_lines_with_spaces)
     using char_type = typename decltype(input)::value_type;
 
     auto handler = test_sax_handler<char_type>{};
-    const auto read_result = yaml::sax::read(input, handler);
+    const auto read_result = yaml::sax::read_document(input, handler);
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
     
     handler.prepare_read();
@@ -1191,7 +1191,7 @@ TEST(sax_read, ok_file_learnyaml)
     using char_type = char;
 
     auto handler = test_sax_handler<char_type>{};
-    const auto read_result = yaml::sax::read_from_file<char_type>("../test/learnyaml.yaml", handler);
+    const auto read_result = yaml::sax::read_document_from_file<char_type>("../test/learnyaml.yaml", handler);
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 }
 
@@ -1214,7 +1214,7 @@ TEST(sax_read, ok_object_multiple_nested_objects)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1296,7 +1296,7 @@ TEST(sax_read, ok_object_single_nested_objects)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1340,7 +1340,7 @@ TEST(sax_read, ok_object_single_with_scalar__inline)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1375,7 +1375,7 @@ TEST(sax_read, ok_object_single_with_scalar_with_with_comments)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
     
         handler.prepare_read();
@@ -1424,7 +1424,7 @@ TEST(sax_read, ok_reuse_reader)
         auto reader_options = yaml::sax::reader_options{};
         auto reader = yaml::sax::reader<char_type, test_sax_handler<char_type>>{ handler, reader_options };
 
-        const auto read_result_1 = reader.execute(input);
+        const auto read_result_1 = reader.read_document(input);
         ASSERT_EQ(read_result_1.result_code, yaml::read_result_code::success);
         EXPECT_EQ(read_result_1.current_line, 3);
 
@@ -1457,7 +1457,7 @@ TEST(sax_read, ok_reuse_reader)
 
             handler.reset();
             reader_options.start_line_number = read_result_1.current_line;
-            const auto read_result_2 = reader.execute(read_result_1.remaining_input);
+            const auto read_result_2 = reader.read_document(read_result_1.remaining_input);
             ASSERT_EQ(read_result_2.result_code, yaml::read_result_code::success);
             EXPECT_EQ(read_result_2.current_line, 7);
 
@@ -1508,7 +1508,7 @@ TEST(sax_read, ok_scalar_multiple)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1541,7 +1541,7 @@ TEST(sax_read, ok_scalar_multiple__folded)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
@@ -1576,7 +1576,7 @@ TEST(sax_read, ok_scalar_multiple__folded_keep)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
@@ -1611,7 +1611,7 @@ TEST(sax_read, ok_scalar_multiple__folded_keep_end_with_comment)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
@@ -1646,7 +1646,7 @@ TEST(sax_read, ok_scalar_multiple__folded_strip)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1689,7 +1689,7 @@ TEST(sax_read, ok_scalar_multiple__literal)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
@@ -1740,7 +1740,7 @@ TEST(sax_read, ok_scalar_multiple__literal_keep)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
@@ -1775,7 +1775,7 @@ TEST(sax_read, ok_scalar_multiple__literal_strip)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1806,7 +1806,7 @@ TEST(sax_read, ok_scalar_single)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1832,7 +1832,7 @@ TEST(sax_read, ok_scalar_single_literal)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1858,7 +1858,7 @@ TEST(sax_read, ok_scalar_single_literal_comment_after_token)
 
     run_sax_read_all_styles<char_type>(input, [](std::string input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
@@ -1891,7 +1891,7 @@ TEST(sax_read, ok_u8_BOM_1)
 
     run_sax_read_all_styles<char_type>(input, [](mini_yaml_test::u8_string_type input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
@@ -1936,7 +1936,7 @@ TEST(sax_read, ok_u8_BOM_2)
 
     run_sax_read_all_styles<char_type>(input, [](mini_yaml_test::u8_string_type input) {
         auto handler = test_sax_handler<char_type>{};
-        const auto read_result = yaml::sax::read(input, handler);
+        const auto read_result = yaml::sax::read_document(input, handler);
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();

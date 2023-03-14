@@ -166,8 +166,9 @@ namespace MINIYAML_NAMESPACE {
 namespace MINIYAML_NAMESPACE {
 namespace sax {
 
+    /** Read results. */
     template<typename Tchar>
-    struct read_result {
+    struct read_document_result {
         read_result_code result_code = read_result_code::success;
         basic_string_view<Tchar> remaining_input = {};
         int64_t current_line = 0;
@@ -175,63 +176,72 @@ namespace sax {
     };
 
     template<typename Tchar>
-    struct read_file_result {
+    struct read_document_file_result {
         read_result_code result_code = read_result_code::success;
+        int64_t current_line = 0;
     };
 
+    template<typename Tchar>
+    using read_documents_result = read_document_result<Tchar>;
+
+    template<typename Tchar>
+    using read_documents_file_result = read_document_file_result<Tchar>;
+
+
+    /** Read options. */
     struct reader_options {
         size_t max_depth = 128;
         int64_t start_line_number = 0;
     };
-
+        
 
     /** Helper function for parsing via SAX style API. */
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read(
+    read_document_result<Tchar> read_document(
         const Tchar* raw_input,
         size_t size,
         Tsax_handler& handler,
         const reader_options& options = {});
 
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read(
+    read_document_result<Tchar> read_document(
         const std::basic_string<Tchar>& string,
         Tsax_handler& handler,
         const reader_options& options = {});
 
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read(
+    read_document_result<Tchar> read_document(
         basic_string_view<Tchar> string_view,
         Tsax_handler& handler,
         const reader_options& options = {});
 
     template<typename Tchar, typename Tsax_handler>
-    read_file_result<Tchar> read_from_file(
+    read_document_file_result<Tchar> read_document_from_file(
         const std::string& filename,
         Tsax_handler& handler,
         const reader_options& options = {});
 
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read_documents(
+    read_documents_result<Tchar> read_documents(
         const Tchar* raw_input,
         size_t size,
         Tsax_handler& handler,
         const reader_options& options = {});
 
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read_documents(
+    read_documents_result<Tchar> read_documents(
         const std::basic_string<Tchar>& string,
         Tsax_handler& handler,
         const reader_options& options = {});
 
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read_documents(
+    read_documents_result<Tchar> read_documents(
         basic_string_view<Tchar> string_view,
         Tsax_handler& handler,
         const reader_options& options = {});
 
     template<typename Tchar, typename Tsax_handler>
-    read_file_result<Tchar> read_documents_from_file(
+    read_documents_file_result<Tchar> read_documents_from_file(
         const std::string& filename,
         Tsax_handler& handler,
         const reader_options& options = {});
@@ -265,15 +275,22 @@ namespace sax {
         using string_view_type = MINIYAML_NAMESPACE::basic_string_view<Tchar>;
         using sax_handler_type = Tsax_handler;
         using token_type = token<Tchar>;
-        using result_type = read_result<Tchar>;
-        using file_result_type = read_file_result<Tchar>;
+        using read_document_result_type = read_document_result<Tchar>;
+        using read_document_file_result_type = read_document_file_result<Tchar>;
+        using read_documents_result_type = read_documents_result<Tchar>;
+        using read_documents_file_result_type = read_documents_file_result<Tchar>;
 
         explicit reader(sax_handler_type& sax_handler, const reader_options& options = {});
 
-        result_type execute(const_pointer raw_input, size_type size);
-        result_type execute(const std::basic_string<value_type>& string);
-        result_type execute(string_view_type string_view);
-        file_result_type execute_from_file(const std::string& filename);
+        read_document_result_type read_document(const_pointer raw_input, size_type size);
+        read_document_result_type read_document(const std::basic_string<value_type>& string);
+        read_document_result_type read_document(string_view_type string_view);
+        read_document_file_result_type read_document_from_file(const std::string& filename);
+
+        read_documents_result_type read_documents(const_pointer raw_input, size_type size);
+        read_documents_result_type read_documents(const std::basic_string<value_type>& string);
+        read_documents_result_type read_documents(string_view_type string_view);
+        read_documents_file_result_type read_documents_from_file(const std::string& filename);
 
     private:
 
@@ -321,8 +338,13 @@ namespace sax {
 
         static const_pointer skip_utf8_bom(const_pointer begin, const_pointer end);
 
-        read_result_code process_execute(const_pointer raw_input, size_type size);
-        result_type process_execute_result(const_pointer raw_input, size_type size);
+        void initialize_process(const_pointer raw_input, size_type size);
+        read_result_code process_document();
+        read_result_code process_documents();
+        read_document_result_type create_read_document_result(read_result_code result_code) const;
+        read_document_file_result_type create_read_document_file_result(read_result_code result_code) const;
+        read_documents_result_type create_read_documents_result(read_result_code result_code) const;
+        read_documents_file_result_type create_read_documents_file_result(read_result_code result_code) const;
         
         void execute_find_value();
         void execute_read_scalar();
@@ -342,6 +364,8 @@ namespace sax {
         bool is_prev_token_whitespace(int decrements = 1);
         bool is_next_token_whitespace(int increments = 1);
 
+        void signal_start_document();
+        void signal_end_document();
         void signal_start_scalar(block_style block_style, chomping comping);
         void signal_end_scalar();
         void signal_start_object();
@@ -363,44 +387,6 @@ namespace sax {
 
     };
 
-
-    /** SAX document reader. */
-    template<typename Tchar, typename Tsax_handler>
-    class document_reader {
-
-    public:
-
-        using value_type = typename reader<Tchar, Tsax_handler>::value_type;
-        using pointer = typename reader<Tchar, Tsax_handler>::pointer;
-        using const_pointer = typename reader<Tchar, Tsax_handler>::const_pointer;
-        using size_type = typename reader<Tchar, Tsax_handler>::size_type;
-        using string_view_type = typename reader<Tchar, Tsax_handler>::string_view_type;
-        using sax_handler_type = typename reader<Tchar, Tsax_handler>::sax_handler_type;
-        using token_type = typename reader<Tchar, Tsax_handler>::token_type;
-        using result_type = typename reader<Tchar, Tsax_handler>::result_type;
-        using file_result_type = typename reader<Tchar, Tsax_handler>::file_result_type;
-
-        explicit document_reader(sax_handler_type& sax_handler, const reader_options& options = {});
-
-        result_type execute(const_pointer raw_input, size_type size);
-        result_type execute(const std::basic_string<value_type>& string);
-        result_type execute(string_view_type string_view);
-        file_result_type execute_from_file(const std::string& filename);
-
-    private:
-
-        result_type process_execute_result(const_pointer raw_input, size_type size);
-
-        void signal_start_document();
-        void signal_end_document();
-
-        sax_handler_type& m_sax_handler;
-        const reader_options& m_options;
-        reader_options m_options_copy;
-        reader<Tchar, Tsax_handler> m_reader;
-
-    };
-
 } }
 
 
@@ -408,16 +394,82 @@ namespace sax {
 namespace MINIYAML_NAMESPACE {
 namespace dom {
 
-    using reader_options = sax::reader_options;
-
     template<typename Tchar>
-    struct read_result {
+    struct read_document_result {
         read_result_code result_code = read_result_code::success;
         basic_string_view<Tchar> remaining_input = {};
         int64_t current_line = 0;
         const Tchar* current_line_ptr = nullptr;
         // ... Root node here.
     };
+
+    template<typename Tchar>
+    struct read_document_file_result {
+        read_result_code result_code = read_result_code::success;
+        int64_t current_line = 0;
+        // ... Root node here.
+    };
+
+    template<typename Tchar>
+    struct read_documents_result {
+        read_result_code result_code = read_result_code::success;
+        basic_string_view<Tchar> remaining_input = {};
+        int64_t current_line = 0;
+        const Tchar* current_line_ptr = nullptr;
+        // ... Root nodes here.
+    };
+
+    template<typename Tchar>
+    struct read_documents_file_result {
+        read_result_code result_code = read_result_code::success;
+        int64_t current_line = 0;
+        // ... Root nodes here.
+    };
+    
+    using reader_options = sax::reader_options;
+
+    /** Helper function for parsing via DOM style API. */
+    template<typename Tchar>
+    read_document_result<Tchar> read_document(
+        const Tchar* raw_input,
+        size_t size,
+        const reader_options& options = {});
+
+    template<typename Tchar>
+    read_document_result<Tchar> read_document(
+        const std::basic_string<Tchar>& string,
+        const reader_options& options = {});
+
+    template<typename Tchar>
+    read_document_result<Tchar> read_document(
+        basic_string_view<Tchar> string_view,
+        const reader_options& options = {});
+
+    template<typename Tchar>
+    read_document_file_result<Tchar> read_document_from_file(
+        const std::string& filename,
+        const reader_options& options = {});
+
+    template<typename Tchar>
+    read_documents_result<Tchar> read_documents(
+        const Tchar* raw_input,
+        size_t size,
+        const reader_options& options = {});
+
+    template<typename Tchar>
+    read_documents_result<Tchar> read_documents(
+        const std::basic_string<Tchar>& string,
+        const reader_options& options = {});
+
+    template<typename Tchar>
+    read_documents_result<Tchar> read_documents(
+        basic_string_view<Tchar> string_view,
+        const reader_options& options = {});
+
+    template<typename Tchar>
+    read_documents_file_result<Tchar> read_documents_from_file(
+        const std::string& filename,
+        const reader_options& options = {});
 
 
     /** DOM reader. */
@@ -432,13 +484,24 @@ namespace dom {
         using size_type = std::size_t;
         using string_view_type = MINIYAML_NAMESPACE::basic_string_view<Tchar>;
         using token_type = token<Tchar>;
-        using result_type = read_result<Tchar>;
+        using read_document_result_type = read_document_result<Tchar>;
+        using read_document_file_result_type = read_document_file_result<Tchar>;
+        using read_documents_result_type = read_documents_result<Tchar>;
+        using read_documents_file_result_type = read_documents_file_result<Tchar>;
 
         explicit reader(const reader_options& options = {});
 
-        result_type execute(const_pointer raw_input, size_type size);
-        result_type execute(const std::basic_string<value_type>& string);
-        result_type execute(string_view_type string_view);
+        read_document_result_type read_document(const_pointer raw_input, size_type size);
+        read_document_result_type read_document(const std::basic_string<value_type>& string);
+        read_document_result_type read_document(string_view_type string_view);
+        read_document_file_result_type read_document_from_file(const std::string& filename);
+
+        read_documents_result_type read_documents(const_pointer raw_input, size_type size);
+        read_documents_result_type read_documents(const std::basic_string<value_type>& string);
+        read_documents_result_type read_documents(string_view_type string_view);
+        read_documents_file_result_type read_documents_from_file(const std::string& filename);
+
+    private:
 
     private:
 
@@ -448,6 +511,8 @@ namespace dom {
 
             sax_handler(reader& p_reader);
 
+            void start_document();
+            void end_document();
             void start_scalar(block_style, chomping);
             void end_scalar();
             void start_object();
@@ -637,23 +702,57 @@ namespace sax {
     {}
 
     template<typename Tchar, typename Tsax_handler>
-    typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::execute(const_pointer raw_input, size_type size) {
-        return process_execute_result(raw_input, size);
+    typename reader<Tchar, Tsax_handler>::read_document_result_type reader<Tchar, Tsax_handler>::read_document(const_pointer raw_input, size_type size) {
+        initialize_process(raw_input, size);
+        const auto process_result = process_document();
+        return create_read_documents_result(process_result);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::execute(const std::basic_string<value_type>& string) {
-        return process_execute_result(string.c_str(), string.size());
+    typename reader<Tchar, Tsax_handler>::read_document_result_type reader<Tchar, Tsax_handler>::read_document(const std::basic_string<value_type>& string) {
+        return read_document(string.c_str(), string.size());
     }
 
     template<typename Tchar, typename Tsax_handler>
-    typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::execute(string_view_type string_view) {
-        return process_execute_result(string_view.data(), string_view.size());
+    typename reader<Tchar, Tsax_handler>::read_document_result_type reader<Tchar, Tsax_handler>::read_document(string_view_type string_view ) {
+        return read_document(string_view.data(), string_view.size());
     }
 
     template<typename Tchar, typename Tsax_handler>
-    typename reader<Tchar, Tsax_handler>::file_result_type reader<Tchar, Tsax_handler>::execute_from_file(const std::string& filename) {
-        auto result = file_result_type{};
+    typename reader<Tchar, Tsax_handler>::read_document_file_result_type reader<Tchar, Tsax_handler>::read_document_from_file(const std::string& filename) {
+        auto result = read_document_file_result_type{};
+
+        auto file_result = MINIYAML_NAMESPACE::impl::read_file<Tchar>(filename);
+        if (file_result.result_code != MINIYAML_NAMESPACE::impl::read_file_result_code::success) {
+            result.result_code = read_result_code::cannot_open_file;
+            return result;
+        }
+
+        const auto read_result = read_document(file_result.data.data(), file_result.data.size());
+        result.result_code = read_result.result_code;
+        return result;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename reader<Tchar, Tsax_handler>::read_documents_result_type reader<Tchar, Tsax_handler>::read_documents(const_pointer raw_input, size_type size) {
+        initialize_process(raw_input, size);
+        const auto process_result = process_documents();
+        return create_read_documents_result(process_result);
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename reader<Tchar, Tsax_handler>::read_documents_result_type reader<Tchar, Tsax_handler>::read_documents(const std::basic_string<value_type>& string) {
+        return read_documents(string.c_str(), string.size());
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename reader<Tchar, Tsax_handler>::read_documents_result_type reader<Tchar, Tsax_handler>::read_documents(string_view_type string_view) {
+        return read_documents(string_view.data(), string_view.size());
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename reader<Tchar, Tsax_handler>::read_documents_file_result_type reader<Tchar, Tsax_handler>::read_documents_from_file(const std::string& filename) {
+        auto result = read_documents_file_result_type{};
 
         auto file_result = MINIYAML_NAMESPACE::impl::read_file<Tchar>(filename);
         if (file_result.result_code != MINIYAML_NAMESPACE::impl::read_file_result_code::success) {  
@@ -661,8 +760,8 @@ namespace sax {
             return result;
         }
 
-        auto execute_result = process_execute_result(file_result.data.data(), file_result.data.size());
-        result.result_code = execute_result.result_code;
+        const auto read_result = read_documents(file_result.data.data(), file_result.data.size());
+        result.result_code = read_result.result_code;
         return result;
     }
 
@@ -693,7 +792,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    read_result_code reader<Tchar, Tsax_handler>::process_execute(const_pointer raw_input, size_type size) {
+    void reader<Tchar, Tsax_handler>::initialize_process(const_pointer raw_input, size_type size) {
         m_end_ptr = raw_input + size;
         m_begin_ptr = skip_utf8_bom(raw_input, m_end_ptr);
         m_current_ptr = m_begin_ptr;
@@ -704,6 +803,10 @@ namespace sax {
         m_current_line_indention = 0;
         m_current_line_indention_ptr = m_begin_ptr;
         m_current_is_new_line = true;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    read_result_code reader<Tchar, Tsax_handler>::process_document() {
 
         push_stack(&reader::execute_find_value);
 
@@ -892,17 +995,60 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    typename reader<Tchar, Tsax_handler>::result_type reader<Tchar, Tsax_handler>::process_execute_result(const_pointer raw_input, size_type size) {
-        auto result = result_type{ };
-        result.result_code = process_execute(raw_input, size);
+    read_result_code reader<Tchar, Tsax_handler>::process_documents() {
+        do {
+            signal_start_document();
 
-        auto remaining_ptr = std::min(m_current_ptr, raw_input + size);
-        auto remaining_size = static_cast<typename string_view_type::size_type>(size - (remaining_ptr - raw_input));
+            const auto process_result = process_document();
+            if (process_result != read_result_code::success) {
+                return process_result;
+            }
 
+            signal_end_document();
+
+            if (m_current_ptr + 3 < m_end_ptr) {
+                if (m_current_ptr[0] == token_type::document_end &&
+                    m_current_ptr[1] == token_type::document_end &&
+                    m_current_ptr[2] == token_type::document_end)
+                {
+                    return read_result_code::success;
+                }
+            }
+
+        } while (m_current_ptr < m_end_ptr);
+
+        return read_result_code::success;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename reader<Tchar, Tsax_handler>::read_document_result_type reader<Tchar, Tsax_handler>::create_read_document_result(read_result_code result_code) const {    
+        const auto remaining_ptr = std::min(m_current_ptr, m_end_ptr);
+        const auto remaining_size = static_cast<typename string_view_type::size_type>(m_end_ptr - remaining_ptr);
+        
+        auto result = read_document_result_type{ };
+        result.result_code = result_code; 
         result.remaining_input = string_view_type{ remaining_ptr, remaining_size };
         result.current_line = m_current_line;
         result.current_line_ptr = m_current_line_ptr;
         return result;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename reader<Tchar, Tsax_handler>::read_document_file_result_type reader<Tchar, Tsax_handler>::create_read_document_file_result(read_result_code result_code) const {
+        auto result = read_document_file_result_type{ };
+        result.result_code = result_code;
+        result.current_line = m_current_line;
+        return result;
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename reader<Tchar, Tsax_handler>::read_documents_result_type reader<Tchar, Tsax_handler>::create_read_documents_result(read_result_code result_code) const {
+        return create_read_document_result(result_code);
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    typename reader<Tchar, Tsax_handler>::read_documents_file_result_type reader<Tchar, Tsax_handler>::create_read_documents_file_result(read_result_code result_code) const {
+        return create_read_document_file_result(result_code);
     }
 
 
@@ -1385,6 +1531,29 @@ namespace sax {
   
 
     template<typename Tchar, typename Tsax_handler>
+    void reader<Tchar, Tsax_handler>::signal_start_document() {
+#if MINIYAML_HAS_IF_CONSTEXPR
+        if constexpr (impl::sax_handler_has_start_document<Tsax_handler>() == true) {
+            m_sax_handler.start_document();
+        }
+#else
+        m_sax_handler.start_document();
+#endif      
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    void reader<Tchar, Tsax_handler>::signal_end_document() {
+#if MINIYAML_HAS_IF_CONSTEXPR
+        if constexpr (impl::sax_handler_has_end_document<Tsax_handler>() == true) {
+            m_sax_handler.end_document();
+        }
+#else
+        m_sax_handler.end_document();
+#endif  
+    }
+
+
+    template<typename Tchar, typename Tsax_handler>
     void reader<Tchar, Tsax_handler>::signal_start_scalar(block_style block_style, chomping comping) {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_start_scalar<Tsax_handler>() == true) {
@@ -1554,171 +1723,79 @@ namespace sax {
     }
 
 
-    // Document reader implementations.
-    template<typename Tchar, typename Tsax_handler>
-    document_reader<Tchar, Tsax_handler>::document_reader(sax_handler_type& sax_handler, const reader_options& options) :
-        m_sax_handler(sax_handler),
-        m_options(options),
-        m_options_copy(options),
-        m_reader(sax_handler, m_options_copy)
-    {}
-
-    template<typename Tchar, typename Tsax_handler>
-    typename document_reader<Tchar, Tsax_handler>::result_type document_reader<Tchar, Tsax_handler>::execute(const_pointer raw_input, size_type size) {
-        return process_execute_result(raw_input, size);
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    typename document_reader<Tchar, Tsax_handler>::result_type document_reader<Tchar, Tsax_handler>::execute(const std::basic_string<value_type>& string) {
-        return process_execute_result(string.c_str(), string.size());
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    typename document_reader<Tchar, Tsax_handler>::result_type document_reader<Tchar, Tsax_handler>::execute(string_view_type string_view) {
-        return process_execute_result(string_view.data(), string_view.size());
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    typename reader<Tchar, Tsax_handler>::file_result_type document_reader<Tchar, Tsax_handler>::execute_from_file(const std::string& filename) {
-        auto result = file_result_type{};
-
-        auto file_result = MINIYAML_NAMESPACE::impl::read_file<Tchar>(filename);
-        if (file_result.result_code != MINIYAML_NAMESPACE::impl::read_file_result_code::success) {
-            result.result_code = read_result_code::cannot_open_file;
-            return result;
-        }
-
-        auto execute_result = process_execute_result(file_result.data.data(), file_result.data.size());
-        result.result_code = execute_result.result_code;
-        return result;
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    typename document_reader<Tchar, Tsax_handler>::result_type document_reader<Tchar, Tsax_handler>::process_execute_result(const_pointer raw_input, size_type size) {
-        m_options_copy = m_options;
-        
-        auto result = result_type{};
-        result.remaining_input = string_view_type{ raw_input, size };
-        result.current_line = m_options_copy.start_line_number;
-        
-        do {
-            signal_start_document();
-            m_options_copy.start_line_number = result.current_line;
-            result = m_reader.execute(result.remaining_input);
-            if (result.result_code != read_result_code::success) {
-                return result;
-            }
-            signal_end_document();
-
-            if (result.remaining_input.size() >= 3) {
-                if (result.remaining_input.data()[0] == token_type::document_end &&
-                    result.remaining_input.data()[1] == token_type::document_end &&
-                    result.remaining_input.data()[2] == token_type::document_end) 
-                {
-                    return result;
-                }
-            }
-
-        } while (result.remaining_input.size() > 0);
-        
-        return result;
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    void document_reader<Tchar, Tsax_handler>::signal_start_document() {
-#if MINIYAML_HAS_IF_CONSTEXPR
-        if constexpr (impl::sax_handler_has_start_document<Tsax_handler>() == true) {
-            m_sax_handler.start_document();
-        }
-#else
-        m_sax_handler.start_document();
-#endif      
-    }
-
-    template<typename Tchar, typename Tsax_handler>
-    void document_reader<Tchar, Tsax_handler>::signal_end_document() {
-#if MINIYAML_HAS_IF_CONSTEXPR
-        if constexpr (impl::sax_handler_has_end_document<Tsax_handler>() == true) {
-            m_sax_handler.end_document();
-        }
-#else
-        m_sax_handler.end_document();
-#endif  
-    }
-
     // Global SAX function implementations.
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read(
+    read_document_result<Tchar> read_document(
         const Tchar* raw_input,
         size_t size,
         Tsax_handler& handler,
         const reader_options& options)
     {
-        return reader<Tchar, Tsax_handler>{ handler, options }.execute(raw_input, size);
+        return reader<Tchar, Tsax_handler>{ handler, options }.read_document(raw_input, size);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read(
+    read_document_result<Tchar> read_document(
         const std::basic_string<Tchar>& string,
         Tsax_handler& handler,
         const reader_options& options)
     {
-        return reader<Tchar, Tsax_handler>{ handler, options }.execute(string);
+        return reader<Tchar, Tsax_handler>{ handler, options }.read_document(string);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read(
+    read_document_result<Tchar> read_document(
         basic_string_view<Tchar> string_view,
         Tsax_handler& handler,
         const reader_options& options)
     {
-        return reader<Tchar, Tsax_handler>{ handler, options }.execute(string_view);
+        return reader<Tchar, Tsax_handler>{ handler, options }.read_document(string_view);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    read_file_result<Tchar> read_from_file(
+    read_document_file_result<Tchar> read_document_from_file(
         const std::string& filename,
         Tsax_handler& handler,
         const reader_options& options)
     {
-        return reader<Tchar, Tsax_handler>{ handler, options }.execute_from_file(filename);
+        return reader<Tchar, Tsax_handler>{ handler, options }.read_document_from_file(filename);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read_documents(
+    read_documents_result<Tchar> read_documents(
         const Tchar* raw_input,
         size_t size,
         Tsax_handler& handler,
         const reader_options& options)
     {
-        return document_reader<Tchar, Tsax_handler>{ handler, options }.execute(raw_input, size);
+        return reader<Tchar, Tsax_handler>{ handler, options }.read_documents(raw_input, size);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read_documents(
+    read_documents_result<Tchar> read_documents(
         const std::basic_string<Tchar>& string,
         Tsax_handler& handler,
         const reader_options& options)
     {
-        return document_reader<Tchar, Tsax_handler>{ handler, options }.execute(string);
+        return reader<Tchar, Tsax_handler>{ handler, options }.read_documents(string);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    read_result<Tchar> read_documents(
+    read_documents_result<Tchar> read_documents(
         basic_string_view<Tchar> string_view,
         Tsax_handler& handler,
         const reader_options& options)
     {
-        return document_reader<Tchar, Tsax_handler>{ handler, options }.execute(string_view);
+        return reader<Tchar, Tsax_handler>{ handler, options }.read_documents(string_view);
     }
 
     template<typename Tchar, typename Tsax_handler>
-    read_file_result<Tchar> read_documents_from_file(
+    read_documents_file_result<Tchar> read_documents_from_file(
         const std::string& filename,
         Tsax_handler& handler,
         const reader_options& options)
     {
-        return document_reader<Tchar, Tsax_handler>{ handler, options }.execute_from_file(filename);
+        return reader<Tchar, Tsax_handler>{ handler, options }.read_documents_from_file(filename);
     }
 
 } }
@@ -1734,17 +1811,42 @@ namespace dom {
     {}
 
     template<typename Tchar>
-    typename reader<Tchar>::result_type reader<Tchar>::execute(const_pointer raw_input, size_type size) {
+    typename reader<Tchar>::read_document_result_type reader<Tchar>::read_document(const_pointer raw_input, size_type size) {
         return {};
     }
 
     template<typename Tchar>
-    typename reader<Tchar>::result_type reader<Tchar>::execute(const std::basic_string<value_type>& string) {
+    typename reader<Tchar>::read_document_result_type reader<Tchar>::read_document(const std::basic_string<value_type>& string) {
         return {};
     }
 
     template<typename Tchar>
-    typename reader<Tchar>::result_type reader<Tchar>::execute(string_view_type string_view) {
+    typename reader<Tchar>::read_document_result_type reader<Tchar>::read_document(string_view_type string_view) {
+        return {};
+    }
+
+    template<typename Tchar>
+    typename reader<Tchar>::read_document_file_result_type reader<Tchar>::read_document_from_file(const std::string& filename) {
+        return {};
+    }
+
+    template<typename Tchar>
+    typename reader<Tchar>::read_documents_result_type reader<Tchar>::read_documents(const_pointer raw_input, size_type size) {
+        return {};
+    }
+
+    template<typename Tchar>
+    typename reader<Tchar>::read_documents_result_type reader<Tchar>::read_documents(const std::basic_string<value_type>& string) {
+        return {};
+    }
+
+    template<typename Tchar>
+    typename reader<Tchar>::read_documents_result_type reader<Tchar>::read_documents(string_view_type string_view) {
+        return {};
+    }
+
+    template<typename Tchar>
+    typename reader<Tchar>::read_documents_file_result_type reader<Tchar>::read_documents_from_file(const std::string& /*filename*/ ) {
         return {};
     }
 
@@ -1753,6 +1855,14 @@ namespace dom {
     template<typename Tchar>
     reader<Tchar>::sax_handler::sax_handler(reader& p_reader) :
         m_reader(p_reader)
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::start_document()
+    {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::end_document()
     {}
 
     template<typename Tchar>
@@ -1794,5 +1904,73 @@ namespace dom {
     template<typename Tchar>
     void reader<Tchar>::sax_handler::comment(string_view_type)
     {}
+
+
+    // Global DOM function implementations.
+    template<typename Tchar>
+    read_document_result<Tchar> read_document(
+        const Tchar* raw_input,
+        size_t size,
+        const reader_options& options)
+    {
+        return reader<Tchar>{ options }.read_document(raw_input, size);
+    }
+
+    template<typename Tchar>
+    read_document_result<Tchar> read_document(
+        const std::basic_string<Tchar>& string,
+        const reader_options& options)
+    {
+        return reader<Tchar>{ options }.read_document(string);
+    }
+
+    template<typename Tchar>
+    read_document_result<Tchar> read_document(
+        basic_string_view<Tchar> string_view,
+        const reader_options& options)
+    {
+        return reader<Tchar>{ options }.read_document(string_view);
+    }
+
+    template<typename Tchar>
+    read_document_file_result<Tchar> read_document_from_file(
+        const std::string& filename,
+        const reader_options& options)
+    {
+        return reader<Tchar>{ options }.read_document_from_file(filename);
+    }
+
+    template<typename Tchar>
+    read_documents_result<Tchar> read_documents(
+        const Tchar* raw_input,
+        size_t size,
+        const reader_options& options)
+    {
+        return reader<Tchar>{ options }.read_documents(raw_input, size);
+    }
+
+    template<typename Tchar>
+    read_documents_result<Tchar> read_documents(
+        const std::basic_string<Tchar>& string,
+        const reader_options& options)
+    {
+        return reader<Tchar>{ options }.read_documents(string);
+    }
+
+    template<typename Tchar>
+    read_documents_result<Tchar> read_documents(
+        basic_string_view<Tchar> string_view,
+        const reader_options& options)
+    {
+        return reader<Tchar>{ options }.read_documents(string_view);
+    }
+
+    template<typename Tchar>
+    read_documents_file_result<Tchar> read_documents_from_file(
+        const std::string& filename,
+        const reader_options& options)
+    {
+        return reader<Tchar>{ options }.read_documents_from_file(filename);
+    }
 
 } }

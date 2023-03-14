@@ -29,7 +29,10 @@
 // =====================================================================
 // Tests
 
-TEST(dom_read, ok)
+TEST(dom_read, ok_file_learnyaml)
 {
+    using char_type = char;
 
+    const auto read_result = yaml::dom::read_documents_from_file<char_type>("../test/learnyaml.yaml");
+    ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 }
