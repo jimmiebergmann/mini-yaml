@@ -851,7 +851,6 @@ namespace sax {
         };
 
         auto process_zero_line_indention = [&]() {
-
             const auto current_line_ptr = m_current_line_ptr;
 
             const auto codepoint = *m_current_line_ptr;
@@ -860,7 +859,6 @@ namespace sax {
                 if (is_next_token(1, token_type::document_start) && is_next_token(2, token_type::document_start))
                 {
                     m_current_ptr += 3;
-                    auto old_line = m_current_line;
                     if (is_next_token_whitespace(0)) {
                         if (m_stack.front().type == stack_type_t::unknown) {
                             if (!consume_only_whitespaces_until_newline_or_comment()) {
@@ -871,12 +869,8 @@ namespace sax {
                             return true;
                         }
 
-                        m_current_ptr = current_line_ptr;
-                        m_current_line = old_line;
                         return false;
                     }
-
-                    m_current_ptr = current_line_ptr;
                 }
             } break;
             case token_type::document_end: {
@@ -950,61 +944,67 @@ namespace sax {
             }
         };
 
-        while (m_current_result_code == read_result_code::success && m_current_ptr < m_end_ptr && !m_stack.empty()) {
-            if (m_stack.size() > m_options.max_depth) {
-                error(read_result_code::reached_stack_max_depth);
+        auto process = [&]() {
+            while (m_current_result_code == read_result_code::success && m_current_ptr < m_end_ptr && !m_stack.empty()) {
+                if (m_stack.size() > m_options.max_depth) {
+                    error(read_result_code::reached_stack_max_depth);
+                    return m_current_result_code;
+                }
+
+                if (m_current_is_new_line) {
+                    if (!read_newline_indentation()) {
+                        error(read_result_code::forbidden_tab_indentation);
+                        return m_current_result_code;
+                    }
+                    if (!process_newline_indentation()) {
+                        if (m_current_result_code == read_result_code::success) {
+                            pop_stack_from(m_stack.begin());
+                        }
+                        return m_current_result_code;
+                    }
+                }
+                else {
+                    if (!read_line_indentation()) {
+                        error(read_result_code::forbidden_tab_indentation);
+                        return m_current_result_code;
+                    }
+                }
+
+                if (m_stack.empty() || m_current_result_code != read_result_code::success || m_current_ptr >= m_end_ptr) {
+                    break;
+                }
+
+                auto& stack_item = m_stack.back();
+                auto state_function = stack_item.state_function;
+                (this->*(state_function))();
+            }
+
+            if (m_current_result_code != read_result_code::success) {
                 return m_current_result_code;
             }
 
-            if (m_current_is_new_line) {
-                if (!read_newline_indentation()) {
-                    error(read_result_code::forbidden_tab_indentation);
-                    return m_current_result_code;
-                }
-                if (!process_newline_indentation()) {
-                    if (m_current_result_code == read_result_code::success) {
-                        pop_stack_from(m_stack.begin());
-                    }
-                    return m_current_result_code;
-                }
-            }
-            else {
-                if (!read_line_indentation()) {
-                    error(read_result_code::forbidden_tab_indentation);
-                    return m_current_result_code;
-                }
-            }
+            pop_stack_from(m_stack.begin());
+            read_remaining_document_buffer();
 
-            if (m_stack.empty() || m_current_result_code != read_result_code::success || m_current_ptr >= m_end_ptr) {
-                break;
-            }
-
-            auto& stack_item = m_stack.back();
-            auto state_function = stack_item.state_function;
-            (this->*(state_function))();
-        }
-
-        if (m_current_result_code != read_result_code::success) {
             return m_current_result_code;
+        };
+
+        signal_start_document();
+        const auto process_result = process();
+        if (process_result == read_result_code::success) {
+            signal_end_document();
         }
-
-        pop_stack_from(m_stack.begin());
-        read_remaining_document_buffer();
-
-        return m_current_result_code;
+        return process_result;
     }
 
     template<typename Tchar, typename Tsax_handler>
     read_result_code reader<Tchar, Tsax_handler>::process_documents() {
         do {
-            signal_start_document();
-
+            // TODO: Fix current line number...
             const auto process_result = process_document();
             if (process_result != read_result_code::success) {
                 return process_result;
             }
-
-            signal_end_document();
 
             if (m_current_ptr + 3 < m_end_ptr) {
                 if (m_current_ptr[0] == token_type::document_end &&

@@ -303,12 +303,14 @@ TEST(sax_read, fail_bad_indention_objects_1)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_token);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
-        EXPECT_EQ(handler.get_next_key(), "key 1");
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+            EXPECT_EQ(handler.get_next_key(), "key 1");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
     });
 }
@@ -339,7 +341,9 @@ TEST(sax_read, fail_bad_indention_objects_2)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::bad_indentation);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 30 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 31 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
@@ -417,12 +421,14 @@ TEST(sax_read, fail_bad_indention_scalar_multiple_literal_1)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_token);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
     });
 }
@@ -446,18 +452,20 @@ TEST(sax_read, fail_bad_indention_scalar_multiple_literal_2)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_token);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 7 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "This is a scalar value.");
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), " This is another line,");
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "  and another one.");
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), " This is the last valid row.");
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "This is a scalar value.");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), " This is another line,");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "  and another one.");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), " This is the last valid row.");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
     });
 }
@@ -475,7 +483,9 @@ TEST(sax_read, fail_forbidden_tab_indentation_empty_file)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::forbidden_tab_indentation);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 0 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
     });
 }
 
@@ -492,7 +502,9 @@ TEST(sax_read, fail_forbidden_tab_indentation_scalar_1)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::forbidden_tab_indentation);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 0 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
     });
 }
 
@@ -510,7 +522,9 @@ TEST(sax_read, fail_forbidden_tab_indentation_scalar_2)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::forbidden_tab_indentation);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
         EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
@@ -532,7 +546,9 @@ TEST(sax_read, fail_object_unexpected_key_1)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_key);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
@@ -554,7 +570,9 @@ TEST(sax_read, fail_object_unexpected_key_2)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_key);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
@@ -579,7 +597,9 @@ TEST(sax_read, fail_scalar_single_literal_expected_line_break)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::expected_line_break);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 0 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
     });
 }
 
@@ -598,7 +618,9 @@ TEST(sax_read, fail_scalar_unexpected_token_at_end)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_token);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
             EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
@@ -642,7 +664,9 @@ TEST(sax_read, ok_comments__multiple)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 17 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 19 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
         EXPECT_EQ(handler.get_next_comment(), "No indent, no space.");
@@ -681,6 +705,8 @@ TEST(sax_read, ok_comments__multiple)
         EXPECT_EQ(handler.get_next_comment(), "Three indents, three spaces.");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -714,7 +740,9 @@ TEST(sax_read, ok_comments_objects_null_values)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 35 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 37 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
 
@@ -785,6 +813,8 @@ TEST(sax_read, ok_comments_objects_null_values)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object); // End root
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -818,7 +848,9 @@ TEST(sax_read, ok_comments_objects_values)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 53 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 55 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
 
@@ -942,6 +974,8 @@ TEST(sax_read, ok_comments_objects_values)
         EXPECT_EQ(handler.get_next_comment(), "Ending comment.");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object); // End root
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -958,11 +992,15 @@ TEST(sax_read, ok_comments__single)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
         EXPECT_EQ(handler.get_next_comment(), "Hello World");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -981,13 +1019,17 @@ TEST(sax_read, ok_document_end)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "value 1");
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 1");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1005,9 +1047,13 @@ TEST(sax_read, ok_document_end_at_start)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1027,13 +1073,51 @@ TEST(sax_read, ok_document_start)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "value 1");
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 1");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
+    });
+}
+
+TEST(sax_read, ok_document_start_after_comment)
+{
+    const std::string input =
+        "# Comment here.\n"
+        "---\n"
+        "value 1\n"
+        "---\n"
+        "value 2\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read_document(input, handler);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "Comment here.");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1052,13 +1136,17 @@ TEST(sax_read, ok_document_start_as_end)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "value 1");
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 1");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1078,13 +1166,17 @@ TEST(sax_read, ok_document_start_end)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "value 1");
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::none, yaml::chomping::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 1");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1100,9 +1192,13 @@ TEST(sax_read, ok_empty_file)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1118,9 +1214,13 @@ TEST(sax_read, ok_empty_file_document_start)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1136,9 +1236,13 @@ TEST(sax_read, ok_empty_file_document_end)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1156,9 +1260,13 @@ TEST(sax_read, ok_empty_file_empty_lines)
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
    
     handler.prepare_read();
-    ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+    ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
 }
 
 TEST(sax_read, ok_empty_file_empty_lines_with_spaces)
@@ -1181,9 +1289,13 @@ TEST(sax_read, ok_empty_file_empty_lines_with_spaces)
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
     
     handler.prepare_read();
-    ASSERT_EQ(handler.instructions.size(), size_t{ 1 });
+    ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
 }
 
 TEST(sax_read, ok_file_learnyaml)
@@ -1218,7 +1330,9 @@ TEST(sax_read, ok_object_multiple_nested_objects)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 30 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 32 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
 
@@ -1281,6 +1395,8 @@ TEST(sax_read, ok_object_multiple_nested_objects)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1300,7 +1416,9 @@ TEST(sax_read, ok_object_single_nested_objects)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 15 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 17 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
@@ -1328,6 +1446,8 @@ TEST(sax_read, ok_object_single_nested_objects)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1344,7 +1464,9 @@ TEST(sax_read, ok_object_single_with_scalar__inline)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 8 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
 
@@ -1359,6 +1481,8 @@ TEST(sax_read, ok_object_single_with_scalar__inline)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1379,7 +1503,9 @@ TEST(sax_read, ok_object_single_with_scalar_with_with_comments)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
     
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 9 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 11 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
 
@@ -1403,6 +1529,8 @@ TEST(sax_read, ok_object_single_with_scalar_with_with_comments)
         EXPECT_EQ(handler.get_next_comment(), "Comment after.");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1429,7 +1557,9 @@ TEST(sax_read, ok_reuse_reader)
         EXPECT_EQ(read_result_1.current_line, 3);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 11 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 13 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
         EXPECT_EQ(handler.get_next_comment(), "test comment 1");
@@ -1452,20 +1582,23 @@ TEST(sax_read, ok_reuse_reader)
             EXPECT_EQ(handler.get_next_string(), "value 2");
             ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
-            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
 
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
 
-            handler.reset();
-            reader_options.start_line_number = read_result_1.current_line;
-            const auto read_result_2 = reader.read_document(read_result_1.remaining_input);
-            ASSERT_EQ(read_result_2.result_code, yaml::read_result_code::success);
-            EXPECT_EQ(read_result_2.current_line, 7);
+        handler.reset();
+        reader_options.start_line_number = read_result_1.current_line;
+        const auto read_result_2 = reader.read_document(read_result_1.remaining_input);
+        ASSERT_EQ(read_result_2.result_code, yaml::read_result_code::success);
+        EXPECT_EQ(read_result_2.current_line, 7);
 
-            handler.prepare_read();
-            ASSERT_EQ(handler.instructions.size(), size_t{ 15 });
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 17 });
 
-            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-            EXPECT_EQ(handler.get_next_comment(), "test comment 2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+        EXPECT_EQ(handler.get_next_comment(), "test comment 2");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
 
@@ -1494,6 +1627,8 @@ TEST(sax_read, ok_reuse_reader)
             ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1512,7 +1647,9 @@ TEST(sax_read, ok_scalar_multiple)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 7 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
 
@@ -1525,6 +1662,8 @@ TEST(sax_read, ok_scalar_multiple)
         EXPECT_EQ(handler.get_next_string(), "Block style is none and chomping is set to strip.");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1545,7 +1684,9 @@ TEST(sax_read, ok_scalar_multiple__folded)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 8 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
 
@@ -1560,6 +1701,8 @@ TEST(sax_read, ok_scalar_multiple__folded)
         EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1580,7 +1723,9 @@ TEST(sax_read, ok_scalar_multiple__folded_keep)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 8 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
 
@@ -1595,6 +1740,8 @@ TEST(sax_read, ok_scalar_multiple__folded_keep)
         EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1615,7 +1762,9 @@ TEST(sax_read, ok_scalar_multiple__folded_keep_end_with_comment)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 8 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
             EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::folded, yaml::chomping::keep));
@@ -1629,6 +1778,8 @@ TEST(sax_read, ok_scalar_multiple__folded_keep_end_with_comment)
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
         EXPECT_EQ(handler.get_next_comment(), "goofy");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
 
     });
 }
@@ -1650,7 +1801,9 @@ TEST(sax_read, ok_scalar_multiple__folded_strip)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 8 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
 
@@ -1665,6 +1818,8 @@ TEST(sax_read, ok_scalar_multiple__folded_strip)
         EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1693,7 +1848,9 @@ TEST(sax_read, ok_scalar_multiple__literal)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 14 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 16 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
 
@@ -1724,6 +1881,8 @@ TEST(sax_read, ok_scalar_multiple__literal)
         EXPECT_EQ(handler.get_next_string(), "");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1744,7 +1903,9 @@ TEST(sax_read, ok_scalar_multiple__literal_keep)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 8 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
 
@@ -1759,6 +1920,8 @@ TEST(sax_read, ok_scalar_multiple__literal_keep)
         EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1779,7 +1942,9 @@ TEST(sax_read, ok_scalar_multiple__literal_strip)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 8 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
 
@@ -1794,6 +1959,8 @@ TEST(sax_read, ok_scalar_multiple__literal_strip)
         EXPECT_EQ(handler.get_next_string(), "Row 3 here. After empty row.");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1810,7 +1977,9 @@ TEST(sax_read, ok_scalar_single)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
 
@@ -1819,6 +1988,8 @@ TEST(sax_read, ok_scalar_single)
         EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1836,15 +2007,17 @@ TEST(sax_read, ok_scalar_single_literal)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 3 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 5 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
-
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style::literal, yaml::chomping::clip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1862,7 +2035,9 @@ TEST(sax_read, ok_scalar_single_literal_comment_after_token)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 6 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
         EXPECT_EQ(handler.get_next_comment(), "comment");
@@ -1872,6 +2047,8 @@ TEST(sax_read, ok_scalar_single_literal_comment_after_token)
             ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
             EXPECT_EQ(handler.get_next_string(), "Value");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -1895,7 +2072,9 @@ TEST(sax_read, ok_u8_BOM_1)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 10 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 12 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
         
@@ -1917,6 +2096,8 @@ TEST(sax_read, ok_u8_BOM_1)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
         EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
    });
 }
 
@@ -1940,7 +2121,9 @@ TEST(sax_read, ok_u8_BOM_2)
         ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
         
         handler.prepare_read();
-        ASSERT_EQ(handler.instructions.size(), size_t{ 10 });
+        ASSERT_EQ(handler.instructions.size(), size_t{ 12 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
 
@@ -1962,6 +2145,8 @@ TEST(sax_read, ok_u8_BOM_2)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
         EXPECT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
