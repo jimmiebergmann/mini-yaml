@@ -3,7 +3,7 @@
 struct test_sax_handler {
     void start_document() {}
     void end_document() {}
-    void start_scalar(yaml::block_style, yaml::chomping) {}
+    void start_scalar(yaml::block_style_type, yaml::chomping_type) {}
     void end_scalar() {}
     void start_object() {}
     void end_object() {}
