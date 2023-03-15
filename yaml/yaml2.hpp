@@ -44,7 +44,7 @@
 #define MINIYAML_USE_EXCEPTIONS false
 #else
 #define MINIYAML_USE_EXCEPTIONS true
-#include <exception>
+#include <stdexcept>
 #endif
 
 #if defined(__cpp_inline_variables)
@@ -516,7 +516,7 @@ namespace dom {
 
     private:
 
-        friend class node_t;
+        friend class node<Tchar, VisView>;
 
         lines_t m_lines;
         block_style_type m_block_style;
@@ -543,7 +543,7 @@ namespace dom {
 
     private:
 
-        friend class node_t;
+        friend class node<Tchar, VisView>;
 
         node_t* m_overlying_node;
 
@@ -566,7 +566,7 @@ namespace dom {
 
     private:
 
-        friend class node_t;
+        friend class node<Tchar, VisView>;
 
         node<Tchar>* m_overlying_node;
 
@@ -2054,7 +2054,7 @@ namespace dom {
 
     // DOM node implementations.
     template<typename Tchar, bool VisView>
-    typename node<Tchar, VisView> node<Tchar, VisView>::create_scalar_node(block_style_type block_style, chomping_type chomping) {
+    node<Tchar, VisView> node<Tchar, VisView>::create_scalar_node(block_style_type block_style, chomping_type chomping) {
         return node{ block_style, chomping };
     }
 
@@ -2125,7 +2125,7 @@ namespace dom {
     typename node<Tchar, VisView>::scalar_node_t& node<Tchar, VisView>::as_scalar() {
 #if MINIYAML_USE_EXCEPTIONS == true
         if (m_node_type != node_type::scalar) {
-            throw std::exception("Cannot call as_scalar on node of this node type.");
+            throw std::runtime_error("Cannot call as_scalar on node of this node type.");
         }
 #endif
         return *m_underlying_node.scalar;
@@ -2135,7 +2135,7 @@ namespace dom {
     typename node<Tchar, VisView>::object_node_t& node<Tchar, VisView>::as_object() {
 #if MINIYAML_USE_EXCEPTIONS == true
         if (m_node_type != node_type::object) {
-            throw std::exception("Cannot call as_object on node of this node type.");
+            throw std::runtime_error("Cannot call as_object on node of this node type.");
         }
 #endif
         return *m_underlying_node.object;
@@ -2145,7 +2145,7 @@ namespace dom {
     typename node<Tchar, VisView>::array_node_t& node<Tchar, VisView>::as_array() {
 #if MINIYAML_USE_EXCEPTIONS == true
         if (m_node_type != node_type::array) {
-            throw std::exception("Cannot call as_array on node of this node type.");
+            throw std::runtime_error("Cannot call as_array on node of this node type.");
         }
 #endif
         return *m_underlying_node.array;

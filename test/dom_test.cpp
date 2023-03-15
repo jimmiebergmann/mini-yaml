@@ -85,8 +85,6 @@ TEST(dom_read, ok_scalar_root)
         "This is a scalar\n"
         "with multiple lines.";
 
-    using char_type = typename decltype(input)::value_type;
-
     auto read_result = yaml::dom::read_document(input);
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
