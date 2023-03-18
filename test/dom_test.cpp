@@ -141,8 +141,8 @@ TEST(dom_create_node, ok_object)
         for (auto it = object_node.begin(); it != object_node.end(); ++it) {
             ASSERT_LT(loop_count, 3);
         
-            [[maybe_unused]] auto& key = it->first;
-            [[maybe_unused]] auto& value = (*it).second;
+            auto& key = it->first;
+            auto& value = (*it).second;
 
             EXPECT_EQ(key, keys[loop_count]);
             EXPECT_EQ(value->type(), node_types[loop_count]);
