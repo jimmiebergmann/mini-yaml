@@ -414,9 +414,11 @@ namespace dom {
         array
     };
 
+
     template<typename Tchar, bool VisView> class scalar_node;
     template<typename Tchar, bool VisView> class object_node;
     template<typename Tchar, bool VisView> class array_node;
+
 
     template<typename Tchar, bool VisView = false>
     class node {
@@ -562,8 +564,30 @@ namespace dom {
 
         MINIYAML_NODISCARD bool contains(string_t key) const;
 
+        iterator begin();
+        const_iterator begin() const;
+        const_iterator cbegin() const;
+        iterator end();
+        const_iterator end() const;
+        const_iterator cend() const;
+        reverse_iterator rbegin();
+        const_reverse_iterator rbegin() const;
+        const_reverse_iterator crbegin() const;
+        reverse_iterator rend();
+        const_reverse_iterator rend() const;
+        const_reverse_iterator crend() const;
+
+        iterator find(string_t key);
+        const_iterator find(string_t key) const;
+
         insert_return_type insert(string_t key);
         insert_return_type insert(string_t key, node_t&& node);
+
+        size_t erase(string_t key);
+        iterator erase(iterator pos);
+        iterator erase(iterator first, iterator last);
+        iterator erase(const_iterator pos);
+        iterator erase(const_iterator first, const_iterator last);
 
         node_t& overlying_node();
         const node_t& overlying_node() const;
@@ -2430,6 +2454,76 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::iterator object_node<Tchar, VisView>::begin() {
+        return m_map.begin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::const_iterator object_node<Tchar, VisView>::begin() const {
+        return m_map.begin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::const_iterator object_node<Tchar, VisView>::cbegin() const {
+        return m_map.cbegin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::iterator object_node<Tchar, VisView>::end() {
+        return m_map.end();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::const_iterator object_node<Tchar, VisView>::end() const {
+        return m_map.end();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::const_iterator object_node<Tchar, VisView>::cend() const {
+        return m_map.cend();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::reverse_iterator object_node<Tchar, VisView>::rbegin() {
+        return m_map.rbegin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::const_reverse_iterator object_node<Tchar, VisView>::rbegin() const {
+        return m_map.rbegin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::const_reverse_iterator object_node<Tchar, VisView>::crbegin() const {
+        return m_map.crbegin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::reverse_iterator object_node<Tchar, VisView>::rend() {
+        return m_map.rend();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::const_reverse_iterator object_node<Tchar, VisView>::rend() const {
+        return m_map.rend();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::const_reverse_iterator object_node<Tchar, VisView>::crend() const {
+        return m_map.crend();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::iterator object_node<Tchar, VisView>::find(string_t key) {
+        return m_map.find(key);
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::const_iterator object_node<Tchar, VisView>::find(string_t key) const {
+        return m_map.find(key);
+    }
+
+    template<typename Tchar, bool VisView>
     typename object_node<Tchar, VisView>::insert_return_type object_node<Tchar, VisView>::insert(string_t key) {
         auto found_it = m_map.find(key);
         if (found_it != m_map.end()) {
@@ -2442,12 +2536,37 @@ namespace dom {
 
     template<typename Tchar, bool VisView>
     typename object_node<Tchar, VisView>::insert_return_type object_node<Tchar, VisView>::insert(string_t key, node_t&& node) {
-        auto it = insert(key);
-        if (it.second) {
-            node_t* new_node = it.first->second.get();
-            *new_node = std::move(node);
+        auto insert_result = insert(key);
+        if (insert_result.second) {
+            auto& new_node = *insert_result.first->second;
+            new_node = std::move(node);
         }
-        return it;
+        return insert_result;
+    }
+
+    template<typename Tchar, bool VisView>
+    size_t object_node<Tchar, VisView>::erase(string_t key) {
+        return m_map.erase(key);
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::iterator object_node<Tchar, VisView>::erase(iterator pos) {
+        return m_map.erase(pos);
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::iterator object_node<Tchar, VisView>::erase(iterator first, iterator last) {
+        return m_map.erase(first, last);
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::iterator object_node<Tchar, VisView>::erase(const_iterator pos) {
+        return m_map.erase(pos);
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::iterator object_node<Tchar, VisView>::erase(const_iterator first, const_iterator last) {
+        return m_map.erase(first, last);
     }
 
     template<typename Tchar, bool VisView>
@@ -2640,9 +2759,9 @@ namespace dom {
     template<typename Tchar>
     void reader<Tchar>::sax_handler::key(string_view_type key) {
         auto& object_node = m_current_node->as_object();
-        auto it = object_node.insert(MINIYAML_NAMESPACE::impl::view_to_string(key));
+        auto insert_result = object_node.insert(MINIYAML_NAMESPACE::impl::view_to_string(key));
 
-        auto* new_node = it.first->second.get();
+        auto* new_node = insert_result.first->second.get();
         push_stack(new_node);
     }
 

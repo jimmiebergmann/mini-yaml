@@ -95,6 +95,7 @@ TEST(dom_create_node, ok_object)
     ASSERT_TRUE(object_node.empty());
     ASSERT_EQ(object_node.size(), size_t{ 0 });
 
+    // Create
     {
         EXPECT_FALSE(object_node.contains("key 1"));
 
@@ -120,6 +121,57 @@ TEST(dom_create_node, ok_object)
         EXPECT_EQ(object_node.size(), size_t{ 2 });
 
         EXPECT_TRUE(object_node.contains("key 2"));
+    }
+    {
+        EXPECT_FALSE(object_node.contains("key 3"));
+
+        auto result = object_node.insert("key 3", yaml::dom::node<char_type>::create_object());
+        EXPECT_TRUE(result.second);
+        EXPECT_FALSE(object_node.empty());
+        EXPECT_EQ(object_node.size(), size_t{ 3 });
+
+        EXPECT_TRUE(object_node.contains("key 3"));
+    }
+
+    // Loop
+    {
+        size_t loop_count = 0;
+        static std::array<std::string, 3> keys = { "key 1", "key 2", "key 3" };
+        static std::array<yaml::dom::node_type, 3> node_types = { yaml::dom::node_type::null, yaml::dom::node_type::scalar, yaml::dom::node_type::object };
+        for (auto it = object_node.begin(); it != object_node.end(); ++it) {
+            ASSERT_LT(loop_count, 3);
+        
+            [[maybe_unused]] auto& key = it->first;
+            [[maybe_unused]] auto& value = (*it).second;
+
+            EXPECT_EQ(key, keys[loop_count]);
+            EXPECT_EQ(value->type(), node_types[loop_count]);
+
+            ++loop_count;
+        }
+
+        EXPECT_EQ(loop_count, size_t{ 3 });
+    }
+
+    // Erase
+    {
+        auto it = object_node.find("key 2");
+        ASSERT_NE(it, object_node.end());
+
+        auto next_it = object_node.erase(it);
+        EXPECT_EQ(object_node.size(), size_t{2});
+
+        ASSERT_NE(next_it, object_node.end());
+        EXPECT_STREQ(next_it->first.c_str(), "key 3");
+
+        auto erase_ret = object_node.erase("key 1");
+        EXPECT_EQ(object_node.size(), size_t{ 1 });
+        EXPECT_EQ(erase_ret, size_t{ 1 });
+
+        next_it = object_node.erase(object_node.begin());
+        EXPECT_EQ(object_node.size(), size_t{ 0 });
+        EXPECT_TRUE(object_node.empty());
+        ASSERT_EQ(next_it, object_node.end());
     }
 }
 
