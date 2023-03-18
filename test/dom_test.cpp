@@ -96,20 +96,30 @@ TEST(dom_create_node, ok_object)
     ASSERT_EQ(object_node.size(), size_t{ 0 });
 
     {
+        EXPECT_FALSE(object_node.contains("key 1"));
+
         auto result = object_node.insert("key 1");
         ASSERT_TRUE(result.second);
         EXPECT_FALSE(object_node.empty());
         EXPECT_EQ(object_node.size(), size_t{ 1 });
+
+        EXPECT_TRUE(object_node.contains("key 1"));
     }
     {
+        EXPECT_TRUE(object_node.contains("key 1"));
         auto result = object_node.insert("key 1");
         ASSERT_FALSE(result.second);
+        EXPECT_TRUE(object_node.contains("key 1"));
     }
     {
+        EXPECT_FALSE(object_node.contains("key 2"));
+
         auto result = object_node.insert("key 2", yaml::dom::node<char_type>::create_scalar());
         EXPECT_TRUE(result.second);
         EXPECT_FALSE(object_node.empty());
         EXPECT_EQ(object_node.size(), size_t{ 2 });
+
+        EXPECT_TRUE(object_node.contains("key 2"));
     }
 }
 
@@ -131,6 +141,11 @@ TEST(dom_read, ok_object_root)
 
     ASSERT_FALSE(object_node.empty());
     ASSERT_EQ(object_node.size(), size_t{ 4 });
+
+    EXPECT_TRUE(object_node.contains("key 1"));
+    EXPECT_TRUE(object_node.contains("key 2"));
+    EXPECT_TRUE(object_node.contains("key 3"));
+    EXPECT_TRUE(object_node.contains("key 4"));
 }
 
 TEST(dom_read, ok_scalar_root)
@@ -167,6 +182,38 @@ TEST(dom_read, ok_file_learnyaml)
     auto& object_node = node.as_object();
 
     ASSERT_EQ(object_node.size(), size_t{ 24 });
+
+    EXPECT_TRUE(object_node.contains("key"));
+    EXPECT_TRUE(object_node.contains("another_key"));
+    EXPECT_TRUE(object_node.contains("a_number_value"));
+    EXPECT_TRUE(object_node.contains("scientific_notation"));
+    EXPECT_TRUE(object_node.contains("hex_notation"));
+    EXPECT_TRUE(object_node.contains("octal_notation"));
+
+    EXPECT_TRUE(object_node.contains("boolean"));
+    EXPECT_TRUE(object_node.contains("null_value"));
+    EXPECT_TRUE(object_node.contains("another_null_value"));
+    EXPECT_TRUE(object_node.contains("key with spaces"));
+
+    EXPECT_TRUE(object_node.contains("no"));
+    EXPECT_TRUE(object_node.contains("yes"));
+    EXPECT_TRUE(object_node.contains("not_enclosed"));
+    EXPECT_TRUE(object_node.contains("enclosed"));
+
+    EXPECT_TRUE(object_node.contains("Superscript two"));
+
+    EXPECT_TRUE(object_node.contains("literal_block"));
+    EXPECT_TRUE(object_node.contains("folded_style"));
+    EXPECT_TRUE(object_node.contains("literal_strip"));
+    EXPECT_TRUE(object_node.contains("block_strip"));
+    EXPECT_TRUE(object_node.contains("literal_keep"));
+    EXPECT_TRUE(object_node.contains("block_keep"));
+
+    EXPECT_TRUE(object_node.contains("a_nested_map"));
+
+    EXPECT_TRUE(object_node.contains("0.25"));
+
+    EXPECT_TRUE(object_node.contains("set2"));
 }
 
 TEST(dom_read, fail_unknown_file)

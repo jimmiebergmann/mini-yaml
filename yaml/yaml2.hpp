@@ -523,7 +523,8 @@ namespace dom {
 
     private:
 
-        friend class node<Tchar, VisView>;
+        template<typename Tchar_Other, bool VisView_Other>
+        friend class node;
 
         lines_t m_lines;
         block_style_type m_block_style;
@@ -559,6 +560,8 @@ namespace dom {
         MINIYAML_NODISCARD bool empty() const;
         MINIYAML_NODISCARD size_t size() const;
 
+        MINIYAML_NODISCARD bool contains(string_t key) const;
+
         insert_return_type insert(string_t key);
         insert_return_type insert(string_t key, node_t&& node);
 
@@ -567,7 +570,8 @@ namespace dom {
 
     private:
 
-        friend class node<Tchar, VisView>;
+        template<typename Tchar_Other, bool VisView_Other>
+        friend class node;
 
         map_t m_map;
         node_t* m_overlying_node;
@@ -594,7 +598,8 @@ namespace dom {
 
     private:
 
-        friend class node<Tchar, VisView>;
+        template<typename Tchar_Other, bool VisView_Other>
+        friend class node;
 
         node_t* m_overlying_node;
 
@@ -2417,6 +2422,11 @@ namespace dom {
     template<typename Tchar, bool VisView>
     size_t object_node<Tchar, VisView>::size() const {
         return m_map.size();
+    }
+
+    template<typename Tchar, bool VisView>
+    bool object_node<Tchar, VisView>::contains(string_t key) const {
+        return m_map.find(key) != m_map.end();
     }
 
     template<typename Tchar, bool VisView>
