@@ -518,8 +518,8 @@ namespace dom {
         iterator erase(const_iterator pos);
         iterator erase(const_iterator first, const_iterator last);
 
-        node_t& node();
-        const node_t& node() const;
+        node_t& overlying_node();
+        const node_t& overlying_node() const;
 
     private:
 
@@ -565,8 +565,8 @@ namespace dom {
         insert_return_type insert(string_t key);
         insert_return_type insert(string_t key, node_t&& node);
 
-        node_t& node();
-        const node_t& node() const;
+        node_t& overlying_node();
+        const node_t& overlying_node() const;
 
     private:
 
@@ -593,8 +593,8 @@ namespace dom {
         array_node& operator = (const array_node&) = delete;
         array_node& operator = (array_node&&) = delete;
 
-        node_t& node();
-        const node_t& node() const;
+        node_t& overlying_node();
+        const node_t& overlying_node() const;
 
     private:
 
@@ -2399,11 +2399,11 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    typename scalar_node<Tchar, VisView>::node_t& scalar_node<Tchar, VisView>::node() {
+    typename scalar_node<Tchar, VisView>::node_t& scalar_node<Tchar, VisView>::overlying_node() {
         return *m_overlying_node;
     }
     template<typename Tchar, bool VisView>
-    const typename scalar_node<Tchar, VisView>::node_t& scalar_node<Tchar, VisView>::node() const {
+    const typename scalar_node<Tchar, VisView>::node_t& scalar_node<Tchar, VisView>::overlying_node() const {
         return *m_overlying_node;
     }
 
@@ -2451,11 +2451,11 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::node() {
+    typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::overlying_node() {
         return *m_overlying_node;
     }
     template<typename Tchar, bool VisView>
-    const typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::node() const {
+    const typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::overlying_node() const {
         return *m_overlying_node;
     }
     
@@ -2467,11 +2467,11 @@ namespace dom {
     {}
 
     template<typename Tchar, bool VisView>
-    typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::node() {
+    typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::overlying_node() {
         return *m_overlying_node;
     }
     template<typename Tchar, bool VisView>
-    const typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::node() const {
+    const typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::overlying_node() const {
         return *m_overlying_node;
     }
 

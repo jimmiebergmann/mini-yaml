@@ -38,7 +38,7 @@ TEST(dom_create_node, ok_scalar)
     ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
     ASSERT_NO_THROW(node.as_scalar());
     auto& scalar_node = node.as_scalar();
-    EXPECT_EQ(&scalar_node.node(), &node);
+    EXPECT_EQ(&scalar_node.overlying_node(), &node);
 
     // Block style tests.
     EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
@@ -89,7 +89,7 @@ TEST(dom_create_node, ok_object)
     ASSERT_EQ(node.type(), yaml::dom::node_type::object);
     ASSERT_NO_THROW(node.as_object());
     auto& object_node = node.as_object();
-    EXPECT_EQ(&object_node.node(), &node);
+    EXPECT_EQ(&object_node.overlying_node(), &node);
 
     // Empty tests.
     ASSERT_TRUE(object_node.empty());
