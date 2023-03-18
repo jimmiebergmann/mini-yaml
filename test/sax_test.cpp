@@ -2158,6 +2158,7 @@ TEST(sax_read_documents, ok_file_learnyaml)
     auto handler = test_sax_handler<char_type>{};
     const auto read_result = yaml::sax::read_documents_from_file<char_type>("../test/learnyaml.yaml", handler);
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+    EXPECT_TRUE(read_result);
 
     handler.prepare_read();
     ASSERT_EQ(handler.instructions.size(), size_t{ 284 });

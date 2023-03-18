@@ -29,15 +29,16 @@
 // =====================================================================
 // Tests
 
-TEST(dom_scalar_node, create_scalar_node)
+TEST(dom_create_node, ok_scalar)
 {
     using char_type = char;
 
-    auto node = yaml::dom::node<char_type>::create_scalar_node();
+    auto node = yaml::dom::node<char_type>::create_scalar();
 
     ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
     ASSERT_NO_THROW(node.as_scalar());
     auto& scalar_node = node.as_scalar();
+    EXPECT_EQ(&scalar_node.node(), &node);
 
     // Block style tests.
     EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
@@ -79,6 +80,59 @@ TEST(dom_scalar_node, create_scalar_node)
     EXPECT_STREQ(scalar_node.as_string().c_str(), "First line of scalar.Second line of scalar.");
 }
 
+TEST(dom_create_node, ok_object)
+{
+    using char_type = char;
+
+    auto node = yaml::dom::node<char_type>::create_object();
+
+    ASSERT_EQ(node.type(), yaml::dom::node_type::object);
+    ASSERT_NO_THROW(node.as_object());
+    auto& object_node = node.as_object();
+    EXPECT_EQ(&object_node.node(), &node);
+
+    // Empty tests.
+    ASSERT_TRUE(object_node.empty());
+    ASSERT_EQ(object_node.size(), size_t{ 0 });
+
+    {
+        auto result = object_node.insert("key 1");
+        ASSERT_TRUE(result.second);
+        EXPECT_FALSE(object_node.empty());
+        EXPECT_EQ(object_node.size(), size_t{ 1 });
+    }
+    {
+        auto result = object_node.insert("key 1");
+        ASSERT_FALSE(result.second);
+    }
+    {
+        auto result = object_node.insert("key 2", yaml::dom::node<char_type>::create_scalar());
+        EXPECT_TRUE(result.second);
+        EXPECT_FALSE(object_node.empty());
+        EXPECT_EQ(object_node.size(), size_t{ 2 });
+    }
+}
+
+TEST(dom_read, ok_object_root)
+{
+    const std::string input =
+        "key 1: test 1\n"
+        "key 2: test 2\n"
+        "key 3: test 3\n"
+        "key 4: test 4\n";
+
+    auto read_result = yaml::dom::read_document(input);
+    ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+    auto node = std::move(read_result.root_node);
+    ASSERT_EQ(node.type(), yaml::dom::node_type::object);
+    ASSERT_NO_THROW(node.as_object());
+    auto& object_node = node.as_object();
+
+    ASSERT_FALSE(object_node.empty());
+    ASSERT_EQ(object_node.size(), size_t{ 4 });
+}
+
 TEST(dom_read, ok_scalar_root)
 {
     const std::string input =
@@ -104,6 +158,22 @@ TEST(dom_read, ok_file_learnyaml)
 {
     using char_type = char;
 
-    const auto read_result = yaml::dom::read_document_from_file<char_type>("../test/learnyaml.yaml");
+    auto read_result = yaml::dom::read_document_from_file<char_type>("../test/learnyaml.yaml");
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+    auto node = std::move(read_result.root_node);
+    ASSERT_EQ(node.type(), yaml::dom::node_type::object);
+    ASSERT_NO_THROW(node.as_object());
+    auto& object_node = node.as_object();
+
+    ASSERT_EQ(object_node.size(), size_t{ 24 });
+}
+
+TEST(dom_read, fail_unknown_file)
+{
+    using char_type = char;
+
+    auto read_result = yaml::dom::read_document_from_file<char_type>("../test/this_file_does_not_exist.some_extension");
+    EXPECT_EQ(read_result.result_code, yaml::read_result_code::cannot_open_file);
+    EXPECT_FALSE(read_result);
 }

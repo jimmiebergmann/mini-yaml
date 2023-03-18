@@ -182,12 +182,16 @@ namespace sax {
         basic_string_view<Tchar> remaining_input = {};
         int64_t current_line = 0;
         const Tchar* current_line_ptr = nullptr;
+
+        operator bool() const;
     };
 
     template<typename Tchar>
     struct read_document_file_result {
         read_result_code result_code = read_result_code::success;
         int64_t current_line = 0;
+
+        operator bool() const;
     };
 
     template<typename Tchar>
@@ -423,7 +427,9 @@ namespace dom {
         using object_node_t = object_node<Tchar, VisView>;
         using array_node_t = array_node<Tchar, VisView>;
 
-        static node create_scalar_node(block_style_type block_style = block_style_type::none, chomping_type chomping = chomping_type::strip);
+        static node create_scalar(block_style_type block_style = block_style_type::none, chomping_type chomping = chomping_type::strip);
+        static node create_object();
+        static node create_array();
 
         node();
         ~node();
@@ -445,8 +451,6 @@ namespace dom {
         array_node_t& as_array();
 
     private:
-
-        explicit node(block_style_type block_style, chomping_type chomping);
 
         void destroy_underlying_node();
         void assign_this_overlying_to_underlying_node();
@@ -514,6 +518,9 @@ namespace dom {
         iterator erase(const_iterator pos);
         iterator erase(const_iterator first, const_iterator last);
 
+        node_t& node();
+        const node_t& node() const;
+
     private:
 
         friend class node<Tchar, VisView>;
@@ -532,19 +539,37 @@ namespace dom {
     public:
 
         using node_t = node<Tchar, VisView>;
+        using node_ptr_t = std::unique_ptr<node_t>;
         using string_t = typename std::conditional<VisView, MINIYAML_NAMESPACE::basic_string_view<Tchar>, std::basic_string<Tchar>>::type;
+        using map_t = std::map<string_t, node_ptr_t>;
+        using iterator = typename map_t::iterator;
+        using const_iterator = typename map_t::const_iterator;
+        using reverse_iterator = typename map_t::reverse_iterator;
+        using const_reverse_iterator = typename map_t::const_reverse_iterator;
+        using insert_return_type = std::pair<iterator, bool>;
 
         explicit object_node(node_t& overlying_node);
+        ~object_node() = default;
 
         object_node(const object_node&) = delete;
         object_node(object_node&&) = delete;
         object_node& operator = (const object_node&) = delete;
         object_node& operator = (object_node&&) = delete;
 
+        MINIYAML_NODISCARD bool empty() const;
+        MINIYAML_NODISCARD size_t size() const;
+
+        insert_return_type insert(string_t key);
+        insert_return_type insert(string_t key, node_t&& node);
+
+        node_t& node();
+        const node_t& node() const;
+
     private:
 
         friend class node<Tchar, VisView>;
 
+        map_t m_map;
         node_t* m_overlying_node;
 
     };
@@ -564,11 +589,14 @@ namespace dom {
         array_node& operator = (const array_node&) = delete;
         array_node& operator = (array_node&&) = delete;
 
+        node_t& node();
+        const node_t& node() const;
+
     private:
 
         friend class node<Tchar, VisView>;
 
-        node<Tchar>* m_overlying_node;
+        node_t* m_overlying_node;
 
     };
 
@@ -581,6 +609,8 @@ namespace dom {
         int64_t current_line = 0;
         const Tchar* current_line_ptr = nullptr;
         node<Tchar, VisView> root_node = {};
+
+        operator bool() const;
     };
 
     template<typename Tchar>
@@ -591,6 +621,8 @@ namespace dom {
         read_result_code result_code = read_result_code::success;
         int64_t current_line = 0;
         node<Tchar, VisView> root_node = {};
+
+        operator bool() const;
     };
 
     template<typename Tchar>
@@ -603,6 +635,8 @@ namespace dom {
         int64_t current_line = 0;
         const Tchar* current_line_ptr = nullptr;
         // ... Root nodes here.
+
+        operator bool() const;
     };
 
     template<typename Tchar>
@@ -613,6 +647,8 @@ namespace dom {
         read_result_code result_code = read_result_code::success;
         int64_t current_line = 0;
         // ... Root nodes here.
+
+        operator bool() const;
     };
 
     template<typename Tchar>
@@ -724,7 +760,6 @@ namespace dom {
         public:
 
             using node_t = node<Tchar, false>;
-            using node_stack_t = std::vector<node_t*>;
 
             sax_handler();
 
@@ -744,6 +779,11 @@ namespace dom {
             void comment(string_view_type);
 
         private:
+
+            using node_stack_t = std::vector<node_t*>;
+
+            void push_stack(node_t* node);
+            void pop_stack();
 
             node_t* m_current_node;
             node_stack_t m_node_stack;
@@ -1970,6 +2010,17 @@ namespace sax {
         }
     }
 
+    // SAX reader result implementations.
+    template<typename Tchar>
+    read_document_result<Tchar>::operator bool() const {
+        return result_code == read_result_code::success;
+    }
+
+    template<typename Tchar>
+    read_document_file_result<Tchar>::operator bool() const {
+        return result_code == read_result_code::success;
+    }
+
 
     // Global SAX function implementations.
     template<typename Tchar, typename Tsax_handler>
@@ -2054,8 +2105,27 @@ namespace dom {
 
     // DOM node implementations.
     template<typename Tchar, bool VisView>
-    node<Tchar, VisView> node<Tchar, VisView>::create_scalar_node(block_style_type block_style, chomping_type chomping) {
-        return node{ block_style, chomping };
+    node<Tchar, VisView> node<Tchar, VisView>::create_scalar(block_style_type block_style, chomping_type chomping) {
+        auto result = node{};
+        result.m_node_type = node_type::scalar;
+        result.m_underlying_node.scalar = new scalar_node_t{ result, block_style, chomping };
+        return result;
+    }
+
+    template<typename Tchar, bool VisView>
+    node<Tchar, VisView> node<Tchar, VisView>::create_object() {
+        auto result = node{};
+        result.m_node_type = node_type::object;
+        result.m_underlying_node.object = new object_node_t{ result };
+        return result;
+    }
+
+    template<typename Tchar, bool VisView>
+    node<Tchar, VisView> node<Tchar, VisView>::create_array() {
+        auto result = node{};
+        result.m_node_type = node_type::array;
+        result.m_underlying_node.object = new array_node_t{ result };
+        return result;
     }
 
     template<typename Tchar, bool VisView>
@@ -2149,14 +2219,6 @@ namespace dom {
         }
 #endif
         return *m_underlying_node.array;
-    }
-
-    template<typename Tchar, bool VisView>
-    node<Tchar, VisView>::node(block_style_type block_style, chomping_type chomping) :
-        m_node_type{ node_type::scalar },
-        m_underlying_node{ nullptr }
-    {
-        m_underlying_node.scalar = new scalar_node_t{ *this, block_style, chomping };
     }
 
     template<typename Tchar, bool VisView>
@@ -2331,12 +2393,61 @@ namespace dom {
         m_lines.erase(first, last);
     }
 
+    template<typename Tchar, bool VisView>
+    typename scalar_node<Tchar, VisView>::node_t& scalar_node<Tchar, VisView>::node() {
+        return *m_overlying_node;
+    }
+    template<typename Tchar, bool VisView>
+    const typename scalar_node<Tchar, VisView>::node_t& scalar_node<Tchar, VisView>::node() const {
+        return *m_overlying_node;
+    }
+
 
     // DOM object node implementations.
     template<typename Tchar, bool VisView>
     object_node<Tchar, VisView>::object_node(node_t& overlying_node) :
         m_overlying_node(&overlying_node)
     {}
+
+    template<typename Tchar, bool VisView>
+    bool object_node<Tchar, VisView>::empty() const {
+        return m_map.empty();
+    }
+
+    template<typename Tchar, bool VisView>
+    size_t object_node<Tchar, VisView>::size() const {
+        return m_map.size();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::insert_return_type object_node<Tchar, VisView>::insert(string_t key) {
+        auto found_it = m_map.find(key);
+        if (found_it != m_map.end()) {
+            return { found_it, false };
+        }
+
+        auto it = m_map.insert({ key, node_ptr_t{ new node_t{} } });
+        return it;
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::insert_return_type object_node<Tchar, VisView>::insert(string_t key, node_t&& node) {
+        auto it = insert(key);
+        if (it.second) {
+            node_t* new_node = it.first->second.get();
+            *new_node = std::move(node);
+        }
+        return it;
+    }
+
+    template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::node() {
+        return *m_overlying_node;
+    }
+    template<typename Tchar, bool VisView>
+    const typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::node() const {
+        return *m_overlying_node;
+    }
     
 
     // DOM array node implementations.
@@ -2344,6 +2455,15 @@ namespace dom {
     array_node<Tchar, VisView>::array_node(node_t& overlying_node) :
         m_overlying_node(&overlying_node)
     {}
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::node() {
+        return *m_overlying_node;
+    }
+    template<typename Tchar, bool VisView>
+    const typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::node() const {
+        return *m_overlying_node;
+    }
 
 
     // DOM reader implementations.
@@ -2459,69 +2579,102 @@ namespace dom {
     {}
 
     template<typename Tchar>
-    void reader<Tchar>::sax_handler::start_scalar(block_style_type block_style, chomping_type chomping)
-    {
+    void reader<Tchar>::sax_handler::start_scalar(block_style_type block_style, chomping_type chomping) {
         m_string_views.clear();
         m_current_block_style = block_style;
         m_current_chomping = chomping;
     }
 
     template<typename Tchar>
-    void reader<Tchar>::sax_handler::end_scalar()
-    {
-        *m_current_node = node_t::create_scalar_node(m_current_block_style, m_current_chomping);
+    void reader<Tchar>::sax_handler::end_scalar() {
+        *m_current_node = node_t::create_scalar(m_current_block_style, m_current_chomping);
         auto& scalar_node = m_current_node->as_scalar();
 
         for (auto it = m_string_views.begin(); it != m_string_views.end(); ++it) {
             scalar_node.push_back(MINIYAML_NAMESPACE::impl::view_to_string(*it));
         }
+
+        pop_stack();
     }
 
     template<typename Tchar>
-    void reader<Tchar>::sax_handler::start_object()
-    {
+    void reader<Tchar>::sax_handler::start_object() {
+        *m_current_node = node_t::create_object();
+    }
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::end_object() {
+        pop_stack();
+    }
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::start_array() {
         // TODO
     }
 
     template<typename Tchar>
-    void reader<Tchar>::sax_handler::end_object()
-    {
+    void reader<Tchar>::sax_handler::end_array() {
         // TODO
     }
 
     template<typename Tchar>
-    void reader<Tchar>::sax_handler::start_array()
-    {
-        // TODO
+    void reader<Tchar>::sax_handler::null() {
+        pop_stack();
     }
 
     template<typename Tchar>
-    void reader<Tchar>::sax_handler::end_array()
-    {
-        // TODO
-    }
-
-    template<typename Tchar>
-    void reader<Tchar>::sax_handler::null()
-    {
-        // TODO
-    }
-
-    template<typename Tchar>
-    void reader<Tchar>::sax_handler::string(string_view_type string_view)
-    {
+    void reader<Tchar>::sax_handler::string(string_view_type string_view) {
         m_string_views.push_back(string_view);
     }
 
     template<typename Tchar>
-    void reader<Tchar>::sax_handler::key(string_view_type)
-    {
-        // TODO
+    void reader<Tchar>::sax_handler::key(string_view_type key) {
+        auto& object_node = m_current_node->as_object();
+        auto it = object_node.insert(MINIYAML_NAMESPACE::impl::view_to_string(key));
+
+        auto* new_node = it.first->second.get();
+        push_stack(new_node);
     }
 
     template<typename Tchar>
     void reader<Tchar>::sax_handler::comment(string_view_type)
     {}
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::push_stack(node_t* node) {
+        m_node_stack.push_back(node);
+        m_current_node = node;
+    }
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::pop_stack() {
+        m_node_stack.pop_back();
+        if (!m_node_stack.empty()) {
+            m_current_node = m_node_stack.back();
+        }
+    }
+
+
+    // DOM reader result implementations.
+    template<typename Tchar, bool VisView>
+    read_document_result<Tchar, VisView>::operator bool() const {
+        return result_code == read_result_code::success;
+    }
+
+    template<typename Tchar, bool VisView>
+    read_document_file_result<Tchar, VisView>::operator bool() const {
+        return result_code == read_result_code::success;
+    }
+
+    template<typename Tchar, bool VisView>
+    read_documents_result<Tchar, VisView>::operator bool() const {
+        return result_code == read_result_code::success;
+    }
+
+    template<typename Tchar, bool VisView>
+    read_documents_file_result<Tchar, VisView>::operator bool() const {
+        return result_code == read_result_code::success;
+    }
 
 
     // Global DOM function implementations.

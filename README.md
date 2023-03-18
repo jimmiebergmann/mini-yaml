@@ -4,26 +4,38 @@
 Single header YAML 1.0 C++ >= 11 serializer/deserializer.
 
 ## Quickstart
-#### file.yml
+### file.yml
 ```
-key: foo bar
+scalar: foo bar
 list:
   - hello world
   - integer: 123
     boolean: true
 ```
-#### .cpp
+### .cpp
+Error checking is omitted, see quickstart_full.yml for a real example.
 ```cpp
 #include "yaml/yaml2.hpp"
 
 auto result = yaml::dom::read_document_from_file("file.yml");
-if(result != yaml::read_result_code::success) {
+if(!result) {
     return yaml::print_result(result);
 }
 
-...
-```
+auto& root = result.root_node;
+std::cout << root.as_object()["scalar"].as_scalar().as_string() << "\n";
+std::cout << root.as_object()["list"].as_array()[0].as_scalar().as_string() << "\n";
+std::cout << root.as_object()["list"].as_array()[1].as_object()["integer"].as_scalar().as_string() << "\n";
+std::cout << root.as_object()["list"].as_array()[1].as_object()["boolean"].as_scalar().as_string() << "\n";
 
+```
+### Output
+```
+foo bar
+hello world
+123
+true
+```
 ## Usage
 Put [/yaml](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml) in your project directory and simply #include "[yaml/yaml2.hpp](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml/yaml2.hpp)".
 
