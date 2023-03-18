@@ -37,6 +37,9 @@ TEST(dom_create_node, ok_scalar)
 
     ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
     ASSERT_NO_THROW(node.as_scalar());
+    EXPECT_ANY_THROW(node.as_object());
+    EXPECT_ANY_THROW(node.as_array());
+
     auto& scalar_node = node.as_scalar();
     EXPECT_EQ(&scalar_node.overlying_node(), &node);
 
@@ -88,6 +91,9 @@ TEST(dom_create_node, ok_object)
 
     ASSERT_EQ(node.type(), yaml::dom::node_type::object);
     ASSERT_NO_THROW(node.as_object());
+    EXPECT_ANY_THROW(node.as_scalar());
+    EXPECT_ANY_THROW(node.as_array());
+
     auto& object_node = node.as_object();
     EXPECT_EQ(&object_node.overlying_node(), &node);
 
@@ -228,44 +234,351 @@ TEST(dom_read, ok_file_learnyaml)
     auto read_result = yaml::dom::read_document_from_file<char_type>("../test/learnyaml.yaml");
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
-    auto node = std::move(read_result.root_node);
-    ASSERT_EQ(node.type(), yaml::dom::node_type::object);
-    ASSERT_NO_THROW(node.as_object());
-    auto& object_node = node.as_object();
+    auto root_node = std::move(read_result.root_node);
+    ASSERT_EQ(root_node.type(), yaml::dom::node_type::object);
+    ASSERT_NO_THROW(root_node.as_object());
+    auto& root_object_node = root_node.as_object();
 
-    ASSERT_EQ(object_node.size(), size_t{ 24 });
+    ASSERT_EQ(root_object_node.size(), size_t{ 24 });
 
-    EXPECT_TRUE(object_node.contains("key"));
-    EXPECT_TRUE(object_node.contains("another_key"));
-    EXPECT_TRUE(object_node.contains("a_number_value"));
-    EXPECT_TRUE(object_node.contains("scientific_notation"));
-    EXPECT_TRUE(object_node.contains("hex_notation"));
-    EXPECT_TRUE(object_node.contains("octal_notation"));
+    {
+        auto it = root_object_node.find("key");
+        ASSERT_NE(it, root_object_node.end());
 
-    EXPECT_TRUE(object_node.contains("boolean"));
-    EXPECT_TRUE(object_node.contains("null_value"));
-    EXPECT_TRUE(object_node.contains("another_null_value"));
-    EXPECT_TRUE(object_node.contains("key with spaces"));
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
 
-    EXPECT_TRUE(object_node.contains("no"));
-    EXPECT_TRUE(object_node.contains("yes"));
-    EXPECT_TRUE(object_node.contains("not_enclosed"));
-    EXPECT_TRUE(object_node.contains("enclosed"));
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "value");
+    }
+    {
+        auto it = root_object_node.find("another_key");
+        ASSERT_NE(it, root_object_node.end());
 
-    EXPECT_TRUE(object_node.contains("Superscript two"));
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
 
-    EXPECT_TRUE(object_node.contains("literal_block"));
-    EXPECT_TRUE(object_node.contains("folded_style"));
-    EXPECT_TRUE(object_node.contains("literal_strip"));
-    EXPECT_TRUE(object_node.contains("block_strip"));
-    EXPECT_TRUE(object_node.contains("literal_keep"));
-    EXPECT_TRUE(object_node.contains("block_keep"));
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "Another value goes here.");
+    }
+    {
+        auto it = root_object_node.find("a_number_value");
+        ASSERT_NE(it, root_object_node.end());
 
-    EXPECT_TRUE(object_node.contains("a_nested_map"));
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
 
-    EXPECT_TRUE(object_node.contains("0.25"));
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "100");
+    }
+    {
+        auto it = root_object_node.find("scientific_notation");
+        ASSERT_NE(it, root_object_node.end());
 
-    EXPECT_TRUE(object_node.contains("set2"));
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "1e+12");
+    }
+    {
+        auto it = root_object_node.find("hex_notation");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "0x123");
+    }
+    {
+        auto it = root_object_node.find("octal_notation");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "0123");
+    }
+
+    {
+        auto it = root_object_node.find("boolean");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "true");
+    }
+    {
+        auto it = root_object_node.find("null_value");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "null");
+    }
+    {
+        auto it = root_object_node.find("another_null_value");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "~");
+    }
+    {
+        auto it = root_object_node.find("key with spaces");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "value");
+    }
+
+    {
+        auto it = root_object_node.find("no");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "no");
+    }
+    {
+        auto it = root_object_node.find("yes");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "No");
+    }
+    {
+        auto it = root_object_node.find("not_enclosed");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "yes");
+    }
+    {
+        auto it = root_object_node.find("enclosed");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "\"yes\"");
+    }
+
+    {
+        auto it = root_object_node.find("Superscript two");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "\\u00B2");
+    }
+
+    {
+        auto it = root_object_node.find("literal_block");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        //auto& scalar_node = node.as_scalar();
+
+        //auto string = scalar_node.as_string();
+        //EXPECT_STREQ(string.c_str(), "");
+    }
+
+    EXPECT_TRUE(root_object_node.contains("folded_style"));
+    EXPECT_TRUE(root_object_node.contains("literal_strip"));
+    EXPECT_TRUE(root_object_node.contains("block_strip"));
+    EXPECT_TRUE(root_object_node.contains("literal_keep"));
+    EXPECT_TRUE(root_object_node.contains("block_keep"));
+
+    {
+        auto it = root_object_node.find("a_nested_map");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::object);
+        ASSERT_NO_THROW(node.as_object());
+        auto& object_node = node.as_object();
+
+        EXPECT_EQ(object_node.size(), size_t{ 3 });
+        {
+            auto it2 = object_node.find("key");
+            ASSERT_NE(it2, object_node.end());
+
+            EXPECT_STREQ(it2->first.c_str(), "key");
+
+            auto& node2 = *it2->second;
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
+            ASSERT_NO_THROW(node2.as_scalar());
+            auto& scalar_node = node2.as_scalar();
+
+            auto string = scalar_node.as_string();
+            EXPECT_STREQ(string.c_str(), "value");
+        }
+        {
+            auto it2 = object_node.find("another_key");
+            ASSERT_NE(it2, object_node.end());
+
+            EXPECT_STREQ(it2->first.c_str(), "another_key");
+
+            auto& node2 = *it2->second;
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
+            ASSERT_NO_THROW(node2.as_scalar());
+            auto& scalar_node = node2.as_scalar();
+
+            auto string = scalar_node.as_string();
+            EXPECT_STREQ(string.c_str(), "Another Value");
+        }
+        {
+            auto it2 = object_node.find("another_nested_map");
+            ASSERT_NE(it2, object_node.end());
+
+            EXPECT_STREQ(it2->first.c_str(), "another_nested_map");
+
+            auto& node2 = *it2->second;
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::object);
+            ASSERT_NO_THROW(node2.as_object());
+            auto& object_node2 = node2.as_object();
+
+            EXPECT_EQ(object_node2.size(), size_t{ 1 });
+            {
+                auto it3 = object_node2.find("hello");
+                ASSERT_NE(it3, object_node2.end());
+
+                EXPECT_STREQ(it3->first.c_str(), "hello");
+
+                auto& node3 = *it3->second;
+                ASSERT_EQ(node3.type(), yaml::dom::node_type::scalar);
+                ASSERT_NO_THROW(node3.as_scalar());
+                auto& scalar_node2 = node3.as_scalar();
+
+                auto string2 = scalar_node2.as_string();
+                EXPECT_STREQ(string2.c_str(), "hello");
+            }
+        }
+
+    }
+
+    {
+        auto it = root_object_node.find("0.25");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as_string();
+        EXPECT_STREQ(string.c_str(), "a float key");
+    }
+
+    {
+        auto it = root_object_node.find("set2");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::object);
+        ASSERT_NO_THROW(node.as_object());
+        auto& object_node = node.as_object();
+
+        EXPECT_EQ(object_node.size(), size_t{ 3 });
+        {
+            auto it2 = object_node.find("item1");
+            ASSERT_NE(it2, object_node.end());
+
+            EXPECT_STREQ(it2->first.c_str(), "item1");
+
+            auto& node2 = *it2->second;
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
+            ASSERT_NO_THROW(node2.as_scalar());
+            auto& scalar_node = node2.as_scalar();
+
+            auto string = scalar_node.as_string();
+            EXPECT_STREQ(string.c_str(), "null");
+        }
+        {
+            auto it2 = object_node.find("item2");
+            ASSERT_NE(it2, object_node.end());
+
+            EXPECT_STREQ(it2->first.c_str(), "item2");
+
+            auto& node2 = *it2->second;
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
+            ASSERT_NO_THROW(node2.as_scalar());
+            auto& scalar_node = node2.as_scalar();
+
+            auto string = scalar_node.as_string();
+            EXPECT_STREQ(string.c_str(), "null");
+        }
+        {
+            auto it2 = object_node.find("item3");
+            ASSERT_NE(it2, object_node.end());
+
+            EXPECT_STREQ(it2->first.c_str(), "item3");
+
+            auto& node2 = *it2->second;
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
+            ASSERT_NO_THROW(node2.as_scalar());
+            auto& scalar_node = node2.as_scalar();
+
+            auto string = scalar_node.as_string();
+            EXPECT_STREQ(string.c_str(), "null");
+        }
+    }
+
 }
 
 TEST(dom_read, fail_unknown_file)
