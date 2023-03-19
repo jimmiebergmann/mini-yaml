@@ -528,6 +528,10 @@ namespace dom {
         template<typename Tchar_Other, bool VisView_Other>
         friend class node;
 
+        MINIYAML_NODISCARD std::basic_string<Tchar> as_non_block_string() const;
+        MINIYAML_NODISCARD std::basic_string<Tchar> as_literal_string() const;
+        MINIYAML_NODISCARD std::basic_string<Tchar> as_folded_string() const;
+
         lines_t m_lines;
         block_style_type m_block_style;
         chomping_type m_chomping;
@@ -2282,19 +2286,12 @@ namespace dom {
 
     template<typename Tchar, bool VisView>
     std::basic_string<Tchar> scalar_node<Tchar, VisView>::as_string() const {
-        auto result = std::basic_string<Tchar>{};
-
-        auto size = size_t{ 0 };
-        for (auto it = m_lines.begin(); it != m_lines.end(); ++it) {
-            size += it->size();
+        switch (m_block_style) {
+            case block_style_type::none: return as_non_block_string();
+            case block_style_type::literal: return as_literal_string();
+            case block_style_type::folded: return as_folded_string();
         }
-
-        result.reserve(size);
-        for (auto it = m_lines.begin(); it != m_lines.end(); ++it) {
-            result += *it;
-        }
-
-        return result;
+        return "";
     }
 
     template<typename Tchar, bool VisView>
@@ -2389,7 +2386,7 @@ namespace dom {
 
     template<typename Tchar, bool VisView>
     typename scalar_node<Tchar, VisView>::iterator scalar_node<Tchar, VisView>::insert(const_iterator pos, string_t string) {
-        m_lines.insert(pos, std::move(string));
+        return m_lines.insert(pos, std::move(string));
     }
 
     template<typename Tchar, bool VisView>
@@ -2429,6 +2426,134 @@ namespace dom {
     template<typename Tchar, bool VisView>
     const typename scalar_node<Tchar, VisView>::node_t& scalar_node<Tchar, VisView>::overlying_node() const {
         return *m_overlying_node;
+    }
+
+    template<typename Tchar, bool VisView>
+    std::basic_string<Tchar> scalar_node<Tchar, VisView>::as_non_block_string() const {
+        // TODO: SAX Parser ignores empty lines in middle of scalar value. We need those empty lines, so a fix in the SAX parser is needed.
+        
+        if (m_lines.size() == 1) {
+            return m_lines.front();
+        }
+        else if (m_lines.empty()) {
+            return "";
+        }
+
+        auto result = std::basic_string<Tchar>{};
+
+        auto reserved_size = size_t{ 0 };
+        for (auto it = m_lines.begin(); it != m_lines.end(); ++it) {
+            reserved_size += it->size() + 1;
+        }
+        result.reserve(reserved_size);
+
+        auto line_start_it = m_lines.begin();
+        auto line_end_it = std::prev(m_lines.end());
+
+        bool prev_line_has_value = false;
+        for (auto it = line_start_it; it != line_end_it; ++it) {
+            if (it->empty()) {
+                result += '\n';
+            }
+            else if (prev_line_has_value) {
+                result += ' ';
+            }
+            
+            result += *it;
+            prev_line_has_value = !it->empty();
+        }
+
+        if (prev_line_has_value) {
+            result += ' ';
+        }
+        result += *line_end_it;
+
+        return result;
+    }
+
+    template<typename Tchar, bool VisView>
+    std::basic_string<Tchar> scalar_node<Tchar, VisView>::as_literal_string() const {
+        auto result = std::basic_string<Tchar>{};
+
+        auto reserved_size = size_t{ 0 };
+        for (auto it = m_lines.begin(); it != m_lines.end(); ++it) {
+            reserved_size += it->size() + 1;
+        }
+        result.reserve(reserved_size);
+
+        auto first_non_empty_it = std::find_if(m_lines.begin(), m_lines.end(),
+            [](const auto& line) { return !line.empty(); });
+        auto pre_newline_count = static_cast<size_t>(std::distance(m_lines.begin(), first_non_empty_it));
+        result.append(pre_newline_count, '\n');
+
+        auto last_non_empty_rev_it = std::find_if(m_lines.rbegin(), m_lines.rend(),
+            [](const auto& line) { return !line.empty(); });
+
+        auto last_non_empty_it = last_non_empty_rev_it == m_lines.rend() ?
+            m_lines.begin() :
+            (last_non_empty_rev_it + 1).base();
+
+        for (auto it = first_non_empty_it; it != last_non_empty_it; ++it) {
+            result += *it;
+            result += '\n';
+        }
+        result += *last_non_empty_it;
+
+        if (m_chomping == chomping_type::keep && last_non_empty_it != m_lines.end()) {
+            auto post_newline_count = static_cast<size_t>(std::distance(last_non_empty_it, m_lines.end())) - size_t{ 1 };
+            result.append(post_newline_count, '\n');
+        }
+        if (m_chomping != chomping_type::strip) {
+            result += '\n';
+        }
+
+        return result;
+    }
+
+    template<typename Tchar, bool VisView>
+    std::basic_string<Tchar> scalar_node<Tchar, VisView>::as_folded_string() const {
+        auto result = std::basic_string<Tchar>{};
+
+        auto reserved_size = size_t{ 0 };
+        for (auto it = m_lines.begin(); it != m_lines.end(); ++it) {
+            reserved_size += it->size() + 1;
+        }
+        result.reserve(reserved_size);
+
+        auto first_non_empty_it = std::find_if(m_lines.begin(), m_lines.end(),
+            [](const auto& line) { return !line.empty(); });
+        auto pre_newline_count = static_cast<size_t>(std::distance(m_lines.begin(), first_non_empty_it));
+        result.append(pre_newline_count, '\n');
+
+        auto last_non_empty_rev_it = std::find_if(m_lines.rbegin(), m_lines.rend(),
+            [](const auto& line) { return !line.empty(); });
+
+        auto last_non_empty_it = last_non_empty_rev_it.base();
+
+        bool prev_line_has_value = false;
+        for (auto it = first_non_empty_it; it != last_non_empty_it; ++it) {
+            auto& line = *it;
+
+            if (line.empty() || line.front() == ' ') {
+                result += '\n';
+            }
+            else if (prev_line_has_value) {
+                result += ' ';
+            }
+            result += *it;
+
+            prev_line_has_value = !line.empty();
+        }
+
+        if (m_chomping == chomping_type::keep) {
+            auto post_newline_count = static_cast<size_t>(std::distance(last_non_empty_it, m_lines.end()));
+            result.append(post_newline_count, '\n');
+        }
+        if (m_chomping != chomping_type::strip) {
+            result += '\n';
+        }
+
+        return result;
     }
 
 

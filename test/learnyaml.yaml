@@ -2,6 +2,7 @@
 # Origin: https://learnxinyminutes.com/docs/yaml/
 # Modified version of learnxinyminutes.com - YAML.
 # Unsupported mini-yaml features are commented away with 3 '#'.
+# Additional values are commented with ### Change: << message here >>
 # ---------------------------------------------------------------------
 
 ---  # document start
@@ -28,6 +29,7 @@ boolean: true
 null_value: null
 another_null_value: ~
 key with spaces: value
+empty_value: ### Change: << Empty values are equal to null. >>
 
 # Yes and No (doesn't matter the case) will be evaluated to boolean 
 # true and false values respectively.

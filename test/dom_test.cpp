@@ -80,7 +80,7 @@ TEST(dom_create_node, ok_scalar)
     // as_string() tests.
     scalar_node.block_style(yaml::block_style_type::none);
     scalar_node.chomping(yaml::chomping_type::strip);
-    EXPECT_STREQ(scalar_node.as_string().c_str(), "First line of scalar.Second line of scalar.");
+    EXPECT_STREQ(scalar_node.as_string().c_str(), "First line of scalar. Second line of scalar.");
 }
 
 TEST(dom_create_node, ok_object)
@@ -223,7 +223,7 @@ TEST(dom_read, ok_scalar_root)
     EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
     EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
 
-    EXPECT_STREQ(scalar_node.as_string().c_str(), "This is a scalarwith multiple lines."); // TODO: Currently invalid formatting.
+    EXPECT_STREQ(scalar_node.as_string().c_str(), "This is a scalar with multiple lines.");
 }
 
 
@@ -239,7 +239,7 @@ TEST(dom_read, ok_file_learnyaml)
     ASSERT_NO_THROW(root_node.as_object());
     auto& root_object_node = root_node.as_object();
 
-    ASSERT_EQ(root_object_node.size(), size_t{ 24 });
+    ASSERT_EQ(root_object_node.size(), size_t{ 25 });
 
     {
         auto it = root_object_node.find("key");
@@ -362,7 +362,16 @@ TEST(dom_read, ok_file_learnyaml)
         auto string = scalar_node.as_string();
         EXPECT_STREQ(string.c_str(), "value");
     }
+    
+    {
+        auto it = root_object_node.find("empty_value");
+        ASSERT_NE(it, root_object_node.end());
 
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::null);
+    }
+
+    
     {
         auto it = root_object_node.find("no");
         ASSERT_NE(it, root_object_node.end());
@@ -432,17 +441,127 @@ TEST(dom_read, ok_file_learnyaml)
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
         ASSERT_NO_THROW(node.as_scalar());
-        //auto& scalar_node = node.as_scalar();
+        auto& scalar_node = node.as_scalar();
 
-        //auto string = scalar_node.as_string();
-        //EXPECT_STREQ(string.c_str(), "");
+        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
+        EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::clip);
+
+        auto string = scalar_node.as_string();
+
+        static const std::string compare_str = 
+            "This entire block of text will be the value of the 'literal_block' key,\n"
+            "with line breaks being preserved.\n"
+            "\n"
+            "The literal continues until de-dented, and the leading indentation is\n"
+            "stripped.\n"
+            "\n"
+            "    Any lines that are 'more-indented' keep the rest of their indentation -\n"
+            "    these lines will be indented by 4 spaces.\n";
+
+        EXPECT_STREQ(string.c_str(), compare_str.c_str());
     }
+    {
+        auto it = root_object_node.find("folded_style");
+        ASSERT_NE(it, root_object_node.end());
 
-    EXPECT_TRUE(root_object_node.contains("folded_style"));
-    EXPECT_TRUE(root_object_node.contains("literal_strip"));
-    EXPECT_TRUE(root_object_node.contains("block_strip"));
-    EXPECT_TRUE(root_object_node.contains("literal_keep"));
-    EXPECT_TRUE(root_object_node.contains("block_keep"));
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::folded);
+        EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::clip);
+
+        auto string = scalar_node.as_string();
+
+        static const std::string compare_str =
+            "This entire block of text will be the value of 'folded_style', but this time, all newlines will be replaced with a single space.\n"
+            "Blank lines, like above, are converted to a newline character.\n"
+            "\n"
+            "    'More-indented' lines keep their newlines, too -\n"
+            "    this text will appear over two lines.\n";
+
+        EXPECT_STREQ(string.c_str(), compare_str.c_str());
+    }
+    {
+        auto it = root_object_node.find("literal_strip");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
+        EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
+
+        auto string = scalar_node.as_string();
+
+        static const std::string compare_str =
+            "This entire block of text will be the value of the 'literal_block' key,\n"
+            "with trailing blank line being stripped.";
+
+        EXPECT_STREQ(string.c_str(), compare_str.c_str());
+    }
+    {
+        auto it = root_object_node.find("block_strip");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::folded);
+        EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
+
+        auto string = scalar_node.as_string();
+
+        static const std::string compare_str =
+            "This entire block of text will be the value of 'folded_style', but this time, all newlines will be replaced with a single space and  trailing blank line being stripped.";
+
+        EXPECT_STREQ(string.c_str(), compare_str.c_str());
+    }
+    {
+        auto it = root_object_node.find("literal_keep");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
+        EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::keep);
+
+        auto string = scalar_node.as_string();
+
+        static const std::string compare_str =
+            "This entire block of text will be the value of the 'literal_block' key,\n"
+            "with trailing blank line being kept.\n\n";
+
+        EXPECT_STREQ(string.c_str(), compare_str.c_str());
+    }
+    {
+        auto it = root_object_node.find("block_keep");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::folded);
+        EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::keep);
+
+        auto string = scalar_node.as_string();
+
+        static const std::string compare_str =
+            "This entire block of text will be the value of 'folded_style', but this time, all newlines will be replaced with a single space and  trailing blank line being kept.\n"
+            "\n";
+
+        EXPECT_STREQ(string.c_str(), compare_str.c_str());
+    }
 
     {
         auto it = root_object_node.find("a_nested_map");

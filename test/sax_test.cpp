@@ -2161,7 +2161,7 @@ TEST(sax_read_documents, ok_file_learnyaml)
     EXPECT_TRUE(read_result);
 
     handler.prepare_read();
-    ASSERT_EQ(handler.instructions.size(), size_t{ 284 });
+    ASSERT_EQ(handler.instructions.size(), size_t{ 288 });
 
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
@@ -2173,6 +2173,8 @@ TEST(sax_read_documents, ok_file_learnyaml)
     EXPECT_EQ(handler.get_next_comment(), "Modified version of learnxinyminutes.com - YAML.");
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
     EXPECT_EQ(handler.get_next_comment(), "Unsupported mini-yaml features are commented away with 3 '#'.");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Additional values are commented with ### Change: << message here >>");
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
     EXPECT_EQ(handler.get_next_comment(), "---------------------------------------------------------------------");
 
@@ -2284,17 +2286,24 @@ TEST(sax_read_documents, ok_file_learnyaml)
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
     EXPECT_EQ(handler.get_next_key(), "key with spaces");
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "value");
+    EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+    EXPECT_EQ(handler.get_next_string(), "value");
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "empty_value");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "## Change: << Empty values are equal to null. >>");
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
     EXPECT_EQ(handler.get_next_comment(), "Yes and No (doesn't matter the case) will be evaluated to boolean");
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
     EXPECT_EQ(handler.get_next_comment(), "true and false values respectively.");
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
     EXPECT_EQ(handler.get_next_comment(), "To use the actual value use single or double quotes.");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
 
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
     EXPECT_EQ(handler.get_next_key(), "no");
