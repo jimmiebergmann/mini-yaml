@@ -810,6 +810,7 @@ namespace dom {
             void start_array();
             void end_array();
             void null();
+            void index(size_t);
             void string(string_view_type);
             void key(string_view_type);
             void comment(string_view_type);
@@ -2967,6 +2968,11 @@ namespace dom {
     template<typename Tchar>
     void reader<Tchar>::sax_handler::null() {
         pop_stack();
+    }
+
+    template<typename Tchar>
+    void reader<Tchar>::sax_handler::index(size_t) {
+        // TODO
     }
 
     template<typename Tchar>
