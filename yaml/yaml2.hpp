@@ -2482,12 +2482,12 @@ namespace dom {
         result.reserve(reserved_size);
 
         auto first_non_empty_it = std::find_if(m_lines.begin(), m_lines.end(),
-            [](const auto& line) { return !line.empty(); });
+            [](const string_t& line) { return !line.empty(); });
         auto pre_newline_count = static_cast<size_t>(std::distance(m_lines.begin(), first_non_empty_it));
         result.append(pre_newline_count, '\n');
 
         auto last_non_empty_rev_it = std::find_if(m_lines.rbegin(), m_lines.rend(),
-            [](const auto& line) { return !line.empty(); });
+            [](const string_t& line) { return !line.empty(); });
 
         auto last_non_empty_it = last_non_empty_rev_it == m_lines.rend() ?
             m_lines.begin() :
@@ -2521,12 +2521,12 @@ namespace dom {
         result.reserve(reserved_size);
 
         auto first_non_empty_it = std::find_if(m_lines.begin(), m_lines.end(),
-            [](const auto& line) { return !line.empty(); });
+            [](const string_t& line) { return !line.empty(); });
         auto pre_newline_count = static_cast<size_t>(std::distance(m_lines.begin(), first_non_empty_it));
         result.append(pre_newline_count, '\n');
 
         auto last_non_empty_rev_it = std::find_if(m_lines.rbegin(), m_lines.rend(),
-            [](const auto& line) { return !line.empty(); });
+            [](const string_t& line) { return !line.empty(); });
 
         auto last_non_empty_it = last_non_empty_rev_it.base();
 
