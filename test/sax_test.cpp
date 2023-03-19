@@ -36,6 +36,7 @@ enum class test_sax_instruction {
     start_array,
     end_array,
     key,
+    index,
     null,
     string,
     comment
@@ -86,12 +87,14 @@ struct test_sax_handler {
     std::vector<std::basic_string<TChar>> keys = {};
     std::vector<std::basic_string<TChar>> strings = {};
     std::vector<std::basic_string<TChar>> comments = {};
+    std::vector<size_t> indices = {};
 
     test_sax_instruction* m_current_read_instruction = nullptr;
     test_scalar_style* m_current_read_scalar_styles = nullptr;
     std::basic_string<TChar>* m_current_read_string = nullptr;
     std::basic_string<TChar>* m_current_read_key = nullptr;
     std::basic_string<TChar>* m_current_read_comment = nullptr;
+    size_t* m_current_read_index = nullptr;
 
     void prepare_read() {
         m_current_read_instruction = instructions.data();
@@ -99,6 +102,7 @@ struct test_sax_handler {
         m_current_read_string = strings.data();
         m_current_read_key = keys.data();
         m_current_read_comment = comments.data();
+        m_current_read_index = indices.data();
     }
 
     void reset() {
@@ -116,6 +120,7 @@ struct test_sax_handler {
         keys.clear();
         strings.clear();
         comments.clear();
+        indices.clear();
     }
 
     test_sax_instruction get_next_instruction() {
@@ -152,6 +157,14 @@ struct test_sax_handler {
             return {};
         }
         return *current_comment;
+    }
+
+    size_t get_next_index() {
+        auto* current_index = m_current_read_index++;
+        if (current_index >= indices.data() + indices.size()) {
+            return size_t{ 0 };
+        }
+        return *current_index;
     }
 
     void null() {
@@ -208,6 +221,11 @@ struct test_sax_handler {
     void key(yaml::basic_string_view<TChar> value) {
         keys.push_back(std::basic_string<TChar>{ value.data(), value.size() });
         instructions.push_back(test_sax_instruction::key);
+    }
+
+    void index(size_t value) {
+        indices.push_back(value);
+        instructions.push_back(test_sax_instruction::index);
     }
 
     void comment(yaml::basic_string_view<TChar> value) {
@@ -1982,11 +2000,9 @@ TEST(sax_read, ok_scalar_single)
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
-
-        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
-        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
-        EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
-
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "This is a scalar value");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
@@ -2047,6 +2063,205 @@ TEST(sax_read, ok_scalar_single_literal_comment_after_token)
             ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
             EXPECT_EQ(handler.get_next_string(), "Value");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
+    });
+}
+
+TEST(sax_read, ok_sequence)
+{
+    const std::string input =
+        "- value 1 \n"
+        "- value 2 \n"
+        "- value 3 \n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read_document(input, handler);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 16 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_array);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 0);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 1);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 2);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "value 3");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_array);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
+    });
+}
+
+TEST(sax_read, ok_sequence_nested)
+{
+    const std::string input =
+        "- - - value 1 \n"
+        "  - value 2 \n"
+        "- value 3 \n"
+        "- - \n"
+        "  - value 5 \n"
+        "  -    - value 6 \n"
+        "       - value 7_1 \n"
+        "         value 7_2 \n"
+        "  - value 8 \n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read_document(input, handler);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 47 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
+
+        // Line 1 - 1
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_array);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 0);
+
+        // Line 1 - 2
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_array);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 0);
+
+        // Line 1 - 3
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_array);
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 0);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        // End line 1 - 3
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_array);
+
+        // Line 2 - 2
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 1);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        // End line 1 - 2
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_array);
+
+        // Line 3 - 1
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 1);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 3");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        // Line 4 - 1
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 2);
+
+        // Line 4 - 2  
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_array);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 0);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+        
+        // Line 5 - 2
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 1);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 5");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        // Line 6 - 2
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 2);
+
+        // Line 6 - 3
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_array);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 0);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 6");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        // Line 7 - 3
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 1);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 7_1");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 7_2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        // End line 6 - 3
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_array);
+
+        // Line 8 - 2
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+        EXPECT_EQ(handler.get_next_index(), 3);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "value 8");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        // End line 4 - 2
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_array);
+
+        // End line 1 - 1
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_array);
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
