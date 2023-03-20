@@ -587,6 +587,9 @@ namespace dom {
         iterator find(string_t key);
         const_iterator find(string_t key) const;
 
+        node_t& at(string_t key);
+        const node_t& at(string_t key) const;
+
         insert_return_type insert(string_t key);
         insert_return_type insert(string_t key, node_t&& node);
 
@@ -616,6 +619,12 @@ namespace dom {
     public:
 
         using node_t = node<Tchar, VisView>;
+        using node_ptr_t = std::unique_ptr<node_t>;
+        using list_t = std::vector<node_ptr_t>;
+        using iterator = typename list_t::iterator;
+        using const_iterator = typename list_t::const_iterator;
+        using reverse_iterator = typename list_t::reverse_iterator;
+        using const_reverse_iterator = typename list_t::const_reverse_iterator;
 
         explicit array_node(node_t& overlying_node);
 
@@ -623,6 +632,28 @@ namespace dom {
         array_node(array_node&&) = delete;
         array_node& operator = (const array_node&) = delete;
         array_node& operator = (array_node&&) = delete;
+
+        MINIYAML_NODISCARD bool empty() const;
+        MINIYAML_NODISCARD size_t size() const;
+
+        iterator begin();
+        const_iterator begin() const;
+        const_iterator cbegin() const;
+        iterator end();
+        const_iterator end() const;
+        const_iterator cend() const;
+        reverse_iterator rbegin();
+        const_reverse_iterator rbegin() const;
+        const_reverse_iterator crbegin() const;
+        reverse_iterator rend();
+        const_reverse_iterator rend() const;
+        const_reverse_iterator crend() const;
+
+        node_t& at(size_t index);
+        const node_t& at(size_t index) const;
+
+        void push_back();
+        void push_back(node_t&& node);
 
         node_t& overlying_node();
         const node_t& overlying_node() const;
@@ -632,6 +663,7 @@ namespace dom {
         template<typename Tchar_Other, bool VisView_Other>
         friend class node;
 
+        list_t m_list;
         node_t* m_overlying_node;
 
     };
@@ -1452,14 +1484,16 @@ namespace sax {
 
         auto on_object_token = [&]() {
             auto process_new_object = [&]() {
-                if (value_start_ptr != m_current_line_indention_ptr) {
+                if (value_start_ptr != m_current_line_indention_ptr && 
+                    (m_stack.size() < 2 || std::next(m_stack.rbegin())->type != stack_type::sequence))
+                {
                     error(read_result_code::unexpected_key);
                     return;
                 }
 
                 auto& stack_item = m_stack.back();
                 stack_item.type = stack_type::object;
-                stack_item.type_indention = m_current_line_indention;
+                stack_item.type_indention = static_cast<int64_t>(value_start_ptr - m_current_line_ptr);
                 stack_item.state_function = &reader::execute_read_key;
                 signal_start_object();
 
@@ -1492,7 +1526,7 @@ namespace sax {
             auto process_new_sequence = [&]() {
                 auto& stack_item = m_stack.back();
                 stack_item.type = stack_type::sequence;
-                stack_item.type_indention = static_cast<int64_t>(m_current_ptr - 1 - m_current_line_ptr);
+                stack_item.type_indention = static_cast<int64_t>(m_current_ptr - m_current_line_ptr) - int64_t{ 1 };
                 stack_item.state_function = &reader::execute_read_sequence;
 
                 signal_start_array();
@@ -1756,6 +1790,15 @@ namespace sax {
             const auto first_codepoint = *m_current_ptr;
 
             switch (first_codepoint) {
+                case token_type::carriage:
+                case token_type::newline: {
+                    ++m_current_ptr;
+                    register_newline();
+                } return false;
+                case token_type::comment: {
+                    ++m_current_ptr;
+                    read_comment_until_newline();  
+                } return false;
                 case token_type::sequence: {
                     ++m_current_ptr;
                     const auto next_codepoint = m_current_ptr < m_end_ptr ? *m_current_ptr : token_type::eof;
@@ -2251,7 +2294,7 @@ namespace dom {
     node<Tchar, VisView> node<Tchar, VisView>::create_array() {
         auto result = node{};
         result.m_node_type = node_type::array;
-        result.m_underlying_node.object = new array_node_t{ result };
+        result.m_underlying_node.array = new array_node_t{ result };
         return result;
     }
 
@@ -2743,6 +2786,28 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::at(string_t key) {
+        auto it = m_map.find(key);
+#if MINIYAML_USE_EXCEPTIONS == true
+        if (it == m_map.end()) {
+            throw std::out_of_range("Provided node object key is unknown.");
+        }
+#endif
+        return *it->second;
+    }
+
+    template<typename Tchar, bool VisView>
+    const typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::at(string_t key) const {
+        auto it = m_map.find(key);
+#if MINIYAML_USE_EXCEPTIONS == true
+        if (it == m_map.end()) {
+            throw std::out_of_range("Provided node object key is unknown.");
+        }
+#endif
+        return *it->second;
+    }
+
+    template<typename Tchar, bool VisView>
     typename object_node<Tchar, VisView>::insert_return_type object_node<Tchar, VisView>::insert(string_t key) {
         auto found_it = m_map.find(key);
         if (found_it != m_map.end()) {
@@ -2803,6 +2868,109 @@ namespace dom {
     array_node<Tchar, VisView>::array_node(node_t& overlying_node) :
         m_overlying_node(&overlying_node)
     {}
+
+    template<typename Tchar, bool VisView>
+    bool array_node<Tchar, VisView>::empty() const {
+        return m_list.empty();
+    }
+
+    template<typename Tchar, bool VisView>
+    size_t array_node<Tchar, VisView>::size() const {
+        return m_list.size();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::iterator array_node<Tchar, VisView>::begin() {
+        return m_list.begin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::const_iterator array_node<Tchar, VisView>::begin() const {
+        return m_list.begin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::const_iterator array_node<Tchar, VisView>::cbegin() const {
+        return m_list.cbegin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::iterator array_node<Tchar, VisView>::end() {
+        return m_list.end();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::const_iterator array_node<Tchar, VisView>::end() const {
+        return m_list.end();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::const_iterator array_node<Tchar, VisView>::cend() const {
+        return m_list.cend();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::reverse_iterator array_node<Tchar, VisView>::rbegin() {
+        return m_list.rbegin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::const_reverse_iterator array_node<Tchar, VisView>::rbegin() const {
+        return m_list.rbegin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::const_reverse_iterator array_node<Tchar, VisView>::crbegin() const {
+        return m_list.crbegin();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::reverse_iterator array_node<Tchar, VisView>::rend() {
+        return m_list.rend();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::const_reverse_iterator array_node<Tchar, VisView>::rend() const {
+        return m_list.rend();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::const_reverse_iterator array_node<Tchar, VisView>::crend() const {
+        return m_list.crend();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::at(size_t index) {
+#if MINIYAML_USE_EXCEPTIONS == true
+        if (index >= m_list.size()) {
+            throw std::out_of_range("Provided node array index is out of range.");
+        }
+#endif
+        return *m_list.at(index);
+    }
+
+    template<typename Tchar, bool VisView>
+    const typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::at(size_t index) const {
+#if MINIYAML_USE_EXCEPTIONS == true
+        if (index >= m_list.size()) {
+            throw std::out_of_range("Provided node array index is out of range.");
+        }
+#endif
+        return *m_list.at(index);
+    }
+
+    template<typename Tchar, bool VisView>
+    void array_node<Tchar, VisView>::push_back() {
+        auto new_node = node_ptr_t{ new node_t{} };
+        m_list.push_back(std::move(new_node));
+    }
+
+    template<typename Tchar, bool VisView>
+    void array_node<Tchar, VisView>::push_back(node_t&& node) {
+        auto new_node = node_ptr_t{ new node_t{} };
+        *new_node = std::move(node);
+        m_list.push_back(std::move(new_node));
+    }
 
     template<typename Tchar, bool VisView>
     typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::overlying_node() {
@@ -2957,12 +3125,12 @@ namespace dom {
 
     template<typename Tchar>
     void reader<Tchar>::sax_handler::start_array() {
-        // TODO
+        *m_current_node = node_t::create_array();
     }
 
     template<typename Tchar>
     void reader<Tchar>::sax_handler::end_array() {
-        // TODO
+        pop_stack();
     }
 
     template<typename Tchar>
@@ -2972,7 +3140,11 @@ namespace dom {
 
     template<typename Tchar>
     void reader<Tchar>::sax_handler::index(size_t) {
-        // TODO
+        auto& array_node = m_current_node->as_array();
+        array_node.push_back();
+
+        auto* new_node = array_node.rbegin()->get();
+        push_stack(new_node);
     }
 
     template<typename Tchar>

@@ -121,17 +121,17 @@ a_nested_map:
 
 # Sequences (equivalent to lists or arrays) look like this
 # (note that the '-' counts as indentation):
-###a_sequence:
-###  - Item 1
-###  - Item 2
-###  - 0.5  # sequences can contain disparate types.
-###  - Item 4
-###  - key: value
-###    another_key: another_value
-###  - - This is a sequence
-###    - inside another sequence
-###  - - - Nested sequence indicators
-###      - can be collapsed
+a_sequence:
+  - Item 1
+  - Item 2
+  - 0.5  # sequences can contain disparate types.
+  - Item 4
+  - key: value
+    another_key: another_value
+  - - This is a sequence
+    - inside another sequence
+  - - - Nested sequence indicators
+      - can be collapsed
 
 # Since YAML is a superset of JSON, you can also write JSON-style maps and
 # sequences:

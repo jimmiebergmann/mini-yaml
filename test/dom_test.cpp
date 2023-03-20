@@ -239,7 +239,7 @@ TEST(dom_read, ok_file_learnyaml)
     ASSERT_NO_THROW(root_node.as_object());
     auto& root_object_node = root_node.as_object();
 
-    ASSERT_EQ(root_object_node.size(), size_t{ 25 });
+    ASSERT_EQ(root_object_node.size(), size_t{ 26 });
 
     {
         auto it = root_object_node.find("key");
@@ -642,6 +642,155 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto string = scalar_node.as_string();
         EXPECT_STREQ(string.c_str(), "a float key");
+    }
+
+    {
+        auto it = root_object_node.find("a_sequence");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::array);
+        ASSERT_NO_THROW(node.as_array());
+        auto& array_node = node.as_array();
+
+        ASSERT_EQ(array_node.size(), size_t{ 7 });
+        {
+            auto& node2 = array_node.at(0);
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
+
+            ASSERT_NO_THROW(node2.as_scalar());
+            auto& scalar_node2 = node2.as_scalar();
+
+            auto string = scalar_node2.as_string();
+            EXPECT_STREQ(string.c_str(), "Item 1");
+        }
+        {
+            auto& node2 = array_node.at(1);
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
+
+            ASSERT_NO_THROW(node2.as_scalar());
+            auto& scalar_node2 = node2.as_scalar();
+
+            auto string = scalar_node2.as_string();
+            EXPECT_STREQ(string.c_str(), "Item 2");
+        }
+        {
+            auto& node2 = array_node.at(2);
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
+
+            ASSERT_NO_THROW(node2.as_scalar());
+            auto& scalar_node2 = node2.as_scalar();
+
+            auto string = scalar_node2.as_string();
+            EXPECT_STREQ(string.c_str(), "0.5");
+        }
+        {
+            auto& node2 = array_node.at(3);
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
+
+            ASSERT_NO_THROW(node2.as_scalar());
+            auto& scalar_node2 = node2.as_scalar();
+
+            auto string = scalar_node2.as_string();
+            EXPECT_STREQ(string.c_str(), "Item 4");
+        }
+        {
+            auto& node2 = array_node.at(4);
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::object);
+
+            ASSERT_NO_THROW(node2.as_object());
+            auto& object_node2 = node2.as_object();
+
+            ASSERT_EQ(object_node2.size(), size_t{ 2 });
+            {
+                auto& node3 = object_node2.at("key");
+                ASSERT_EQ(node3.type(), yaml::dom::node_type::scalar);
+
+                ASSERT_NO_THROW(node3.as_scalar());
+                auto& scalar_node3 = node3.as_scalar();
+
+                auto string = scalar_node3.as_string();
+                EXPECT_STREQ(string.c_str(), "value");
+            }
+            {
+                auto& node3 = object_node2.at("another_key");
+                ASSERT_EQ(node3.type(), yaml::dom::node_type::scalar);
+
+                ASSERT_NO_THROW(node3.as_scalar());
+                auto& scalar_node3 = node3.as_scalar();
+
+                auto string = scalar_node3.as_string();
+                EXPECT_STREQ(string.c_str(), "another_value");
+            }
+        }
+        {
+            auto& node2 = array_node.at(5);
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::array);
+
+            ASSERT_NO_THROW(node2.as_array());
+            auto& array_node2 = node2.as_array();
+            
+            ASSERT_EQ(array_node2.size(), size_t{ 2 });
+            {
+                auto& node3 = array_node2.at(0);
+                ASSERT_EQ(node3.type(), yaml::dom::node_type::scalar);
+
+                ASSERT_NO_THROW(node3.as_scalar());
+                auto& scalar_node3 = node3.as_scalar();
+
+                auto string = scalar_node3.as_string();
+                EXPECT_STREQ(string.c_str(), "This is a sequence");
+            }
+            {
+                auto& node3 = array_node2.at(1);
+                ASSERT_EQ(node3.type(), yaml::dom::node_type::scalar);
+
+                ASSERT_NO_THROW(node3.as_scalar());
+                auto& scalar_node3 = node3.as_scalar();
+
+                auto string = scalar_node3.as_string();
+                EXPECT_STREQ(string.c_str(), "inside another sequence");
+            }
+        }
+        {
+            auto& node2 = array_node.at(6);
+            ASSERT_EQ(node2.type(), yaml::dom::node_type::array);
+
+            ASSERT_NO_THROW(node2.as_array());
+            auto& array_node2 = node2.as_array();
+
+            ASSERT_EQ(array_node2.size(), size_t{ 1 });
+            {
+                auto& node3 = array_node2.at(0);
+                ASSERT_EQ(node3.type(), yaml::dom::node_type::array);
+
+                ASSERT_NO_THROW(node3.as_array());
+                auto& array_node3 = node3.as_array();
+
+                ASSERT_EQ(array_node3.size(), size_t{ 2 });
+                {
+                    auto& node4 = array_node3.at(0);
+                    ASSERT_EQ(node4.type(), yaml::dom::node_type::scalar);
+
+                    ASSERT_NO_THROW(node4.as_scalar());
+                    auto& scalar_node4 = node4.as_scalar();
+
+                    auto string = scalar_node4.as_string();
+                    EXPECT_STREQ(string.c_str(), "Nested sequence indicators");
+                }
+                {
+                    auto& node4 = array_node3.at(1);
+                    ASSERT_EQ(node4.type(), yaml::dom::node_type::scalar);
+
+                    ASSERT_NO_THROW(node4.as_scalar());
+                    auto& scalar_node4 = node4.as_scalar();
+
+                    auto string = scalar_node4.as_string();
+                    EXPECT_STREQ(string.c_str(), "can be collapsed");
+                }
+            }
+        }
+
     }
 
     {
