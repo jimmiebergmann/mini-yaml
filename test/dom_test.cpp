@@ -336,7 +336,7 @@ TEST(dom_create_node, ok_array)
     }
 }
 
-TEST(dom_read, ok_object_root)
+TEST(dom_read, ok_object)
 {
     const std::string input =
         "key 1: test 1\n"
@@ -361,7 +361,7 @@ TEST(dom_read, ok_object_root)
     EXPECT_TRUE(object_node.contains("key 4"));
 }
 
-TEST(dom_read, ok_scalar_root)
+TEST(dom_read, ok_scalar)
 {
     const std::string input =
         "This is a scalar\n"
@@ -379,6 +379,44 @@ TEST(dom_read, ok_scalar_root)
     EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
 
     EXPECT_STREQ(scalar_node.as_string().c_str(), "This is a scalar with multiple lines.");
+}
+
+TEST(dom_read, ok_scalar_with_gaps)
+{
+    const std::string input =
+        "first\n"
+        "second\n"
+        "\n"
+        "third\n"
+        "\n"
+        "\n"
+        "fourth\n"
+        "\n"
+        "\n";
+
+    auto read_result = yaml::dom::read_document(input);
+    ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+    auto node = std::move(read_result.root_node);
+    ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+    ASSERT_NO_THROW(node.as_scalar());
+    auto& scalar_node = node.as_scalar();
+
+    EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
+    EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
+
+    EXPECT_EQ(scalar_node.size(), size_t{ 7 });
+
+    EXPECT_STREQ(scalar_node.as_string().c_str(), "first second\nthird\n\nfourth");
+
+    // Add removed trailing empty lines + front empty line.
+    scalar_node.insert(scalar_node.begin(), "");
+    scalar_node.push_back("");
+    scalar_node.push_back("");
+    EXPECT_EQ(scalar_node.size(), size_t{ 10 });
+
+    EXPECT_STREQ(scalar_node.as_string().c_str(), "first second\nthird\n\nfourth");
+
 }
 
 

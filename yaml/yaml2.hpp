@@ -853,6 +853,8 @@ namespace dom {
         private:
 
             using node_stack_t = std::vector<node_t*>;
+            using string_view_list = std::vector<string_view_type>;
+            using string_view_list_iterator = typename string_view_list::iterator;
 
             void push_stack(node_t* node);
             void pop_stack();
@@ -860,7 +862,7 @@ namespace dom {
             node_t* m_current_node;
             node_stack_t m_node_stack;
 
-            std::vector<string_view_type> m_string_views;
+            string_view_list m_string_views;
             block_style_type m_current_block_style;
             chomping_type m_current_chomping;
         };
@@ -1622,7 +1624,7 @@ namespace sax {
                         if (is_prev_token_whitespace(2)) {
                             pop_stack();
                             --m_current_ptr;
-                            return true;
+                            return value_start_ptr != value_end_ptr;
                         }
                     } break;
                     case token_type::carriage:
@@ -1656,9 +1658,6 @@ namespace sax {
         }
 
         const auto scalar_length = static_cast<size_t>(value_end_ptr - value_start_ptr);
-        if (scalar_length == 0) {
-            return;
-        }
         const auto scalar_string_view = string_view_type{ value_start_ptr, scalar_length };
         signal_string(scalar_string_view);    
     }
@@ -2552,35 +2551,37 @@ namespace dom {
 
     template<typename Tchar, bool VisView>
     std::basic_string<Tchar> scalar_node<Tchar, VisView>::as_non_block_string() const {
-        // TODO: SAX Parser ignores empty lines in middle of scalar value. We need those empty lines, so a fix in the SAX parser is needed.
-        
-        if (m_lines.size() == 1) {
-            return m_lines.front();
-        }
-        else if (m_lines.empty()) {
+        auto begin_it = std::find_if(m_lines.begin(), m_lines.end(),
+            [](const string_t& line) { return !line.empty(); });
+
+        auto rend_it = std::find_if(m_lines.rbegin(), m_lines.rend(),
+            [](const string_t& line) { return !line.empty(); });
+
+        auto end_it = rend_it.base();
+
+        if (begin_it == end_it) {
             return "";
         }
+
+        auto prev_end_it = std::prev(end_it);
 
         auto result = std::basic_string<Tchar>{};
 
         auto reserved_size = size_t{ 0 };
-        for (auto it = m_lines.begin(); it != m_lines.end(); ++it) {
+        for (auto it = begin_it; it != end_it; ++it) {
             reserved_size += it->size() + 1;
         }
         result.reserve(reserved_size);
 
-        auto line_start_it = m_lines.begin();
-        auto line_end_it = std::prev(m_lines.end());
-
         bool prev_line_has_value = false;
-        for (auto it = line_start_it; it != line_end_it; ++it) {
+        for (auto it = begin_it; it != prev_end_it; ++it) {
             if (it->empty()) {
                 result += '\n';
             }
             else if (prev_line_has_value) {
                 result += ' ';
             }
-            
+
             result += *it;
             prev_line_has_value = !it->empty();
         }
@@ -2588,7 +2589,7 @@ namespace dom {
         if (prev_line_has_value) {
             result += ' ';
         }
-        result += *line_end_it;
+        result += *prev_end_it;
 
         return result;
     }
@@ -3120,7 +3121,27 @@ namespace dom {
         *m_current_node = node_t::create_scalar(m_current_block_style, m_current_chomping);
         auto& scalar_node = m_current_node->as_scalar();
 
-        for (auto it = m_string_views.begin(); it != m_string_views.end(); ++it) {
+        auto get_iterators = [&]() -> std::pair<string_view_list_iterator, string_view_list_iterator> {
+            if (m_current_block_style == block_style_type::none) {
+                auto begin_it = std::find_if(m_string_views.begin(), m_string_views.end(),
+                    [](const string_view_type& line) { return !line.empty(); });
+
+                auto rend_it = std::find_if(m_string_views.rbegin(), m_string_views.rend(),
+                    [](const string_view_type& line) { return !line.empty(); });
+
+                auto end_it = rend_it.base();
+
+                return { begin_it, end_it };
+            }
+
+            return { m_string_views.begin(), m_string_views.end() };
+        };
+
+        auto iterators = get_iterators();
+        auto begin_it = iterators.first;
+        auto end_it = iterators.second;
+
+        for (auto it = begin_it; it != end_it; ++it) {
             scalar_node.push_back(MINIYAML_NAMESPACE::impl::view_to_string(*it));
         }
 
