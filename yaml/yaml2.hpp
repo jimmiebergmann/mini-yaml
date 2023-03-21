@@ -440,7 +440,7 @@ namespace dom {
         ~node();
 
         node(node&&) noexcept;
-        node& operator = (node&&) noexcept;
+        node& operator = (node&&);
 
         node(const node&) = delete;
         node& operator = (const node&) = delete;
@@ -501,18 +501,18 @@ namespace dom {
         MINIYAML_NODISCARD bool empty() const;
         MINIYAML_NODISCARD size_t size() const;
 
-        iterator begin();
-        const_iterator begin() const;
-        const_iterator cbegin() const;
-        iterator end();
-        const_iterator end() const;
-        const_iterator cend() const;
-        reverse_iterator rbegin();
-        const_reverse_iterator rbegin() const;
-        const_reverse_iterator crbegin() const;
-        reverse_iterator rend();
-        const_reverse_iterator rend() const;
-        const_reverse_iterator crend() const;
+        MINIYAML_NODISCARD iterator begin();
+        MINIYAML_NODISCARD const_iterator begin() const;
+        MINIYAML_NODISCARD const_iterator cbegin() const;
+        MINIYAML_NODISCARD iterator end();
+        MINIYAML_NODISCARD const_iterator end() const;
+        MINIYAML_NODISCARD const_iterator cend() const;
+        MINIYAML_NODISCARD reverse_iterator rbegin();
+        MINIYAML_NODISCARD const_reverse_iterator rbegin() const;
+        MINIYAML_NODISCARD const_reverse_iterator crbegin() const;
+        MINIYAML_NODISCARD reverse_iterator rend();
+        MINIYAML_NODISCARD const_reverse_iterator rend() const;
+        MINIYAML_NODISCARD const_reverse_iterator crend() const;
 
         iterator insert(const_iterator pos, string_t string);
         void push_back(string_t string);
@@ -571,21 +571,21 @@ namespace dom {
 
         MINIYAML_NODISCARD bool contains(string_t key) const;
 
-        iterator begin();
-        const_iterator begin() const;
-        const_iterator cbegin() const;
-        iterator end();
-        const_iterator end() const;
-        const_iterator cend() const;
-        reverse_iterator rbegin();
-        const_reverse_iterator rbegin() const;
-        const_reverse_iterator crbegin() const;
-        reverse_iterator rend();
-        const_reverse_iterator rend() const;
-        const_reverse_iterator crend() const;
+        MINIYAML_NODISCARD iterator begin();
+        MINIYAML_NODISCARD const_iterator begin() const;
+        MINIYAML_NODISCARD const_iterator cbegin() const;
+        MINIYAML_NODISCARD iterator end();
+        MINIYAML_NODISCARD const_iterator end() const;
+        MINIYAML_NODISCARD const_iterator cend() const;
+        MINIYAML_NODISCARD reverse_iterator rbegin();
+        MINIYAML_NODISCARD const_reverse_iterator rbegin() const;
+        MINIYAML_NODISCARD const_reverse_iterator crbegin() const;
+        MINIYAML_NODISCARD reverse_iterator rend();
+        MINIYAML_NODISCARD const_reverse_iterator rend() const;
+        MINIYAML_NODISCARD const_reverse_iterator crend() const;
 
-        iterator find(string_t key);
-        const_iterator find(string_t key) const;
+        MINIYAML_NODISCARD iterator find(string_t key);
+        MINIYAML_NODISCARD const_iterator find(string_t key) const;
 
         node_t& at(string_t key);
         const node_t& at(string_t key) const;
@@ -636,24 +636,34 @@ namespace dom {
         MINIYAML_NODISCARD bool empty() const;
         MINIYAML_NODISCARD size_t size() const;
 
-        iterator begin();
-        const_iterator begin() const;
-        const_iterator cbegin() const;
-        iterator end();
-        const_iterator end() const;
-        const_iterator cend() const;
-        reverse_iterator rbegin();
-        const_reverse_iterator rbegin() const;
-        const_reverse_iterator crbegin() const;
-        reverse_iterator rend();
-        const_reverse_iterator rend() const;
-        const_reverse_iterator crend() const;
+        MINIYAML_NODISCARD bool contains(size_t index) const;
+
+        MINIYAML_NODISCARD iterator begin();
+        MINIYAML_NODISCARD const_iterator begin() const;
+        MINIYAML_NODISCARD const_iterator cbegin() const;
+        MINIYAML_NODISCARD iterator end();
+        MINIYAML_NODISCARD const_iterator end() const;
+        MINIYAML_NODISCARD const_iterator cend() const;
+        MINIYAML_NODISCARD reverse_iterator rbegin();
+        MINIYAML_NODISCARD const_reverse_iterator rbegin() const;
+        MINIYAML_NODISCARD const_reverse_iterator crbegin() const;
+        MINIYAML_NODISCARD reverse_iterator rend();
+        MINIYAML_NODISCARD const_reverse_iterator rend() const;
+        MINIYAML_NODISCARD const_reverse_iterator crend() const;
 
         node_t& at(size_t index);
         const node_t& at(size_t index) const;
 
+        iterator insert(const_iterator pos);
+        iterator insert(const_iterator pos, node_t&& node);
         void push_back();
         void push_back(node_t&& node);
+
+        void pop_back();
+        iterator erase(iterator pos);
+        iterator erase(iterator first, iterator last);
+        iterator erase(const_iterator pos);
+        iterator erase(const_iterator first, const_iterator last);
 
         node_t& overlying_node();
         const node_t& overlying_node() const;
@@ -2309,7 +2319,7 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    node<Tchar, VisView>& node<Tchar, VisView>::operator = (node&& rhs) noexcept {
+    node<Tchar, VisView>& node<Tchar, VisView>::operator = (node&& rhs) {
         destroy_underlying_node();
         
         m_node_type = rhs.m_node_type;
@@ -2868,6 +2878,11 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
+    bool array_node<Tchar, VisView>::contains(size_t index) const {
+        return index < m_list.size();
+    }
+
+    template<typename Tchar, bool VisView>
     typename array_node<Tchar, VisView>::iterator array_node<Tchar, VisView>::begin() {
         return m_list.begin();
     }
@@ -2948,6 +2963,19 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::iterator array_node<Tchar, VisView>::insert(const_iterator pos) {
+        auto new_node = node_ptr_t{ new node_t{} };
+        return m_list.insert(pos, std::move(new_node));
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::iterator array_node<Tchar, VisView>::insert(const_iterator pos, node_t&& node) {
+        auto new_node = node_ptr_t{ new node_t{} };
+        *new_node = std::move(node);
+        return m_list.insert(pos, std::move(new_node));
+    }
+
+    template<typename Tchar, bool VisView>
     void array_node<Tchar, VisView>::push_back() {
         auto new_node = node_ptr_t{ new node_t{} };
         m_list.push_back(std::move(new_node));
@@ -2958,6 +2986,31 @@ namespace dom {
         auto new_node = node_ptr_t{ new node_t{} };
         *new_node = std::move(node);
         m_list.push_back(std::move(new_node));
+    }
+
+    template<typename Tchar, bool VisView>
+    void array_node<Tchar, VisView>::pop_back() {
+        m_list.pop_back();
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::iterator array_node<Tchar, VisView>::erase(iterator pos) {
+        return m_list.erase(pos);
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::iterator array_node<Tchar, VisView>::erase(iterator first, iterator last) {
+        return m_list.erase(first, last);
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::iterator array_node<Tchar, VisView>::erase(const_iterator pos) {
+        return m_list.erase(pos);
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::iterator array_node<Tchar, VisView>::erase(const_iterator first, const_iterator last) {
+        return m_list.erase(first, last);
     }
 
     template<typename Tchar, bool VisView>
@@ -3129,9 +3182,9 @@ namespace dom {
     template<typename Tchar>
     void reader<Tchar>::sax_handler::index(size_t) {
         auto& array_node = m_current_node->as_array();
-        array_node.push_back();
+        auto insert_result = array_node.insert(array_node.end());
 
-        auto* new_node = array_node.rbegin()->get();
+        auto* new_node = insert_result->get();
         push_stack(new_node);
     }
 

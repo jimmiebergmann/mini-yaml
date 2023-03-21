@@ -98,10 +98,10 @@ TEST(dom_create_node, ok_object)
     EXPECT_EQ(&object_node.overlying_node(), &node);
 
     // Empty tests.
-    ASSERT_TRUE(object_node.empty());
+    EXPECT_TRUE(object_node.empty());
     ASSERT_EQ(object_node.size(), size_t{ 0 });
 
-    // Create
+    // Insert
     {
         EXPECT_FALSE(object_node.contains("key 1"));
 
@@ -178,6 +178,135 @@ TEST(dom_create_node, ok_object)
         EXPECT_EQ(object_node.size(), size_t{ 0 });
         EXPECT_TRUE(object_node.empty());
         ASSERT_EQ(next_it, object_node.end());
+    }
+}
+
+TEST(dom_create_node, ok_array)
+{
+    using char_type = char;
+    using node_t = yaml::dom::node<char_type>;
+
+    auto node = node_t::create_array();
+
+    ASSERT_EQ(node.type(), yaml::dom::node_type::array);
+    EXPECT_ANY_THROW(node.as_object());
+    EXPECT_ANY_THROW(node.as_scalar());
+    ASSERT_NO_THROW(node.as_array());
+
+    auto& array_node = node.as_array();
+    EXPECT_EQ(&array_node.overlying_node(), &node);
+
+    // Empty tests.
+    EXPECT_TRUE(array_node.empty());
+    ASSERT_EQ(array_node.size(), size_t{ 0 });
+    EXPECT_FALSE(array_node.contains(0));
+
+    // Insert
+    {
+        {
+            array_node.push_back();
+
+            EXPECT_FALSE(array_node.empty());
+            ASSERT_EQ(array_node.size(), size_t{ 1 });
+            EXPECT_TRUE(array_node.contains(0));
+            EXPECT_FALSE(array_node.contains(1));
+
+            ASSERT_NO_THROW(array_node.at(0));
+            auto& item = array_node.at(0);
+            EXPECT_EQ(item.type(), yaml::dom::node_type::null);
+        }
+        {
+            array_node.push_back(node_t::create_scalar());
+
+            ASSERT_EQ(array_node.size(), size_t{ 2 });
+            EXPECT_TRUE(array_node.contains(1));
+            EXPECT_FALSE(array_node.contains(2));
+
+            ASSERT_NO_THROW(array_node.at(1));
+            auto& item = array_node.at(1);
+            EXPECT_EQ(item.type(), yaml::dom::node_type::scalar);
+        }
+        {
+            array_node.insert(array_node.begin());
+
+            ASSERT_EQ(array_node.size(), size_t{ 3 });
+            EXPECT_TRUE(array_node.contains(2));
+            EXPECT_FALSE(array_node.contains(3));
+
+            ASSERT_NO_THROW(array_node.at(0));
+            auto& item = array_node.at(0);
+            EXPECT_EQ(item.type(), yaml::dom::node_type::null);
+        }
+        {
+            array_node.insert(array_node.end(), node_t::create_object());
+
+            ASSERT_EQ(array_node.size(), size_t{ 4 });
+            EXPECT_TRUE(array_node.contains(3));
+            EXPECT_FALSE(array_node.contains(4));
+
+            ASSERT_NO_THROW(array_node.at(3));
+            auto& item = array_node.at(3);
+            EXPECT_EQ(item.type(), yaml::dom::node_type::object);
+        }
+        {
+            array_node.insert(array_node.begin() + 1, node_t::create_array());
+
+            ASSERT_EQ(array_node.size(), size_t{ 5 });
+            EXPECT_TRUE(array_node.contains(4));
+            EXPECT_FALSE(array_node.contains(5));
+
+            ASSERT_NO_THROW(array_node.at(1));
+            auto& item = array_node.at(1);
+            EXPECT_EQ(item.type(), yaml::dom::node_type::array);
+        }
+    }
+
+    // Loop
+    {
+        size_t loop_count = 0;
+        static std::array<yaml::dom::node_type, 5> node_types = { 
+            yaml::dom::node_type::null,
+            yaml::dom::node_type::array,
+            yaml::dom::node_type::null,
+            yaml::dom::node_type::scalar,
+            yaml::dom::node_type::object 
+        };
+
+        for (auto it = array_node.begin(); it != array_node.end(); ++it) {
+            ASSERT_LT(loop_count, 5);
+
+            auto& value = *it;
+            EXPECT_EQ(value->type(), node_types[loop_count]);
+
+            ++loop_count;
+        }
+
+        EXPECT_EQ(loop_count, size_t{ 5 });
+    }   
+
+    // Erase
+    {
+        ASSERT_EQ(array_node.size(), size_t{ 5 });
+
+        auto it1 = array_node.erase(array_node.begin());
+        ASSERT_EQ(array_node.size(), size_t{ 4 });
+
+        auto it2 = array_node.erase(it1, std::next(std::next(it1)));
+        ASSERT_EQ(array_node.size(), size_t{ 2 });
+
+        ASSERT_NO_THROW(array_node.at(0));
+        auto& item1 = array_node.at(0);
+        EXPECT_EQ(item1.type(), yaml::dom::node_type::scalar);
+
+        ASSERT_NO_THROW(array_node.at(1));
+        auto& item2 = array_node.at(1);
+        EXPECT_EQ(item2.type(), yaml::dom::node_type::object);
+
+        array_node.pop_back();
+        ASSERT_EQ(array_node.size(), size_t{ 1 });
+
+        auto& item1_1 = array_node.at(0);
+        EXPECT_EQ(item1_1.type(), yaml::dom::node_type::scalar);
     }
 }
 
