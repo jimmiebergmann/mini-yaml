@@ -40,13 +40,6 @@
 #define MINIYAML_NAMESPACE yaml
 #endif
 
-#if defined(MINIYAML_NO_EXCEPTIONS)
-#define MINIYAML_USE_EXCEPTIONS false
-#else
-#define MINIYAML_USE_EXCEPTIONS true
-#include <stdexcept>
-#endif
-
 #if defined(__cpp_inline_variables)
 #define MINIYAML_INLINE_VARIABLE inline
 #else
@@ -2361,31 +2354,25 @@ namespace dom {
 
     template<typename Tchar, bool VisView>
     typename node<Tchar, VisView>::scalar_node_t& node<Tchar, VisView>::as_scalar() {
-#if MINIYAML_USE_EXCEPTIONS == true
         if (m_node_type != node_type::scalar) {
             throw std::runtime_error("Cannot call as_scalar on node of this node type.");
         }
-#endif
         return *m_underlying_node.scalar;
     }
 
     template<typename Tchar, bool VisView>
     typename node<Tchar, VisView>::object_node_t& node<Tchar, VisView>::as_object() {
-#if MINIYAML_USE_EXCEPTIONS == true
         if (m_node_type != node_type::object) {
             throw std::runtime_error("Cannot call as_object on node of this node type.");
         }
-#endif
         return *m_underlying_node.object;
     }
 
     template<typename Tchar, bool VisView>
     typename node<Tchar, VisView>::array_node_t& node<Tchar, VisView>::as_array() {
-#if MINIYAML_USE_EXCEPTIONS == true
         if (m_node_type != node_type::array) {
             throw std::runtime_error("Cannot call as_array on node of this node type.");
         }
-#endif
         return *m_underlying_node.array;
     }
 
@@ -2786,22 +2773,18 @@ namespace dom {
     template<typename Tchar, bool VisView>
     typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::at(string_t key) {
         auto it = m_map.find(key);
-#if MINIYAML_USE_EXCEPTIONS == true
         if (it == m_map.end()) {
             throw std::out_of_range("Provided node object key is unknown.");
         }
-#endif
         return *it->second;
     }
 
     template<typename Tchar, bool VisView>
     const typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::at(string_t key) const {
         auto it = m_map.find(key);
-#if MINIYAML_USE_EXCEPTIONS == true
         if (it == m_map.end()) {
             throw std::out_of_range("Provided node object key is unknown.");
         }
-#endif
         return *it->second;
     }
 
@@ -2944,21 +2927,11 @@ namespace dom {
 
     template<typename Tchar, bool VisView>
     typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::at(size_t index) {
-#if MINIYAML_USE_EXCEPTIONS == true
-        if (index >= m_list.size()) {
-            throw std::out_of_range("Provided node array index is out of range.");
-        }
-#endif
         return *m_list.at(index);
     }
 
     template<typename Tchar, bool VisView>
     const typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::at(size_t index) const {
-#if MINIYAML_USE_EXCEPTIONS == true
-        if (index >= m_list.size()) {
-            throw std::out_of_range("Provided node array index is out of range.");
-        }
-#endif
         return *m_list.at(index);
     }
 

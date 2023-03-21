@@ -29,6 +29,32 @@
 // =====================================================================
 // Tests
 
+TEST(dom_read, ok_quickstart)
+{
+    const std::string input =
+        "scalar: foo bar\n"
+        "list:\n"
+        " - hello world\n"
+        " - integer : 123\n"
+        "   boolean : true";
+    
+    auto read_result = yaml::dom::read_document(input);
+    ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+    auto root = std::move(read_result.root_node);
+    ASSERT_EQ(root.type(), yaml::dom::node_type::object);
+
+    auto str1 = root.as_object().at("scalar").as_scalar().as_string();
+    auto str2 = root.as_object().at("list").as_array().at(0).as_scalar().as_string();
+    auto str3 = root.as_object().at("list").as_array().at(1).as_object().at("integer").as_scalar().as_string();
+    auto str4 = root.as_object().at("list").as_array().at(1).as_object().at("boolean").as_scalar().as_string();
+
+    EXPECT_STREQ(str1.c_str(), "foo bar");
+    EXPECT_STREQ(str2.c_str(), "hello world");
+    EXPECT_STREQ(str3.c_str(), "123");
+    EXPECT_STREQ(str4.c_str(), "true");
+}
+
 TEST(dom_create_node, ok_scalar)
 {
     using char_type = char;

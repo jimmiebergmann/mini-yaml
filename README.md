@@ -19,14 +19,14 @@ Error checking is omitted, see quickstart_full.yml for a real example.
 
 auto result = yaml::dom::read_document_from_file("file.yml");
 if(!result) {
-    return yaml::print_result(result);
+    return print_result(result);
 }
 
 auto& root = result.root_node;
-std::cout << root.as_object()["scalar"].as_scalar().as_string() << "\n";
-std::cout << root.as_object()["list"].as_array()[0].as_scalar().as_string() << "\n";
-std::cout << root.as_object()["list"].as_array()[1].as_object()["integer"].as_scalar().as_string() << "\n";
-std::cout << root.as_object()["list"].as_array()[1].as_object()["boolean"].as_scalar().as_string() << "\n";
+std::cout << root.as_object().at("scalar").as_scalar().as_string() << "\n";
+std::cout << root.as_object().at("list").as_array().at(0).as_scalar().as_string() << "\n";
+std::cout << root.as_object().at("list").as_array().at(1).as_object().at("integer").as_scalar().as_string() << "\n";
+std::cout << root.as_object().at("list").as_array().at(1).as_object().at("boolean").as_scalar().as_string() << "\n";
 
 ```
 ### Output
@@ -44,8 +44,8 @@ Builds pass if all tests are successful and no memory leaks are found.
 
 | Branch | Linux  | Windows | Fuzzing |
 | ------ | ------ | ------- |----- |
-| master | [![Github Linux Master](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-build-linux.yml?branch=master&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-build-linux.yml) | [![Github Windows Master](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-build-windows.yml?branch=master&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-build-windows.yml) [![AppVeyor Windows Master](https://img.shields.io/appveyor/ci/jimmiebergmann/mini-yaml/master?label=AppVeyor&logo=AppVeyor)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/master) | [![Github Fuzz Master](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-fuzz.yml?branch=master&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-fuzz.yml) |
-| dev    | [![Github Linux Dev](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-build-linux.yml?branch=dev&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-build-linux.yml) | [![Github Windows Dev](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-build-windows.yml?branch=dev&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-build-windows.yml) [![AppVeyor Dev](https://img.shields.io/appveyor/ci/jimmiebergmann/mini-yaml/dev?label=AppVeyor&logo=AppVeyor)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/dev) | [![Github Fuzz Dev](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-fuzz.yml?branch=dev&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-fuzz.yml) |
+| master | [![Github Linux Master](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-build-linux.yml?branch=master&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-build-linux.yml) | [![Github Windows Master](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-build-windows.yml?branch=master&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-build-windows.yml) [![AppVeyor Windows Master](https://img.shields.io/appveyor/ci/jimmiebergmann/mini-yaml/master?label=AppVeyor&logo=AppVeyor)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/master) | [![Github Fuzzing Master](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-fuzz.yml?branch=master&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-fuzz.yml) |
+| dev    | [![Github Linux Dev](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-build-linux.yml?branch=dev&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-build-linux.yml) | [![Github Windows Dev](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-build-windows.yml?branch=dev&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-build-windows.yml) [![AppVeyor Dev](https://img.shields.io/appveyor/ci/jimmiebergmann/mini-yaml/dev?label=AppVeyor&logo=AppVeyor)](https://ci.appveyor.com/project/jimmiebergmann/mini-yaml/branch/dev) | [![Github Fuzzing Dev](https://img.shields.io/github/actions/workflow/status/jimmiebergmann/mini-yaml/github-fuzz.yml?branch=dev&label=Github&logo=Github)](https://github.com/jimmiebergmann/mini-yaml/actions/workflows/github-fuzz.yml) |
 
 ## Missing features (TODO)
 - quoted strings
@@ -57,6 +57,5 @@ Builds pass if all tests are successful and no memory leaks are found.
 - complex keys
 - sets
 
-
-##### Note
+### Note
 One does not simply write a yaml parser from scratch.
