@@ -1451,19 +1451,6 @@ namespace sax {
                 case token_type::chomping_strip:
                 case token_type::chomping_keep: {
                     ++m_current_ptr;
-                    const auto very_next_codepoint = m_current_ptr < m_end_ptr ? *m_current_ptr : token_type::eof;
-
-                    switch (very_next_codepoint) {
-                        case token_type::eof:
-                        case token_type::space:
-                        case token_type::tab:
-                        case token_type::carriage:
-                        case token_type::newline: break;
-                        default: {
-                            error(read_result_code::expected_line_break);
-                        } return;
-                    }
-
                     chomping = next_codepoint == token_type::chomping_strip ? chomping_type::strip : chomping_type::keep;
                 } break;
                 default: {
@@ -1561,7 +1548,8 @@ namespace sax {
                     read_comment_until_newline();
                 } return;
                 case token_type::object: {
-                    if (on_object_token()) {
+                    if (is_next_token_whitespace(0)) {
+                        error(read_result_code::expected_key);
                         return;
                     }
                 } break;

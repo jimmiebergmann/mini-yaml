@@ -51,7 +51,6 @@ Builds pass if all tests are successful and no memory leaks are found.
 - quoted strings
 - yaml::dom_view
 - indentation indicator
-- sequences
 - tags(!!type)
 - anchors
 - flow sequences/maps
