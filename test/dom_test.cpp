@@ -68,180 +68,24 @@ TEST(dom_read, ok_quickstart)
     }
 }
 
-TEST(dom_create_node, ok_null)
+template<typename Titerator>
+void ok_array_loop_test(Titerator begin, Titerator end, bool is_const_iterator, const std::vector<yaml::dom::node_type>& node_types)
 {
-    using char_type = char;
+    auto node_count = static_cast<size_t>(std::distance(begin, end));
+    ASSERT_EQ(node_count, node_types.size());
 
-    auto node = yaml::dom::node<char_type>{};
+    size_t loop_count = 0;
+    for (auto it = begin; it != end; ++it) {
+        ASSERT_LT(loop_count, node_types.size());
 
-    ASSERT_EQ(node.type(), yaml::dom::node_type::null);
-    EXPECT_ANY_THROW(node.as_scalar());
-    EXPECT_ANY_THROW(node.as_object());
-    EXPECT_ANY_THROW(node.as_array());
-    EXPECT_TRUE(node.is_null());
-    EXPECT_FALSE(node.is_scalar());
-    EXPECT_FALSE(node.is_object());
-    EXPECT_FALSE(node.is_array());
-}
+        auto& value = *it;
+        EXPECT_EQ(value->type(), node_types[loop_count]);
+        EXPECT_EQ(std::is_const<typename std::remove_reference<decltype(value)>::type>::value, is_const_iterator);
 
-TEST(dom_create_node, ok_scalar)
-{
-    using char_type = char;
-
-    auto node = yaml::dom::node<char_type>::create_scalar();
-
-    ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-    ASSERT_NO_THROW(node.as_scalar());
-    EXPECT_ANY_THROW(node.as_object());
-    EXPECT_ANY_THROW(node.as_array());
-    EXPECT_FALSE(node.is_null());
-    EXPECT_TRUE(node.is_scalar());
-    EXPECT_FALSE(node.is_object());
-    EXPECT_FALSE(node.is_array());
-
-    auto& scalar_node = node.as_scalar();
-    EXPECT_EQ(&scalar_node.overlying_node(), &node);
-
-    // Block style tests.
-    EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
-    EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
-
-    scalar_node.block_style(yaml::block_style_type::literal);
-    EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
-
-    scalar_node.chomping(yaml::chomping_type::keep);
-    EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::keep);
-
-    // Empty tests.
-    ASSERT_TRUE(scalar_node.empty());
-    ASSERT_EQ(scalar_node.size(), size_t{ 0 });
-
-    EXPECT_EQ(scalar_node.begin(), scalar_node.end());
-    EXPECT_EQ(scalar_node.cbegin(), scalar_node.cend());
-    EXPECT_EQ(scalar_node.crbegin(), scalar_node.crend());
-
-    // Insert tests.
-    scalar_node.push_back("First line of scalar.");
-
-    ASSERT_FALSE(scalar_node.empty());
-    ASSERT_EQ(scalar_node.size(), size_t{ 1 });
-
-    ASSERT_NE(scalar_node.begin(), scalar_node.end());
-    ASSERT_NE(scalar_node.cbegin(), scalar_node.cend());
-    ASSERT_NE(scalar_node.crbegin(), scalar_node.crend());
-
-    EXPECT_STREQ(scalar_node.begin()->c_str(), "First line of scalar.");
-
-    scalar_node.push_back("Second line of scalar.");
-
-    ASSERT_EQ(scalar_node.size(), size_t{ 2 });
-
-    // as_string() tests.
-    scalar_node.block_style(yaml::block_style_type::none);
-    scalar_node.chomping(yaml::chomping_type::strip);
-    EXPECT_STREQ(scalar_node.as_string().c_str(), "First line of scalar. Second line of scalar.");
-}
-
-TEST(dom_create_node, ok_object)
-{
-    using char_type = char;
-
-    auto node = yaml::dom::node<char_type>::create_object();
-
-    ASSERT_EQ(node.type(), yaml::dom::node_type::object);
-    ASSERT_NO_THROW(node.as_object());
-    EXPECT_ANY_THROW(node.as_scalar());
-    EXPECT_ANY_THROW(node.as_array());
-    EXPECT_FALSE(node.is_null());
-    EXPECT_FALSE(node.is_scalar());
-    EXPECT_TRUE(node.is_object());
-    EXPECT_FALSE(node.is_array());
-
-    auto& object_node = node.as_object();
-    EXPECT_EQ(&object_node.overlying_node(), &node);
-
-    // Empty tests.
-    EXPECT_TRUE(object_node.empty());
-    ASSERT_EQ(object_node.size(), size_t{ 0 });
-
-    // Insert
-    {
-        EXPECT_FALSE(object_node.contains("key 1"));
-
-        auto result = object_node.insert("key 1");
-        ASSERT_TRUE(result.second);
-        EXPECT_FALSE(object_node.empty());
-        EXPECT_EQ(object_node.size(), size_t{ 1 });
-
-        EXPECT_TRUE(object_node.contains("key 1"));
-    }
-    {
-        EXPECT_TRUE(object_node.contains("key 1"));
-        auto result = object_node.insert("key 1");
-        ASSERT_FALSE(result.second);
-        EXPECT_TRUE(object_node.contains("key 1"));
-    }
-    {
-        EXPECT_FALSE(object_node.contains("key 2"));
-
-        auto result = object_node.insert("key 2", yaml::dom::node<char_type>::create_scalar());
-        EXPECT_TRUE(result.second);
-        EXPECT_FALSE(object_node.empty());
-        EXPECT_EQ(object_node.size(), size_t{ 2 });
-
-        EXPECT_TRUE(object_node.contains("key 2"));
-    }
-    {
-        EXPECT_FALSE(object_node.contains("key 3"));
-
-        auto result = object_node.insert("key 3", yaml::dom::node<char_type>::create_object());
-        EXPECT_TRUE(result.second);
-        EXPECT_FALSE(object_node.empty());
-        EXPECT_EQ(object_node.size(), size_t{ 3 });
-
-        EXPECT_TRUE(object_node.contains("key 3"));
+        ++loop_count;
     }
 
-    // Loop
-    {
-        size_t loop_count = 0;
-        static std::array<std::string, 3> keys = { "key 1", "key 2", "key 3" };
-        static std::array<yaml::dom::node_type, 3> node_types = { yaml::dom::node_type::null, yaml::dom::node_type::scalar, yaml::dom::node_type::object };
-        for (auto it = object_node.begin(); it != object_node.end(); ++it) {
-            ASSERT_LT(loop_count, 3);
-        
-            auto& key = it->first;
-            auto& value = (*it).second;
-
-            EXPECT_EQ(key, keys[loop_count]);
-            EXPECT_EQ(value->type(), node_types[loop_count]);
-
-            ++loop_count;
-        }
-
-        EXPECT_EQ(loop_count, size_t{ 3 });
-    }
-
-    // Erase
-    {
-        auto it = object_node.find("key 2");
-        ASSERT_NE(it, object_node.end());
-
-        auto next_it = object_node.erase(it);
-        EXPECT_EQ(object_node.size(), size_t{2});
-
-        ASSERT_NE(next_it, object_node.end());
-        EXPECT_STREQ(next_it->first.c_str(), "key 3");
-
-        auto erase_ret = object_node.erase("key 1");
-        EXPECT_EQ(object_node.size(), size_t{ 1 });
-        EXPECT_EQ(erase_ret, size_t{ 1 });
-
-        next_it = object_node.erase(object_node.begin());
-        EXPECT_EQ(object_node.size(), size_t{ 0 });
-        EXPECT_TRUE(object_node.empty());
-        ASSERT_EQ(next_it, object_node.end());
-    }
+    EXPECT_EQ(loop_count, node_types.size());
 }
 
 TEST(dom_create_node, ok_array)
@@ -330,26 +174,31 @@ TEST(dom_create_node, ok_array)
 
     // Loop
     {
-        size_t loop_count = 0;
-        static std::array<yaml::dom::node_type, 5> node_types = { 
+        std::vector<yaml::dom::node_type> node_types = {
             yaml::dom::node_type::null,
             yaml::dom::node_type::array,
             yaml::dom::node_type::null,
             yaml::dom::node_type::scalar,
-            yaml::dom::node_type::object 
+            yaml::dom::node_type::object
         };
 
-        for (auto it = array_node.begin(); it != array_node.end(); ++it) {
-            ASSERT_LT(loop_count, 5);
+        std::vector<yaml::dom::node_type> node_types_reverse = {
+            yaml::dom::node_type::object,
+            yaml::dom::node_type::scalar,
+            yaml::dom::node_type::null,
+            yaml::dom::node_type::array,
+            yaml::dom::node_type::null
+        };
 
-            auto& value = *it;
-            EXPECT_EQ(value->type(), node_types[loop_count]);
+        const auto& const_array_node = array_node;
 
-            ++loop_count;
-        }
-
-        EXPECT_EQ(loop_count, size_t{ 5 });
-    }   
+        ok_array_loop_test(array_node.begin(), array_node.end(), false, node_types);
+        ok_array_loop_test(const_array_node.begin(), const_array_node.end(), true, node_types);
+        ok_array_loop_test(array_node.cbegin(), array_node.cend(), true, node_types);
+        ok_array_loop_test(array_node.rbegin(), array_node.rend(), false, node_types_reverse);
+        ok_array_loop_test(const_array_node.rbegin(), const_array_node.rend(), true, node_types_reverse);
+        ok_array_loop_test(array_node.crbegin(), array_node.crend(), true, node_types_reverse);
+    }
 
     // Erase
     {
@@ -374,6 +223,253 @@ TEST(dom_create_node, ok_array)
 
         auto& item1_1 = array_node.at(0);
         EXPECT_EQ(item1_1.type(), yaml::dom::node_type::scalar);
+    }
+}
+
+TEST(dom_create_node, ok_null)
+{
+    using char_type = char;
+
+    auto node = yaml::dom::node<char_type>{};
+
+    ASSERT_EQ(node.type(), yaml::dom::node_type::null);
+    EXPECT_ANY_THROW(node.as_scalar());
+    EXPECT_ANY_THROW(node.as_object());
+    EXPECT_ANY_THROW(node.as_array());
+    EXPECT_TRUE(node.is_null());
+    EXPECT_FALSE(node.is_scalar());
+    EXPECT_FALSE(node.is_object());
+    EXPECT_FALSE(node.is_array());
+}
+
+template<typename Titerator>
+void ok_object_loop_test(Titerator begin, Titerator end, bool is_const_iterator, const std::vector<std::pair<std::string, yaml::dom::node_type>>& node_types)
+{
+    auto node_count = static_cast<size_t>(std::distance(begin, end));
+    ASSERT_EQ(node_count, node_types.size());
+
+    size_t loop_count = 0;
+    for (auto it = begin; it != end; ++it) {
+        ASSERT_LT(loop_count, node_types.size());
+
+        auto& key = it->first;
+        auto& value = (*it).second;    
+        EXPECT_EQ(key, node_types[loop_count].first);
+        EXPECT_EQ(value->type(), node_types[loop_count].second);
+        EXPECT_EQ(std::is_const<typename std::remove_reference<decltype(value)>::type>::value, is_const_iterator);
+
+        ++loop_count;
+    }
+
+    EXPECT_EQ(loop_count, node_types.size());
+}
+
+TEST(dom_create_node, ok_object)
+{
+    using char_type = char;
+
+    auto node = yaml::dom::node<char_type>::create_object();
+
+    ASSERT_EQ(node.type(), yaml::dom::node_type::object);
+    ASSERT_NO_THROW(node.as_object());
+    EXPECT_ANY_THROW(node.as_scalar());
+    EXPECT_ANY_THROW(node.as_array());
+    EXPECT_FALSE(node.is_null());
+    EXPECT_FALSE(node.is_scalar());
+    EXPECT_TRUE(node.is_object());
+    EXPECT_FALSE(node.is_array());
+
+    auto& object_node = node.as_object();
+    EXPECT_EQ(&object_node.overlying_node(), &node);
+
+    // Empty tests.
+    EXPECT_TRUE(object_node.empty());
+    ASSERT_EQ(object_node.size(), size_t{ 0 });
+
+    // Insert
+    {
+        EXPECT_FALSE(object_node.contains("key 1"));
+
+        auto result = object_node.insert("key 1");
+        ASSERT_TRUE(result.second);
+        EXPECT_FALSE(object_node.empty());
+        EXPECT_EQ(object_node.size(), size_t{ 1 });
+
+        EXPECT_TRUE(object_node.contains("key 1"));
+    }
+    {
+        EXPECT_TRUE(object_node.contains("key 1"));
+        auto result = object_node.insert("key 1");
+        ASSERT_FALSE(result.second);
+        EXPECT_TRUE(object_node.contains("key 1"));
+    }
+    {
+        EXPECT_FALSE(object_node.contains("key 2"));
+
+        auto result = object_node.insert("key 2", yaml::dom::node<char_type>::create_scalar());
+        EXPECT_TRUE(result.second);
+        EXPECT_FALSE(object_node.empty());
+        EXPECT_EQ(object_node.size(), size_t{ 2 });
+
+        EXPECT_TRUE(object_node.contains("key 2"));
+    }
+    {
+        EXPECT_FALSE(object_node.contains("key 3"));
+
+        auto result = object_node.insert("key 3", yaml::dom::node<char_type>::create_object());
+        EXPECT_TRUE(result.second);
+        EXPECT_FALSE(object_node.empty());
+        EXPECT_EQ(object_node.size(), size_t{ 3 });
+
+        EXPECT_TRUE(object_node.contains("key 3"));
+    }
+
+    // Loop
+    {
+        std::vector<std::pair<std::string, yaml::dom::node_type>> node_types = {
+            { "key 1", yaml::dom::node_type::null },
+            { "key 2", yaml::dom::node_type::scalar },
+            { "key 3", yaml::dom::node_type::object },
+        };
+
+        std::vector<std::pair<std::string, yaml::dom::node_type>> node_types_reverse = {
+            { "key 3", yaml::dom::node_type::object },
+            { "key 2", yaml::dom::node_type::scalar },
+            { "key 1", yaml::dom::node_type::null },
+        };
+
+        const auto& const_object_node = object_node;
+
+        ok_object_loop_test(object_node.begin(), object_node.end(), false, node_types);
+        ok_object_loop_test(const_object_node.begin(), const_object_node.end(), true, node_types);
+        ok_object_loop_test(object_node.cbegin(), object_node.cend(), true, node_types);
+        ok_object_loop_test(object_node.rbegin(), object_node.rend(), false, node_types_reverse);
+        ok_object_loop_test(const_object_node.rbegin(), const_object_node.rend(), true, node_types_reverse);
+        ok_object_loop_test(object_node.crbegin(), object_node.crend(), true, node_types_reverse);
+    }
+
+    // Erase
+    {
+        auto it = object_node.find("key 2");
+        ASSERT_NE(it, object_node.end());
+
+        auto next_it = object_node.erase(it);
+        EXPECT_EQ(object_node.size(), size_t{2});
+
+        ASSERT_NE(next_it, object_node.end());
+        EXPECT_STREQ(next_it->first.c_str(), "key 3");
+
+        auto erase_ret = object_node.erase("key 1");
+        EXPECT_EQ(object_node.size(), size_t{ 1 });
+        EXPECT_EQ(erase_ret, size_t{ 1 });
+
+        next_it = object_node.erase(object_node.begin());
+        EXPECT_EQ(object_node.size(), size_t{ 0 });
+        EXPECT_TRUE(object_node.empty());
+        ASSERT_EQ(next_it, object_node.end());
+    }
+}
+
+template<typename Titerator>
+void ok_scalar_loop_test(Titerator begin, Titerator end, bool is_const_iterator, const std::vector<std::string>& lines)
+{
+    auto node_count = static_cast<size_t>(std::distance(begin, end));
+    ASSERT_EQ(node_count, lines.size());
+
+    size_t loop_count = 0;
+    for (auto it = begin; it != end; ++it) {
+        ASSERT_LT(loop_count, lines.size());
+
+        auto& value = *it;
+        EXPECT_EQ(std::is_const<typename std::remove_reference<decltype(value)>::type>::value, is_const_iterator);
+        EXPECT_STREQ(std::string(value.data(), value.size()).c_str(), lines[loop_count].c_str());
+
+        ++loop_count;
+    }
+
+    EXPECT_EQ(loop_count, lines.size());
+}
+
+TEST(dom_create_node, ok_scalar)
+{
+    using char_type = char;
+
+    auto node = yaml::dom::node<char_type>::create_scalar();
+
+    ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+    ASSERT_NO_THROW(node.as_scalar());
+    EXPECT_ANY_THROW(node.as_object());
+    EXPECT_ANY_THROW(node.as_array());
+    EXPECT_FALSE(node.is_null());
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_FALSE(node.is_object());
+    EXPECT_FALSE(node.is_array());
+
+    auto& scalar_node = node.as_scalar();
+    EXPECT_EQ(&scalar_node.overlying_node(), &node);
+
+    // Block style tests.
+    EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
+    EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
+
+    scalar_node.block_style(yaml::block_style_type::literal);
+    EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
+
+    scalar_node.chomping(yaml::chomping_type::keep);
+    EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::keep);
+
+    // Empty tests.
+    ASSERT_TRUE(scalar_node.empty());
+    ASSERT_EQ(scalar_node.size(), size_t{ 0 });
+
+    EXPECT_EQ(scalar_node.begin(), scalar_node.end());
+    EXPECT_EQ(scalar_node.cbegin(), scalar_node.cend());
+    EXPECT_EQ(scalar_node.crbegin(), scalar_node.crend());
+
+    // Insert tests.
+    {
+        scalar_node.push_back("First line of scalar.");
+
+        ASSERT_FALSE(scalar_node.empty());
+        ASSERT_EQ(scalar_node.size(), size_t{ 1 });
+
+        ASSERT_NE(scalar_node.begin(), scalar_node.end());
+        ASSERT_NE(scalar_node.cbegin(), scalar_node.cend());
+        ASSERT_NE(scalar_node.crbegin(), scalar_node.crend());
+
+        EXPECT_STREQ(scalar_node.begin()->c_str(), "First line of scalar.");
+
+        scalar_node.push_back("Second line of scalar.");
+
+        ASSERT_EQ(scalar_node.size(), size_t{ 2 });
+    }
+    // Loop
+    {
+        std::vector<std::string> lines = {
+            "First line of scalar.",
+            "Second line of scalar."
+        };
+
+        std::vector<std::string> lines_reverse = {
+            "Second line of scalar.",
+            "First line of scalar."           
+        };
+
+        const auto& const_scalar_node = scalar_node;
+
+        ok_scalar_loop_test(scalar_node.begin(), scalar_node.end(), false, lines);
+        ok_scalar_loop_test(const_scalar_node.begin(), const_scalar_node.end(), true, lines);
+        ok_scalar_loop_test(scalar_node.cbegin(), scalar_node.cend(), true, lines);
+        ok_scalar_loop_test(scalar_node.rbegin(), scalar_node.rend(), false, lines_reverse);
+        ok_scalar_loop_test(const_scalar_node.rbegin(), const_scalar_node.rend(), true, lines_reverse);
+        ok_scalar_loop_test(scalar_node.crbegin(), scalar_node.crend(), true, lines_reverse);
+    }
+
+    // as_string() tests.
+    {
+        scalar_node.block_style(yaml::block_style_type::none);
+        scalar_node.chomping(yaml::chomping_type::strip);
+        EXPECT_STREQ(scalar_node.as_string().c_str(), "First line of scalar. Second line of scalar.");
     }
 }
 
