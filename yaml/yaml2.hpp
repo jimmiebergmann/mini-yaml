@@ -2372,7 +2372,6 @@ namespace dom {
         return m_node_type == node_type::array;
     }
 
-
     template<typename Tchar, bool VisView>
     typename node<Tchar, VisView>::scalar_node_t& node<Tchar, VisView>::as_scalar() {
         if (m_node_type != node_type::scalar) {
@@ -2381,7 +2380,7 @@ namespace dom {
         return *m_underlying_node.scalar;
     }
     template<typename Tchar, bool VisView>
-    typename const node<Tchar, VisView>::scalar_node_t& node<Tchar, VisView>::as_scalar() const {
+    const typename node<Tchar, VisView>::scalar_node_t& node<Tchar, VisView>::as_scalar() const {
         if (m_node_type != node_type::scalar) {
             throw std::runtime_error("Cannot call as_scalar on node of this node type.");
         }
@@ -2396,7 +2395,7 @@ namespace dom {
         return *m_underlying_node.object;
     }
     template<typename Tchar, bool VisView>
-    typename const node<Tchar, VisView>::object_node_t& node<Tchar, VisView>::as_object() const {
+    const typename node<Tchar, VisView>::object_node_t& node<Tchar, VisView>::as_object() const {
         if (m_node_type != node_type::object) {
             throw std::runtime_error("Cannot call as_object on node of this node type.");
         }
@@ -2411,7 +2410,7 @@ namespace dom {
         return *m_underlying_node.array;
     }
     template<typename Tchar, bool VisView>
-    typename const node<Tchar, VisView>::array_node_t& node<Tchar, VisView>::as_array() const {
+    const typename node<Tchar, VisView>::array_node_t& node<Tchar, VisView>::as_array() const {
         if (m_node_type != node_type::array) {
             throw std::runtime_error("Cannot call as_array on node of this node type.");
         }
