@@ -77,7 +77,7 @@ namespace MINIYAML_NAMESPACE {
 }
 #else
 #define MINIYAML_HAS_STD_STRING_VIEW false
-#include <string.h>
+#include <cstring>
 namespace MINIYAML_NAMESPACE {
     template<typename T>
     class basic_string_view {
