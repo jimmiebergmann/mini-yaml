@@ -44,15 +44,44 @@ TEST(dom_read, ok_quickstart)
     auto root = std::move(read_result.root_node);
     ASSERT_EQ(root.type(), yaml::dom::node_type::object);
 
-    auto str1 = root.as_object().at("scalar").as_scalar().as_string();
-    auto str2 = root.as_object().at("list").as_array().at(0).as_scalar().as_string();
-    auto str3 = root.as_object().at("list").as_array().at(1).as_object().at("integer").as_scalar().as_string();
-    auto str4 = root.as_object().at("list").as_array().at(1).as_object().at("boolean").as_scalar().as_string();
+    {
+        auto str1 = root.as_object().at("scalar").as_scalar().as_string();
+        auto str2 = root.as_object().at("list").as_array().at(0).as_scalar().as_string();
+        auto str3 = root.as_object().at("list").as_array().at(1).as_object().at("integer").as_scalar().as_string();
+        auto str4 = root.as_object().at("list").as_array().at(1).as_object().at("boolean").as_scalar().as_string();
 
-    EXPECT_STREQ(str1.c_str(), "foo bar");
-    EXPECT_STREQ(str2.c_str(), "hello world");
-    EXPECT_STREQ(str3.c_str(), "123");
-    EXPECT_STREQ(str4.c_str(), "true");
+        EXPECT_STREQ(str1.c_str(), "foo bar");
+        EXPECT_STREQ(str2.c_str(), "hello world");
+        EXPECT_STREQ(str3.c_str(), "123");
+        EXPECT_STREQ(str4.c_str(), "true");
+    }
+    {
+        auto str1 = root["scalar"].as_string();
+        auto str2 = root["list"][0].as_string();
+        auto str3 = root["list"][1]["integer"].as_string();
+        auto str4 = root["list"][1]["boolean"].as_string();
+
+        EXPECT_STREQ(str1.c_str(), "foo bar");
+        EXPECT_STREQ(str2.c_str(), "hello world");
+        EXPECT_STREQ(str3.c_str(), "123");
+        EXPECT_STREQ(str4.c_str(), "true");
+    }
+}
+
+TEST(dom_create_node, ok_null)
+{
+    using char_type = char;
+
+    auto node = yaml::dom::node<char_type>{};
+
+    ASSERT_EQ(node.type(), yaml::dom::node_type::null);
+    EXPECT_ANY_THROW(node.as_scalar());
+    EXPECT_ANY_THROW(node.as_object());
+    EXPECT_ANY_THROW(node.as_array());
+    EXPECT_TRUE(node.is_null());
+    EXPECT_FALSE(node.is_scalar());
+    EXPECT_FALSE(node.is_object());
+    EXPECT_FALSE(node.is_array());
 }
 
 TEST(dom_create_node, ok_scalar)
@@ -65,6 +94,10 @@ TEST(dom_create_node, ok_scalar)
     ASSERT_NO_THROW(node.as_scalar());
     EXPECT_ANY_THROW(node.as_object());
     EXPECT_ANY_THROW(node.as_array());
+    EXPECT_FALSE(node.is_null());
+    EXPECT_TRUE(node.is_scalar());
+    EXPECT_FALSE(node.is_object());
+    EXPECT_FALSE(node.is_array());
 
     auto& scalar_node = node.as_scalar();
     EXPECT_EQ(&scalar_node.overlying_node(), &node);
@@ -119,6 +152,10 @@ TEST(dom_create_node, ok_object)
     ASSERT_NO_THROW(node.as_object());
     EXPECT_ANY_THROW(node.as_scalar());
     EXPECT_ANY_THROW(node.as_array());
+    EXPECT_FALSE(node.is_null());
+    EXPECT_FALSE(node.is_scalar());
+    EXPECT_TRUE(node.is_object());
+    EXPECT_FALSE(node.is_array());
 
     auto& object_node = node.as_object();
     EXPECT_EQ(&object_node.overlying_node(), &node);
@@ -218,6 +255,10 @@ TEST(dom_create_node, ok_array)
     EXPECT_ANY_THROW(node.as_object());
     EXPECT_ANY_THROW(node.as_scalar());
     ASSERT_NO_THROW(node.as_array());
+    EXPECT_FALSE(node.is_null());
+    EXPECT_FALSE(node.is_scalar());
+    EXPECT_FALSE(node.is_object());
+    EXPECT_TRUE(node.is_array());
 
     auto& array_node = node.as_array();
     EXPECT_EQ(&array_node.overlying_node(), &node);
@@ -416,9 +457,7 @@ TEST(dom_read, ok_scalar_with_gaps)
     EXPECT_EQ(scalar_node.size(), size_t{ 10 });
 
     EXPECT_STREQ(scalar_node.as_string().c_str(), "first second\nthird\n\nfourth");
-
 }
-
 
 TEST(dom_read, ok_file_learnyaml)
 {

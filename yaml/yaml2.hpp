@@ -424,6 +424,7 @@ namespace dom {
         using scalar_node_t = scalar_node<Tchar, VisView>;
         using object_node_t = object_node<Tchar, VisView>;
         using array_node_t = array_node<Tchar, VisView>;
+        using string_t = typename std::conditional<VisView, MINIYAML_NAMESPACE::basic_string_view<Tchar>, std::basic_string<Tchar>>::type;
 
         static node create_scalar(block_style_type block_style = block_style_type::none, chomping_type chomping = chomping_type::strip);
         static node create_object();
@@ -445,8 +446,29 @@ namespace dom {
         MINIYAML_NODISCARD bool is_array() const;
 
         scalar_node_t& as_scalar();
+        const scalar_node_t& as_scalar() const;
         object_node_t& as_object();
+        const object_node_t& as_object() const;
         array_node_t& as_array();
+        const array_node_t& as_array() const;
+
+        MINIYAML_NODISCARD std::basic_string<Tchar> as_string() const;
+
+        MINIYAML_NODISCARD bool empty() const;
+        MINIYAML_NODISCARD size_t size() const;
+
+        MINIYAML_NODISCARD bool contains(string_t key) const;
+        MINIYAML_NODISCARD bool contains(size_t index) const;
+
+        node& at(string_t key);
+        const node& at(string_t key) const;
+        node& at(size_t index);
+        const node& at(size_t index) const;
+
+        node& operator[](string_t key);
+        const node& operator[](string_t key) const;
+        node& operator[](size_t index);
+        const node& operator[](size_t index) const;
 
     private:
 
@@ -2358,9 +2380,23 @@ namespace dom {
         }
         return *m_underlying_node.scalar;
     }
+    template<typename Tchar, bool VisView>
+    typename const node<Tchar, VisView>::scalar_node_t& node<Tchar, VisView>::as_scalar() const {
+        if (m_node_type != node_type::scalar) {
+            throw std::runtime_error("Cannot call as_scalar on node of this node type.");
+        }
+        return *m_underlying_node.scalar;
+    }
 
     template<typename Tchar, bool VisView>
     typename node<Tchar, VisView>::object_node_t& node<Tchar, VisView>::as_object() {
+        if (m_node_type != node_type::object) {
+            throw std::runtime_error("Cannot call as_object on node of this node type.");
+        }
+        return *m_underlying_node.object;
+    }
+    template<typename Tchar, bool VisView>
+    typename const node<Tchar, VisView>::object_node_t& node<Tchar, VisView>::as_object() const {
         if (m_node_type != node_type::object) {
             throw std::runtime_error("Cannot call as_object on node of this node type.");
         }
@@ -2373,6 +2409,110 @@ namespace dom {
             throw std::runtime_error("Cannot call as_array on node of this node type.");
         }
         return *m_underlying_node.array;
+    }
+    template<typename Tchar, bool VisView>
+    typename const node<Tchar, VisView>::array_node_t& node<Tchar, VisView>::as_array() const {
+        if (m_node_type != node_type::array) {
+            throw std::runtime_error("Cannot call as_array on node of this node type.");
+        }
+        return *m_underlying_node.array;
+    }
+
+    template<typename Tchar, bool VisView>
+    std::basic_string<Tchar> node<Tchar, VisView>::as_string() const {
+        switch (m_node_type) {
+            case node_type::null: return "null";
+            case node_type::scalar: return as_scalar().as_string();
+            case node_type::object: return "";
+            case node_type::array: return "";
+        }
+        return "";
+    }
+
+    template<typename Tchar, bool VisView>
+    bool node<Tchar, VisView>::empty() const {
+        switch (m_node_type) {
+            case node_type::scalar: return as_scalar().empty();
+            case node_type::object: return as_object().empty();
+            case node_type::array: return as_array().empty();
+            default: break;
+        }
+        return true;
+    }
+
+    template<typename Tchar, bool VisView>
+    size_t node<Tchar, VisView>::size() const {
+        switch (m_node_type) {
+            case node_type::scalar: return as_scalar().size();
+            case node_type::object: return as_object().size();
+            case node_type::array: return as_array().size();
+            default: break;
+        }
+        return 0;
+    }
+
+    template<typename Tchar, bool VisView>
+    bool node<Tchar, VisView>::contains(string_t key) const {
+        if (m_node_type == node_type::object) {
+            return as_object().contains(key);
+        }
+        return false;
+    }
+
+    template<typename Tchar, bool VisView>
+    bool node<Tchar, VisView>::contains(size_t index) const {
+        if (m_node_type == node_type::array) {
+            return as_array().contains(index);
+        }
+        return false;
+    }
+
+    template<typename Tchar, bool VisView>
+    node<Tchar, VisView>& node<Tchar, VisView>::at(string_t key) {
+        auto& object_node = as_object();
+        return object_node.at(key);
+    }
+
+    template<typename Tchar, bool VisView>
+    const node<Tchar, VisView>& node<Tchar, VisView>::at(string_t key) const {
+        auto& object_node = as_object();
+        return object_node.at(key);
+    }
+
+    template<typename Tchar, bool VisView>
+    node<Tchar, VisView>& node<Tchar, VisView>::at(size_t index) {
+        auto& array_node = as_array();
+        return array_node.at(index);
+    }
+
+    template<typename Tchar, bool VisView>
+    const node<Tchar, VisView>& node<Tchar, VisView>::at(size_t index) const {
+        auto& array_node = as_array();
+        return array_node.at(index);
+    }
+
+    template<typename Tchar, bool VisView>
+    node<Tchar, VisView>& node<Tchar, VisView>::operator[](string_t key) {
+        auto& object_node = as_object();
+        return object_node.at(key);
+    }
+
+    template<typename Tchar, bool VisView>
+    const node<Tchar, VisView>& node<Tchar, VisView>::operator[](string_t key) const {
+        auto& object_node = as_object();
+        return object_node.at(key);
+    }
+
+    template<typename Tchar, bool VisView>
+    node<Tchar, VisView>& node<Tchar, VisView>::operator[](size_t index) {
+        auto& array_node = as_array();
+        return array_node.at(index);
+    }
+
+    template<typename Tchar, bool VisView>
+    const node<Tchar, VisView>& node<Tchar, VisView>::operator[](size_t index) const {
+        auto& array_node = as_array();
+        return array_node.at(index);
     }
 
     template<typename Tchar, bool VisView>

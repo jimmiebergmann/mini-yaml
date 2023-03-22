@@ -23,10 +23,10 @@ if(!result) {
 }
 
 auto& root = result.root_node;
-std::cout << root.as_object().at("scalar").as_scalar().as_string() << "\n";
-std::cout << root.as_object().at("list").as_array().at(0).as_scalar().as_string() << "\n";
-std::cout << root.as_object().at("list").as_array().at(1).as_object().at("integer").as_scalar().as_string() << "\n";
-std::cout << root.as_object().at("list").as_array().at(1).as_object().at("boolean").as_scalar().as_string() << "\n";
+std::cout << root["scalar"].as_string() << "\n";
+std::cout << root["list"][0].as_string() << "\n";
+std::cout << root["list"][1]["integer"].as_string() << "\n";
+std::cout << root["list"][1]["boolean"].as_string() << "\n";
 
 ```
 ### Output
