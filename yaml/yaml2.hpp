@@ -77,6 +77,7 @@ namespace MINIYAML_NAMESPACE {
 }
 #else
 #define MINIYAML_HAS_STD_STRING_VIEW false
+#include <string.h>
 namespace MINIYAML_NAMESPACE {
     template<typename T>
     class basic_string_view {
@@ -90,10 +91,23 @@ namespace MINIYAML_NAMESPACE {
             m_size(0)
         {}
 
+        basic_string_view(const T* s) :
+            m_data(s),
+            m_size(std::strlen(s))
+        {}
+
         basic_string_view(const T* s, size_t count) :
             m_data(s),
             m_size(count)
         {}
+
+        T operator [](size_t index) const {
+            return m_data[index];
+        }
+
+        bool operator == (const basic_string_view& rhs) const {
+            return m_size == rhs.m_size && std::strncmp(m_data, rhs.m_data, m_size) == 0;
+        }
 
         MINIYAML_NODISCARD const T* data() const { return m_data; };
         MINIYAML_NODISCARD size_t size() const { return m_size; };
@@ -144,7 +158,7 @@ namespace MINIYAML_NAMESPACE {
         MINIYAML_INLINE_VARIABLE constexpr static T sequence = '-';
         //MINIYAML_INLINE_VARIABLE constexpr static T sequence_start = '[';
         //MINIYAML_INLINE_VARIABLE constexpr static T sequence_end = ']';
-        //MINIYAML_INLINE_VARIABLE constexpr static T null = '~';
+        MINIYAML_INLINE_VARIABLE constexpr static T null = '~';
         MINIYAML_INLINE_VARIABLE constexpr static T literal_block = '|';
         MINIYAML_INLINE_VARIABLE constexpr static T folded_block = '>';
         MINIYAML_INLINE_VARIABLE constexpr static T chomping_strip = '-';
@@ -466,7 +480,6 @@ namespace dom {
         const node& at(size_t index) const;
 
         node& operator[](string_t key);
-        const node& operator[](string_t key) const;
         node& operator[](size_t index);
         const node& operator[](size_t index) const;
 
@@ -605,6 +618,8 @@ namespace dom {
         node_t& at(string_t key);
         const node_t& at(string_t key) const;
 
+        node_t& operator [] (string_t key);
+
         insert_return_type insert(string_t key);
         insert_return_type insert(string_t key, node_t&& node);
 
@@ -668,6 +683,9 @@ namespace dom {
 
         node_t& at(size_t index);
         const node_t& at(size_t index) const;
+
+        node_t& operator[](size_t index);
+        const node_t& operator[](size_t index) const;
 
         iterator insert(const_iterator pos);
         iterator insert(const_iterator pos, node_t&& node);
@@ -2493,25 +2511,19 @@ namespace dom {
     template<typename Tchar, bool VisView>
     node<Tchar, VisView>& node<Tchar, VisView>::operator[](string_t key) {
         auto& object_node = as_object();
-        return object_node.at(key);
-    }
-
-    template<typename Tchar, bool VisView>
-    const node<Tchar, VisView>& node<Tchar, VisView>::operator[](string_t key) const {
-        auto& object_node = as_object();
-        return object_node.at(key);
+        return object_node[key];
     }
 
     template<typename Tchar, bool VisView>
     node<Tchar, VisView>& node<Tchar, VisView>::operator[](size_t index) {
         auto& array_node = as_array();
-        return array_node.at(index);
+        return array_node[index];
     }
 
     template<typename Tchar, bool VisView>
     const node<Tchar, VisView>& node<Tchar, VisView>::operator[](size_t index) const {
         auto& array_node = as_array();
-        return array_node.at(index);
+        return array_node[index];
     }
 
     template<typename Tchar, bool VisView>
@@ -2929,6 +2941,17 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
+    typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::operator [] (string_t key) {
+        auto it = m_map.find(key);
+        if (it != m_map.end()) {
+            return *it->second;
+        }
+        
+        auto insert_result = m_map.insert({ key, node_ptr_t{ new node_t{} } });
+        return *insert_result.first->second;
+    }
+
+    template<typename Tchar, bool VisView>
     typename object_node<Tchar, VisView>::insert_return_type object_node<Tchar, VisView>::insert(string_t key) {
         auto found_it = m_map.find(key);
         if (found_it != m_map.end()) {
@@ -3072,6 +3095,16 @@ namespace dom {
 
     template<typename Tchar, bool VisView>
     const typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::at(size_t index) const {
+        return *m_list.at(index);
+    }
+
+    template<typename Tchar, bool VisView>
+    typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::operator[](size_t index) {
+        return *m_list.at(index);
+    }
+
+    template<typename Tchar, bool VisView>
+    const typename array_node<Tchar, VisView>::node_t& array_node<Tchar, VisView>::operator[](size_t index) const {
         return *m_list.at(index);
     }
 
@@ -3257,9 +3290,6 @@ namespace dom {
 
     template<typename Tchar>
     void reader<Tchar>::sax_handler::end_scalar() {
-        *m_current_node = node_t::create_scalar(m_current_block_style, m_current_chomping);
-        auto& scalar_node = m_current_node->as_scalar();
-
         auto get_iterators = [&]() -> std::pair<string_view_list_iterator, string_view_list_iterator> {
             if (m_current_block_style == block_style_type::none) {
                 auto begin_it = std::find_if(m_string_views.begin(), m_string_views.end(),
@@ -3279,6 +3309,29 @@ namespace dom {
         auto iterators = get_iterators();
         auto begin_it = iterators.first;
         auto end_it = iterators.second;
+
+        auto check_null_token = [](string_view_type line) {
+            return line.size() == 1 && line[0] == token<Tchar>::null;
+        };
+
+        auto check_null_keyword = [](string_view_type line) {
+            return  line.size() == 4 && (
+                ((line[0] == 'n') && (line == "null")) ||
+                ((line[0] == 'N') && (line == "Null" || line == "NULL"))
+            );
+        };
+
+        auto line_count = std::distance(begin_it, end_it);
+        if (line_count == 1 && m_current_block_style == block_style_type::none) {
+            auto single_line = *begin_it;
+            if (check_null_token(single_line) || check_null_keyword(single_line)) {
+                pop_stack();
+                return;
+            }
+        }
+
+        *m_current_node = node_t::create_scalar(m_current_block_style, m_current_chomping);
+        auto& scalar_node = m_current_node->as_scalar();
 
         for (auto it = begin_it; it != end_it; ++it) {
             scalar_node.push_back(MINIYAML_NAMESPACE::impl::view_to_string(*it));

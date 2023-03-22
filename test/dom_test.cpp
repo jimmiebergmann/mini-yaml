@@ -402,6 +402,41 @@ TEST(dom_read, ok_object)
     EXPECT_TRUE(object_node.contains("key 4"));
 }
 
+TEST(dom_read, ok_null)
+{
+    const std::string input =
+        "key 1: ~\n"
+        "key 2: null\n"
+        "key 3: Null\n"
+        "key 4: NULL\n";
+
+    auto read_result = yaml::dom::read_document(input);
+    ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+    auto node = std::move(read_result.root_node);
+    ASSERT_EQ(node.type(), yaml::dom::node_type::object);
+    ASSERT_NO_THROW(node.as_object());
+    auto& object_node = node.as_object();
+
+    ASSERT_FALSE(object_node.empty());
+    ASSERT_EQ(object_node.size(), size_t{ 4 });
+
+    ASSERT_TRUE(object_node.contains("key 1"));
+    ASSERT_TRUE(object_node.contains("key 2"));
+    ASSERT_TRUE(object_node.contains("key 3"));
+    ASSERT_TRUE(object_node.contains("key 4"));
+
+    auto& node_1 = object_node.at("key 1");
+    EXPECT_EQ(node_1.type(), yaml::dom::node_type::null);
+    auto& node_2 = object_node.at("key 2");
+    EXPECT_EQ(node_2.type(), yaml::dom::node_type::null);
+    auto& node_3 = object_node.at("key 3");
+    EXPECT_EQ(node_3.type(), yaml::dom::node_type::null);
+    auto& node_4 = object_node.at("key 4");
+    EXPECT_EQ(node_4.type(), yaml::dom::node_type::null);
+
+}
+
 TEST(dom_read, ok_scalar)
 {
     const std::string input =
@@ -563,24 +598,14 @@ TEST(dom_read, ok_file_learnyaml)
         ASSERT_NE(it, root_object_node.end());
 
         auto& node = *it->second;
-        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
-        auto& scalar_node = node.as_scalar();
-
-        auto string = scalar_node.as_string();
-        EXPECT_STREQ(string.c_str(), "null");
+        EXPECT_EQ(node.type(), yaml::dom::node_type::null);
     }
     {
         auto it = root_object_node.find("another_null_value");
         ASSERT_NE(it, root_object_node.end());
 
         auto& node = *it->second;
-        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
-        auto& scalar_node = node.as_scalar();
-
-        auto string = scalar_node.as_string();
-        EXPECT_STREQ(string.c_str(), "~");
+        EXPECT_EQ(node.type(), yaml::dom::node_type::null);
     }
     {
         auto it = root_object_node.find("key with spaces");
@@ -1042,12 +1067,7 @@ TEST(dom_read, ok_file_learnyaml)
             EXPECT_STREQ(it2->first.c_str(), "item1");
 
             auto& node2 = *it2->second;
-            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
-            ASSERT_NO_THROW(node2.as_scalar());
-            auto& scalar_node = node2.as_scalar();
-
-            auto string = scalar_node.as_string();
-            EXPECT_STREQ(string.c_str(), "null");
+            EXPECT_EQ(node2.type(), yaml::dom::node_type::null);
         }
         {
             auto it2 = object_node.find("item2");
@@ -1056,12 +1076,7 @@ TEST(dom_read, ok_file_learnyaml)
             EXPECT_STREQ(it2->first.c_str(), "item2");
 
             auto& node2 = *it2->second;
-            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
-            ASSERT_NO_THROW(node2.as_scalar());
-            auto& scalar_node = node2.as_scalar();
-
-            auto string = scalar_node.as_string();
-            EXPECT_STREQ(string.c_str(), "null");
+            EXPECT_EQ(node2.type(), yaml::dom::node_type::null);
         }
         {
             auto it2 = object_node.find("item3");
@@ -1070,12 +1085,7 @@ TEST(dom_read, ok_file_learnyaml)
             EXPECT_STREQ(it2->first.c_str(), "item3");
 
             auto& node2 = *it2->second;
-            ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
-            ASSERT_NO_THROW(node2.as_scalar());
-            auto& scalar_node = node2.as_scalar();
-
-            auto string = scalar_node.as_string();
-            EXPECT_STREQ(string.c_str(), "null");
+            EXPECT_EQ(node2.type(), yaml::dom::node_type::null);
         }
     }
 
