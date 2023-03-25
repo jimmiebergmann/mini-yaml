@@ -2702,7 +2702,7 @@ namespace dom {
     template<typename Tchar, bool VisView>
     template<typename Tvalue>
     Tvalue node<Tchar, VisView>::as(Tvalue default_value) const {
-        return as_scalar().as<Tvalue>(default_value);
+        return as_scalar().template as<Tvalue>(default_value);
     }
 
     template<typename Tchar, bool VisView>

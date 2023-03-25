@@ -212,7 +212,7 @@ TEST(dom_create_node, ok_array)
         auto it1 = array_node.erase(array_node.begin());
         ASSERT_EQ(array_node.size(), size_t{ 4 });
 
-        auto it2 = array_node.erase(it1, std::next(std::next(it1)));
+        array_node.erase(it1, std::next(std::next(it1)));
         ASSERT_EQ(array_node.size(), size_t{ 2 });
 
         ASSERT_NO_THROW(array_node.at(0));
