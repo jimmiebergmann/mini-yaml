@@ -5,15 +5,16 @@ Single header YAML C++ >= 11 sax/dom reader.
 
 ## Quickstart
 ### file.yml
-```
+```yaml
 scalar: foo bar
 list:
   - hello world
-  - integer: 123
-    boolean: true
+  - boolean: true
+    integer: 123
+    floating point: 2.75
 ```
 ### .cpp
-Error checking is omitted, see quickstart_full.yml for a real example.
+Error checking is omitted, see quickstart_full.yml for a real use case example.
 ```cpp
 #include "yaml/yaml2.hpp"
 
@@ -25,16 +26,18 @@ if(!result) {
 auto& root = result.root_node;
 std::cout << root["scalar"].as_string() << "\n";
 std::cout << root["list"][0].as_string() << "\n";
-std::cout << root["list"][1]["integer"].as_string() << "\n";
-std::cout << root["list"][1]["boolean"].as_string() << "\n";
+std::cout << root["list"][1]["boolean"].as<bool>() << "\n";
+std::cout << root["list"][1]["integer"].as<int>() << "\n";
+std::cout << root["list"][1]["floating point"].as<float>() << "\n";
 
 ```
 ### Output
 ```
 foo bar
 hello world
-123
 true
+123
+2.75
 ```
 ## Usage
 Put [/yaml](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml) in your project directory and simply #include "[yaml/yaml2.hpp](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml/yaml2.hpp)".

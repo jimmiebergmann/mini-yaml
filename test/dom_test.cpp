@@ -35,8 +35,9 @@ TEST(dom_read, ok_quickstart)
         "scalar: foo bar\n"
         "list:\n"
         " - hello world\n"
-        " - integer : 123\n"
-        "   boolean : true";
+        " - boolean : true\n"
+        "   integer : 123\n"
+        "   floating point : 2.75";
     
     auto read_result = yaml::dom::read_document(input);
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
@@ -45,26 +46,30 @@ TEST(dom_read, ok_quickstart)
     ASSERT_EQ(root.type(), yaml::dom::node_type::object);
 
     {
-        auto str1 = root.as_object().at("scalar").as_scalar().as_string();
-        auto str2 = root.as_object().at("list").as_array().at(0).as_scalar().as_string();
-        auto str3 = root.as_object().at("list").as_array().at(1).as_object().at("integer").as_scalar().as_string();
-        auto str4 = root.as_object().at("list").as_array().at(1).as_object().at("boolean").as_scalar().as_string();
+        const auto str1 = root.as_object().at("scalar").as_scalar().as_string();
+        const auto str2 = root.as_object().at("list").as_array().at(0).as_scalar().as_string();
+        const auto bool1 = root.as_object().at("list").as_array().at(1).as_object().at("boolean").as_scalar().as<bool>();
+        const auto int1 = root.as_object().at("list").as_array().at(1).as_object().at("integer").as_scalar().as<int>();
+        const auto float1 = root.as_object().at("list").as_array().at(1).as_object().at("floating point").as_scalar().as<float>();
 
         EXPECT_STREQ(str1.c_str(), "foo bar");
         EXPECT_STREQ(str2.c_str(), "hello world");
-        EXPECT_STREQ(str3.c_str(), "123");
-        EXPECT_STREQ(str4.c_str(), "true");
+        EXPECT_TRUE(bool1);
+        EXPECT_EQ(int1, int{ 123 });
+        EXPECT_FLOAT_EQ(float1, float{ 2.75f });
     }
     {
-        auto str1 = root["scalar"].as_string();
-        auto str2 = root["list"][0].as_string();
-        auto str3 = root["list"][1]["integer"].as_string();
-        auto str4 = root["list"][1]["boolean"].as_string();
+        const auto str1 = root["scalar"].as_string();
+        const auto str2 = root["list"][0].as_string();
+        const auto bool1 = root["list"][1]["boolean"].as<bool>();
+        const auto int1 = root["list"][1]["integer"].as<int>();
+        const auto float1 = root["list"][1]["floating point"].as<float>();
 
         EXPECT_STREQ(str1.c_str(), "foo bar");
         EXPECT_STREQ(str2.c_str(), "hello world");
-        EXPECT_STREQ(str3.c_str(), "123");
-        EXPECT_STREQ(str4.c_str(), "true");
+        EXPECT_TRUE(bool1);
+        EXPECT_EQ(int1, int{ 123 }); 
+        EXPECT_FLOAT_EQ(float1, float{ 2.75f });
     }
 }
 
@@ -1194,4 +1199,681 @@ TEST(dom_read, fail_unknown_file)
     auto read_result = yaml::dom::read_document_from_file<char_type>("../test/this_file_does_not_exist.some_extension");
     EXPECT_EQ(read_result.result_code, yaml::read_result_code::cannot_open_file);
     EXPECT_FALSE(read_result);
+}
+
+TEST(dom_scalar_as, as_bool)
+{
+    using char_type = char;
+    auto node = yaml::dom::node<char_type>::create_scalar();
+    auto& scalar_node = node.as_scalar();
+    scalar_node.push_back("");
+
+    // Empty
+    {
+        scalar_node.at(0) = "";
+        EXPECT_FALSE(scalar_node.as<bool>());
+        EXPECT_TRUE(scalar_node.as<bool>(true));
+    }
+    {
+        scalar_node.at(0) = " ";
+        EXPECT_FALSE(scalar_node.as<bool>());
+        EXPECT_TRUE(scalar_node.as<bool>(true));
+    }
+    {
+        scalar_node.at(0) = "hello";
+        EXPECT_FALSE(scalar_node.as<bool>());
+        EXPECT_TRUE(scalar_node.as<bool>(true));
+    }
+    // true
+    {
+        scalar_node.at(0) = "true";
+        EXPECT_TRUE(scalar_node.as<bool>());
+
+        scalar_node.at(0) = "True";
+        EXPECT_TRUE(scalar_node.as<bool>());
+
+        scalar_node.at(0) = "TRUE";
+        EXPECT_TRUE(scalar_node.as<bool>());
+
+        scalar_node.at(0) = "yes";
+        EXPECT_TRUE(scalar_node.as<bool>());
+
+        scalar_node.at(0) = "Yes";
+        EXPECT_TRUE(scalar_node.as<bool>());
+
+        scalar_node.at(0) = "yes";
+        EXPECT_TRUE(scalar_node.as<bool>());
+    }
+    // false
+    {
+        scalar_node.at(0) = "false";
+        EXPECT_FALSE(scalar_node.as<bool>());
+        EXPECT_FALSE(scalar_node.as<bool>(true));
+
+        scalar_node.at(0) = "False";
+        EXPECT_FALSE(scalar_node.as<bool>());
+        EXPECT_FALSE(scalar_node.as<bool>(true));
+
+        scalar_node.at(0) = "FALSE";
+        EXPECT_FALSE(scalar_node.as<bool>());
+        EXPECT_FALSE(scalar_node.as<bool>(true));
+
+        scalar_node.at(0) = "no";
+        EXPECT_FALSE(scalar_node.as<bool>());
+        EXPECT_FALSE(scalar_node.as<bool>(true));
+
+        scalar_node.at(0) = "No";
+        EXPECT_FALSE(scalar_node.as<bool>());
+        EXPECT_FALSE(scalar_node.as<bool>(true));
+
+        scalar_node.at(0) = "NO";
+        EXPECT_FALSE(scalar_node.as<bool>());
+        EXPECT_FALSE(scalar_node.as<bool>(true));
+    }
+}
+
+TEST(dom_scalar_as, as_int32_t)
+{
+    using char_type = char;
+    auto node = yaml::dom::node<char_type>::create_scalar();
+    auto& scalar_node = node.as_scalar();
+    scalar_node.push_back("");
+
+    // Empty
+    {
+        scalar_node.at(0) = "";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 1337 });
+    }
+    {
+        scalar_node.at(0) = " ";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 1337 });
+    }
+
+    // Base 10
+    {
+        scalar_node.at(0) = "0";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 0 });
+
+        scalar_node.at(0) = "-0";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 0 });
+
+        scalar_node.at(0) = "+0";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 0 });
+    }
+    {
+        scalar_node.at(0) = "1";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 1 });
+
+        scalar_node.at(0) = "-1";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ -1 });
+
+        scalar_node.at(0) = "123456";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 123456 });
+
+        scalar_node.at(0) = "-123456";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ -123456 });
+
+        scalar_node.at(0) = "+123456";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ +123456 });
+    }
+    {
+        scalar_node.at(0) = std::to_string(std::numeric_limits<int32_t>::max());
+        EXPECT_EQ(scalar_node.as<int32_t>(), std::numeric_limits<int32_t>::max());
+
+        scalar_node.at(0) = std::to_string(std::numeric_limits<int32_t>::max()) + "0";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 1337 });
+
+        scalar_node.at(0) = std::to_string(std::numeric_limits<int32_t>::min());
+        EXPECT_EQ(scalar_node.as<int32_t>(), std::numeric_limits<int32_t>::min());
+
+        scalar_node.at(0) = std::to_string(std::numeric_limits<int32_t>::min()) + "0";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 1337 });
+    }
+
+    // Base 8
+    {
+        scalar_node.at(0) = "00";
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 0 });
+
+        scalar_node.at(0) = "0144";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 100 });
+
+        scalar_node.at(0) = "063003711";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 13371337 });
+    }
+    {
+        scalar_node.at(0) = "0123123123123123123123";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 1337 });
+    }
+
+    // Base 16
+    {
+        scalar_node.at(0) = "0x0";
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 0 });
+        scalar_node.at(0) = "0X0";
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 0 });
+
+        scalar_node.at(0) = "0x1";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 1 });
+
+        scalar_node.at(0) = "0xBEEF";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 48879 });
+    }
+    {
+        scalar_node.at(0) = "0xBEEFBEEFF";
+        EXPECT_EQ(scalar_node.as<int32_t>(), int32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<int32_t>(1337), int32_t{ 1337 });
+    }
+}
+
+TEST(dom_scalar_as, as_int64_t)
+{
+    using char_type = char;
+    auto node = yaml::dom::node<char_type>::create_scalar();
+    auto& scalar_node = node.as_scalar();
+    scalar_node.push_back("");
+
+    // Empty
+    {
+        scalar_node.at(0) = "";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 0LL });
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 1337LL });
+    }
+    {
+        scalar_node.at(0) = " ";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 0LL });
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 1337LL });
+    }
+
+    // Base 10
+    {
+        scalar_node.at(0) = "0";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 0LL });
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 0LL });
+
+        scalar_node.at(0) = "-0";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 0LL });
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 0LL });
+
+        scalar_node.at(0) = "+0";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 0LL });
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 0LL });
+    }
+    {
+        scalar_node.at(0) = "1";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 1LL });
+
+        scalar_node.at(0) = "-1";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ -1LL });
+
+        scalar_node.at(0) = "123456";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 123456LL });
+
+        scalar_node.at(0) = "-123456";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ -123456LL });
+
+        scalar_node.at(0) = "+123456";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 123456LL });
+    }
+    {
+        scalar_node.at(0) = std::to_string(std::numeric_limits<int64_t>::max());
+        EXPECT_EQ(scalar_node.as<int64_t>(), std::numeric_limits<int64_t>::max());
+
+        scalar_node.at(0) = std::to_string(std::numeric_limits<int64_t>::max()) + "00123";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 0LL });
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 1337LL });
+
+        scalar_node.at(0) = std::to_string(std::numeric_limits<int64_t>::min() + 1);
+        EXPECT_EQ(scalar_node.as<int64_t>(), std::numeric_limits<int64_t>::min() + 1);
+
+        scalar_node.at(0) = std::to_string(std::numeric_limits<int64_t>::min()) + "0";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 0LL });
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 1337LL });
+    }
+
+    // Base 8
+    {
+        scalar_node.at(0) = "00";
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 0LL });
+
+        scalar_node.at(0) = "0144";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 100LL });
+
+        scalar_node.at(0) = "063003711";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 13371337LL });
+    }
+    {
+        scalar_node.at(0) = "0123123123123123123123123123123";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 0LL });
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 1337LL });
+    }
+
+    // Base 16
+    {
+        scalar_node.at(0) = "0x0";
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 0LL });
+        scalar_node.at(0) = "0X0";
+        EXPECT_EQ(scalar_node.as<int64_t>(1337LL), int64_t{ 0LL });
+
+        scalar_node.at(0) = "0x1";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 1LL });
+
+        scalar_node.at(0) = "0xBEEFBEEFBEEF";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 209936909844207LL });
+    }
+    {
+        scalar_node.at(0) = "0xBEEFBEEFFBEEFBEEF";
+        EXPECT_EQ(scalar_node.as<int64_t>(), int64_t{ 0LL });
+        EXPECT_EQ(scalar_node.as<int64_t>(1337), int64_t{ 1337LL });
+    }
+}
+
+TEST(dom_scalar_as, as_uint32_t)
+{
+    using char_type = char;
+    auto node = yaml::dom::node<char_type>::create_scalar();
+    auto& scalar_node = node.as_scalar();
+    scalar_node.push_back("");
+
+    // Empty
+    {
+        scalar_node.at(0) = "";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 1337 });
+    }
+    {
+        scalar_node.at(0) = " ";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 1337 });
+    }
+
+    // Base 10
+    {
+        scalar_node.at(0) = "0";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 0 });
+
+        scalar_node.at(0) = "-0";
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 0 });
+
+        scalar_node.at(0) = "+0";
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 0 });
+    }
+    {
+        scalar_node.at(0) = "1";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 1 });
+
+        scalar_node.at(0) = "-1";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 1337 });
+
+        scalar_node.at(0) = "123456";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 123456 });
+
+        scalar_node.at(0) = "-123456";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 1337 });
+
+        scalar_node.at(0) = "+123456";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 123456 });
+    }
+    {
+        scalar_node.at(0) = std::to_string(std::numeric_limits<uint32_t>::max());
+        EXPECT_EQ(scalar_node.as<uint32_t>(), std::numeric_limits<uint32_t>::max());
+
+        scalar_node.at(0) = std::to_string(std::numeric_limits<uint32_t>::max()) + "0";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 1337 });
+    }
+
+    // Base 8
+    {
+        scalar_node.at(0) = "00";
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 0 });
+
+        scalar_node.at(0) = "0144";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 100 });
+
+        scalar_node.at(0) = "063003711";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 13371337 });
+    }
+    {
+        scalar_node.at(0) = "0123123123123123123123";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 1337 });
+    }
+
+    // Base 16
+    {
+        scalar_node.at(0) = "0x0";
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 0 });
+        scalar_node.at(0) = "0X0";
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 0 });
+
+        scalar_node.at(0) = "0x1";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 1 });
+
+        scalar_node.at(0) = "0xBEEF";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 48879 });
+    }
+    {
+        scalar_node.at(0) = "0xBEEFBEEFF";
+        EXPECT_EQ(scalar_node.as<uint32_t>(), uint32_t{ 0 });
+        EXPECT_EQ(scalar_node.as<uint32_t>(1337), uint32_t{ 1337 });
+    }
+}
+
+TEST(dom_scalar_as, as_uint64_t)
+{
+    using char_type = char;
+    auto node = yaml::dom::node<char_type>::create_scalar();
+    auto& scalar_node = node.as_scalar();
+    scalar_node.push_back("");
+
+    // Empty
+    {
+        scalar_node.at(0) = "";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 0ULL });
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337ULL), uint64_t{ 1337ULL });
+    }
+    {
+        scalar_node.at(0) = " ";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 0ULL });
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337ULL), uint64_t{ 1337ULL });
+    }
+
+    // Base 10
+    {
+        scalar_node.at(0) = "0";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 0ULL });
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337ULL), uint64_t{ 0ULL });
+
+        scalar_node.at(0) = "-0";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 0ULL });
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337ULL), uint64_t{ 0ULL });
+
+        scalar_node.at(0) = "+0";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 0ULL });
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337ULL), uint64_t{ 0ULL });
+    }
+    {
+        scalar_node.at(0) = "1";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 1ULL });
+
+        scalar_node.at(0) = "-1";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 18446744073709551615ULL });
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337), uint64_t{ 18446744073709551615ULL });
+
+        scalar_node.at(0) = "123456789012";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 123456789012ULL });
+
+        scalar_node.at(0) = "-123456789012123123123123123123123123123";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 0ULL });
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337), uint64_t{ 1337ULL });
+
+        scalar_node.at(0) = "+123456789012";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 123456789012ULL });
+    }
+    {
+        scalar_node.at(0) = std::to_string(std::numeric_limits<uint64_t>::max() - 1ULL);
+        EXPECT_EQ(scalar_node.as<uint64_t>(), std::numeric_limits<uint64_t>::max() - 1ULL);
+
+        scalar_node.at(0) = std::to_string(std::numeric_limits<uint64_t>::max()) + "00123";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 0ULL });
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337ULL), uint64_t{ 1337ULL });
+
+        scalar_node.at(0) = std::to_string(std::numeric_limits<uint64_t>::min() + 1);
+        EXPECT_EQ(scalar_node.as<uint64_t>(), std::numeric_limits<uint64_t>::min() + 1);
+    }
+
+    // Base 8
+    {
+        scalar_node.at(0) = "00";
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337ULL), uint64_t{ 0ULL });
+
+        scalar_node.at(0) = "0144";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 100ULL });
+
+        scalar_node.at(0) = "063003711";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 13371337ULL });
+    }
+    {
+        scalar_node.at(0) = "0123123123123123123123123123123";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 0ULL });
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337ULL), uint64_t{ 1337ULL });
+    }
+
+    // Base 16
+    {
+        scalar_node.at(0) = "0x0";
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337ULL), uint64_t{ 0ULL });
+        scalar_node.at(0) = "0X0";
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337ULL), uint64_t{ 0ULL });
+
+        scalar_node.at(0) = "0x1";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 1ULL });
+
+        scalar_node.at(0) = "0xBEEFBEEFBEEF";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 209936909844207ULL });
+    }
+    {
+        scalar_node.at(0) = "0xBEEFBEEFFBEEFBEEF";
+        EXPECT_EQ(scalar_node.as<uint64_t>(), uint64_t{ 0ULL });
+        EXPECT_EQ(scalar_node.as<uint64_t>(1337), uint64_t{ 1337ULL });
+    }
+}
+
+TEST(dom_scalar_as, as_float)
+{
+    using char_type = char;
+    auto node = yaml::dom::node<char_type>::create_scalar();
+    auto& scalar_node = node.as_scalar();
+    scalar_node.push_back("");
+
+    // Empty
+    {
+        scalar_node.at(0) = "";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), 0.0f);
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 4.0f });
+    }
+    {
+        scalar_node.at(0) = " ";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 0.0f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 4.0f });
+    }
+
+    // Ok tests
+    {
+        scalar_node.at(0) = "0";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 0.0f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 0.0f });
+
+        scalar_node.at(0) = "+0";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 0.0f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 0.0f });
+
+        scalar_node.at(0) = "-0";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 0.0f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 0.0f });   
+
+        scalar_node.at(0) = "512";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 512.0f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 512.0f });
+
+        scalar_node.at(0) = "512.125";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 512.125f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 512.125f });
+
+        scalar_node.at(0) = "+512.125";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 512.125f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 512.125f });
+
+        scalar_node.at(0) = "-512.125";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ -512.125f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ -512.125f });
+
+        scalar_node.at(0) = "3.40282e+37";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 3.40282e+37f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 3.40282e+37f });
+    }
+
+    // Out of range tests
+    {
+        scalar_node.at(0) = "3.40282e+39";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 0.0f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 4.0f });
+
+        scalar_node.at(0) = "-3402823466385288598117041834845169254401337";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 0.0f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 4.0f });
+
+        scalar_node.at(0) = "3402823466385288598117041834845169254401337";
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(), float{ 0.0f });
+        EXPECT_FLOAT_EQ(scalar_node.as<float>(4.0f), float{ 4.0f });
+    }
+}
+
+TEST(dom_scalar_as, as_double)
+{
+    using char_type = char;
+    auto node = yaml::dom::node<char_type>::create_scalar();
+    auto& scalar_node = node.as_scalar();
+    scalar_node.push_back("");
+
+    // Empty
+    {
+        scalar_node.at(0) = "";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), 0.0);
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 4.0 });
+    }
+    {
+        scalar_node.at(0) = " ";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 0.0 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 4.0 });
+    }
+
+    // Ok tests
+    {
+        scalar_node.at(0) = "0";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 0.0 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 0.0 });
+
+        scalar_node.at(0) = "+0";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 0.0 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 0.0 });
+
+        scalar_node.at(0) = "-0";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 0.0 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 0.0 });
+
+        scalar_node.at(0) = "512";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 512.0 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 512.0 });
+
+        scalar_node.at(0) = "512.125";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 512.125 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 512.125 });
+
+        scalar_node.at(0) = "+512.125";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 512.125 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 512.125 });
+
+        scalar_node.at(0) = "-512.125";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ -512.125 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ -512.125 });
+
+        scalar_node.at(0) = "1.79769e+307";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 1.79769e+307 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 1.79769e+307 });
+    }
+
+    // Out of range tests
+    {
+        scalar_node.at(0) = "1.79769e+309";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 0.0 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 4.0 });
+
+        scalar_node.at(0) = "-179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368001337";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 0.0 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 4.0 });
+
+        scalar_node.at(0) = "179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368001337";
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(), double{ 0.0 });
+        EXPECT_DOUBLE_EQ(scalar_node.as<double>(4.0), double{ 4.0 });
+    }
+}
+
+TEST(dom_scalar_as, as_long_double)
+{
+    using char_type = char;
+    auto node = yaml::dom::node<char_type>::create_scalar();
+    auto& scalar_node = node.as_scalar();
+    scalar_node.push_back("");
+
+    auto is_near = [](const long double lhs, const long double rhs) {
+        const auto epsilon = 1.0e-5L;
+        return lhs >= (rhs - epsilon) && lhs <= (rhs + epsilon);
+    };
+
+    // Empty
+    {
+        scalar_node.at(0) = "";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 0.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 4.0L }));
+    }
+    {
+        scalar_node.at(0) = " ";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 0.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 4.0L }));
+    }
+
+    // Ok tests
+    {
+        scalar_node.at(0) = "0";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 0.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 0.0L }));
+
+        scalar_node.at(0) = "+0";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), double{ 0.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0), double{ 0.0L }));
+
+        scalar_node.at(0) = "-0";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 0.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 0.0L }));
+
+        scalar_node.at(0) = "512";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 512.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 512.0L }));
+
+        scalar_node.at(0) = "512.125";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 512.125L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 512.125L }));
+
+        scalar_node.at(0) = "+512.125";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 512.125L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 512.125L }));
+
+        scalar_node.at(0) = "-512.125";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ -512.125L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ -512.125L }));
+
+        scalar_node.at(0) = "1.79769e+307";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 1.79769e+307L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 1.79769e+307L }));
+    }
+    
+    // Out of range tests
+    {
+        scalar_node.at(0) = "1.18973e+4933";
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 0.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 4.0L }));
+    }
 }

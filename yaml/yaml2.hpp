@@ -33,6 +33,9 @@
 #include <type_traits>
 #include <fstream>
 #include <cstdlib>
+#include <cstdint>
+#include <cmath>
+#include <errno.h>
 
 #if defined(MINIYAML_CUSTOM_NAMESPACE)
 #define MINIYAML_NAMESPACE MINIYAML_CUSTOM_NAMESPACE
@@ -84,24 +87,29 @@ namespace MINIYAML_NAMESPACE {
 
     public:
 
-        using size_type = std::size_t;
+        using value_type = T;
+        using pointer = T*;
+        using const_pointer = const T*;
+        using reference = T&;
+        using const_reference = const T&;
+        using size_type = std::size_t;     
 
         basic_string_view() :
             m_data(nullptr),
             m_size(0)
         {}
 
-        basic_string_view(const T* s) :
+        basic_string_view(const_pointer s) :
             m_data(s),
             m_size(std::strlen(s))
         {}
 
-        basic_string_view(const T* s, size_t count) :
+        basic_string_view(const_pointer s, size_type count) :
             m_data(s),
             m_size(count)
         {}
 
-        T operator [](size_t index) const {
+        value_type operator [](size_type index) const {
             return m_data[index];
         }
 
@@ -109,14 +117,14 @@ namespace MINIYAML_NAMESPACE {
             return m_size == rhs.m_size && std::strncmp(m_data, rhs.m_data, m_size) == 0;
         }
 
-        MINIYAML_NODISCARD const T* data() const { return m_data; };
-        MINIYAML_NODISCARD size_t size() const { return m_size; };
+        MINIYAML_NODISCARD const_pointer data() const { return m_data; };
+        MINIYAML_NODISCARD size_type size() const { return m_size; };
         MINIYAML_NODISCARD bool empty() const { return m_size == 0; };
 
     private:
 
-        const T* m_data;
-        size_t m_size;
+        const_pointer m_data;
+        size_type m_size;
 
     };
 
@@ -466,6 +474,8 @@ namespace dom {
         array_node_t& as_array();
         const array_node_t& as_array() const;
 
+        template<typename Tvalue>
+        MINIYAML_NODISCARD Tvalue as(Tvalue default_value = Tvalue{}) const;
         MINIYAML_NODISCARD std::basic_string<Tchar> as_string() const;
 
         MINIYAML_NODISCARD bool empty() const;
@@ -518,6 +528,8 @@ namespace dom {
         scalar_node& operator = (const scalar_node&) = delete;
         scalar_node& operator = (scalar_node&&) = delete;
 
+        template<typename Tvalue> 
+        MINIYAML_NODISCARD Tvalue as(Tvalue default_value = Tvalue{}) const;
         MINIYAML_NODISCARD std::basic_string<Tchar> as_string() const;
 
         MINIYAML_NODISCARD block_style_type block_style() const;
@@ -541,6 +553,12 @@ namespace dom {
         MINIYAML_NODISCARD reverse_iterator rend();
         MINIYAML_NODISCARD const_reverse_iterator rend() const;
         MINIYAML_NODISCARD const_reverse_iterator crend() const;
+
+        string_t& at(size_t index);
+        const string_t& at(size_t index) const;
+
+        string_t& operator[](size_t index);
+        const string_t& operator[](size_t index) const;
 
         iterator insert(const_iterator pos, string_t string);
         void push_back(string_t string);
@@ -970,18 +988,43 @@ namespace impl {
         return result;
     }
 
+    template<typename Tchar>
+    const std::basic_string<Tchar>& get_string_from_string_or_view(const std::basic_string<Tchar>& string) {
+        return string;
+    }
+
 #if MINIYAML_HAS_STD_STRING_VIEW == true
     template<typename Tchar>
-    std::basic_string<Tchar> view_to_string(basic_string_view<Tchar> string_view) {
+    std::basic_string<Tchar> get_string_from_string_or_view(basic_string_view<Tchar> string_view) {
         return std::basic_string<Tchar>{ string_view };
     }
-#else
 
+#else
     template<typename Tchar>
-    std::basic_string<Tchar> view_to_string(basic_string_view<Tchar> string_view) {
+    std::basic_string<Tchar> get_string_from_string_or_view(basic_string_view<Tchar> string_view) {
         return std::basic_string<Tchar>{ string_view.data(), string_view.size() };
     }
+
 #endif
+
+    template<typename T>
+    bool is_empty_or_whitespace(const T& string) {
+        using value_type = typename T::value_type;
+
+        if (string.empty()) {
+            return true;
+        }
+
+        for (auto it = string.begin(); it != string.end(); ++it) {
+            const auto value = *it;
+            if (value == token<value_type>::space || value == token<value_type>::tab) {
+                continue;
+            }
+            return false;
+        }
+
+        return true;
+    }
 
 } }
 
@@ -2299,6 +2342,226 @@ namespace sax {
 
 } }
 
+// Hidden SAX implementation details.
+namespace MINIYAML_NAMESPACE {
+namespace dom {
+namespace impl {
+
+    template<typename Tchar, bool VisView>
+    using scalar_line_const_iterator = typename scalar_node<Tchar, VisView>::const_iterator;
+
+    template<typename Tchar, bool VisView>
+    using scalar_line_const_iterator_pairs = std::pair<scalar_line_const_iterator<Tchar, VisView>, scalar_line_const_iterator<Tchar, VisView>>;
+
+    template<typename Tchar, bool VisView>
+    scalar_line_const_iterator_pairs<Tchar, VisView> get_non_empty_scalar_node_lines(const scalar_node<Tchar, VisView>& scalar)
+    {
+        auto begin_it = std::find_if(scalar.begin(), scalar.end(),
+            [](const typename scalar_node<Tchar, VisView>::string_t& line) { return !MINIYAML_NAMESPACE::impl::is_empty_or_whitespace(line); });
+
+        if (begin_it == scalar.end()) {
+            return { begin_it, begin_it };
+        }
+
+        auto rend_it = std::find_if(scalar.rbegin(), scalar.rend(),
+            [](const typename scalar_node<Tchar, VisView>::string_t& line) { return !MINIYAML_NAMESPACE::impl::is_empty_or_whitespace(line); });
+
+        auto end_it = rend_it.base();
+
+        return { begin_it, end_it };
+    }
+
+    template<typename Tchar, bool VisView>
+    size_t get_line_count(const scalar_line_const_iterator_pairs<Tchar, VisView>& it_pair)
+    {
+        return std::distance(it_pair.first, it_pair.second);
+    }
+
+    // scalar_converter - T
+    template<typename Tchar, bool VisView, typename Tvalue>
+    struct scalar_converter {
+        static Tvalue get(const scalar_node<Tchar, VisView>& scalar_node, const Tvalue default_value = Tvalue{});
+    };
+
+    // scalar_converter - bool
+    template<typename Tchar, bool VisView>
+    struct scalar_converter<Tchar, VisView, bool> {
+        static bool get(const scalar_node<Tchar, VisView>& scalar_node, const bool default_value) {
+            const auto it_pair = impl::get_non_empty_scalar_node_lines(scalar_node);
+            if (impl::get_line_count<Tchar, VisView>(it_pair) != 1) {
+                return default_value;
+            }
+
+            const auto string = MINIYAML_NAMESPACE::impl::get_string_from_string_or_view(*it_pair.first);
+
+            switch (string[0]) {
+                case 'f': if (string == "false") { return false; } break;
+                case 'F': if (string.size() == 5 && (string == "False" || string == "FALSE")) { return false; } break;
+                case 't': if (string == "true") { return true; } break;
+                case 'T': if (string.size() == 4 && (string == "True" || string == "TRUE")) { return true; } break;
+                case 'y': if (string == "yes") { return true; } break;
+                case 'Y': if (string.size() == 3 && (string == "Yes" || string == "YES")) { return true; } break;
+                case 'n': if (string == "no") { return false; } break;
+                case 'N': if (string.size() == 2 && (string == "No" || string == "NO")) { return false; } break;
+                default: break;
+            }
+          
+            return default_value;
+        }
+    };
+
+    // scalar_converter - int32_t
+    template<typename Tchar, bool VisView>
+    struct scalar_converter<Tchar, VisView, int32_t> {
+        static int32_t get(const scalar_node<Tchar, VisView>& scalar_node, const int32_t default_value) {
+            const auto default_value_64 = static_cast<int64_t>(default_value);
+            const auto result = scalar_converter<Tchar, VisView, int64_t>::get(scalar_node, default_value_64);
+            if (result > static_cast<int64_t>(std::numeric_limits<int32_t>::max()) ||
+                result < static_cast<int64_t>(std::numeric_limits<int32_t>::min()))
+            {
+                return default_value;
+            }
+            return static_cast<int32_t>(result);
+        }
+    };
+
+    // scalar_converter - int64_t
+    template<typename Tchar, bool VisView>
+    struct scalar_converter<Tchar, VisView, int64_t> {
+        static int64_t get(const scalar_node<Tchar, VisView>& scalar_node, const int64_t default_value) {
+            static_assert(sizeof(Tchar) == 1, "Cannot convert scalar_node<T, TisView> when sizeof(Tchar) != 1.");
+
+            const auto it_pair = impl::get_non_empty_scalar_node_lines(scalar_node);
+            if (impl::get_line_count<Tchar, VisView>(it_pair) != 1) {
+                return default_value;
+            }
+
+            auto string = MINIYAML_NAMESPACE::impl::get_string_from_string_or_view(*it_pair.first);
+            auto convert_start = reinterpret_cast<const char*>(string.data());
+        
+            errno = 0;
+            char* convert_end = nullptr;
+            const auto result = std::strtoll(convert_start, &convert_end, 0);
+
+            return convert_end == convert_start || (errno == ERANGE && (result == LLONG_MAX || result == LLONG_MIN)) ?
+                default_value :
+                result;
+        }
+    };
+
+    // scalar_converter - int32_t
+    template<typename Tchar, bool VisView>
+    struct scalar_converter<Tchar, VisView, uint32_t> {
+        static uint32_t get(const scalar_node<Tchar, VisView>& scalar_node, const uint32_t default_value) {
+            const auto default_value_64 = static_cast<uint64_t>(default_value);
+            const auto result = scalar_converter<Tchar, VisView, uint64_t>::get(scalar_node, default_value_64);
+            if (result > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()))
+            {
+                return default_value;
+            }
+            return static_cast<uint32_t>(result);
+        }
+    };
+
+    // scalar_converter - uint64_t
+    template<typename Tchar, bool VisView>
+    struct scalar_converter<Tchar, VisView, uint64_t> {
+        static uint64_t get(const scalar_node<Tchar, VisView>& scalar_node, const uint64_t default_value) {
+            static_assert(sizeof(Tchar) == 1, "Cannot convert scalar_node<T, TisView> when sizeof(Tchar) != 1.");
+
+            const auto it_pair = impl::get_non_empty_scalar_node_lines(scalar_node);
+            if (impl::get_line_count<Tchar, VisView>(it_pair) != 1) {
+                return default_value;
+            }
+
+            auto string = MINIYAML_NAMESPACE::impl::get_string_from_string_or_view(*it_pair.first);
+            auto convert_start = reinterpret_cast<const char*>(string.data());
+
+            errno = 0;
+            char* convert_end = nullptr;
+            const auto result = std::strtoull(convert_start, &convert_end, 0);
+
+            return convert_end == convert_start || (errno == ERANGE && result == ULLONG_MAX) ?
+                default_value :
+                result;
+        }
+    };
+
+    // scalar_converter - float
+    template<typename Tchar, bool VisView>
+    struct scalar_converter<Tchar, VisView, float> {
+        static float get(const scalar_node<Tchar, VisView>& scalar_node, const float default_value) {
+            static_assert(sizeof(Tchar) == 1, "Cannot convert scalar_node<T, TisView> when sizeof(Tchar) != 1.");
+
+            const auto it_pair = impl::get_non_empty_scalar_node_lines(scalar_node);
+            if (impl::get_line_count<Tchar, VisView>(it_pair) != 1) {
+                return default_value;
+            }
+
+            auto string = MINIYAML_NAMESPACE::impl::get_string_from_string_or_view(*it_pair.first);
+            auto convert_start = reinterpret_cast<const char*>(string.data());
+
+            errno = 0;
+            char* convert_end = nullptr;
+            const auto result = std::strtof(convert_start, &convert_end);
+
+            return convert_end == convert_start || (errno == ERANGE && result == HUGE_VALF) || std::isinf(result) ?
+                default_value :
+                result;
+        }
+    };
+
+    // scalar_converter - double
+    template<typename Tchar, bool VisView>
+    struct scalar_converter<Tchar, VisView, double> {
+        static double get(const scalar_node<Tchar, VisView>& scalar_node, const double default_value) {
+            static_assert(sizeof(Tchar) == 1, "Cannot convert scalar_node<T, TisView> when sizeof(Tchar) != 1.");
+
+            const auto it_pair = impl::get_non_empty_scalar_node_lines(scalar_node);
+            if (impl::get_line_count<Tchar, VisView>(it_pair) != 1) {
+                return default_value;
+            }
+
+            auto string = MINIYAML_NAMESPACE::impl::get_string_from_string_or_view(*it_pair.first);
+            auto convert_start = reinterpret_cast<const char*>(string.data());
+
+            errno = 0;
+            char* convert_end = nullptr;
+            const auto result = std::strtod(convert_start, &convert_end);
+
+            return convert_end == convert_start || (errno == ERANGE && result == HUGE_VAL) || std::isinf(result) ?
+                default_value :
+                result;
+        }
+    };
+
+    // scalar_converter - double
+    template<typename Tchar, bool VisView>
+    struct scalar_converter<Tchar, VisView, long double> {
+        static long double get(const scalar_node<Tchar, VisView>& scalar_node, const long double default_value) {
+            static_assert(sizeof(Tchar) == 1, "Cannot convert scalar_node<T, TisView> when sizeof(Tchar) != 1.");
+
+            const auto it_pair = impl::get_non_empty_scalar_node_lines(scalar_node);
+            if (impl::get_line_count<Tchar, VisView>(it_pair) != 1) {
+                return default_value;
+            }
+
+            auto string = MINIYAML_NAMESPACE::impl::get_string_from_string_or_view(*it_pair.first);
+            auto convert_start = reinterpret_cast<const char*>(string.data());
+
+            errno = 0;
+            char* convert_end = nullptr;
+            const auto result = std::strtold(convert_start, &convert_end);
+
+            return convert_end == convert_start || (errno == ERANGE && result == HUGE_VALL) || std::isinf(result) ?
+                default_value :
+                result;
+        }
+    };
+
+} } }
+
+
 // DOM implementations
 namespace MINIYAML_NAMESPACE {
 namespace dom {
@@ -2436,6 +2699,12 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
+    template<typename Tvalue>
+    Tvalue node<Tchar, VisView>::as(Tvalue default_value) const {
+        return as_scalar().as<Tvalue>(default_value);
+    }
+
+    template<typename Tchar, bool VisView>
     std::basic_string<Tchar> node<Tchar, VisView>::as_string() const {
         switch (m_node_type) {
             case node_type::null: return "null";
@@ -2557,6 +2826,12 @@ namespace dom {
     {}
 
     template<typename Tchar, bool VisView>
+    template<typename Tvalue>
+    Tvalue scalar_node<Tchar, VisView>::as(Tvalue default_value) const {
+        return impl::scalar_converter<Tchar, VisView, Tvalue>::get(*this, default_value);
+    }
+
+    template<typename Tchar, bool VisView>
     std::basic_string<Tchar> scalar_node<Tchar, VisView>::as_string() const {
         switch (m_block_style) {
             case block_style_type::none: return as_non_block_string();
@@ -2655,6 +2930,27 @@ namespace dom {
     typename scalar_node<Tchar, VisView>::const_reverse_iterator scalar_node<Tchar, VisView>::crend() const {
         return m_lines.crend();
     }
+
+    template<typename Tchar, bool VisView>
+    typename scalar_node<Tchar, VisView>::string_t& scalar_node<Tchar, VisView>::at(size_t index) {
+        return m_lines.at(index);
+    }
+
+    template<typename Tchar, bool VisView>
+    const typename scalar_node<Tchar, VisView>::string_t& scalar_node<Tchar, VisView>::at(size_t index) const {
+        return m_lines.at(index);
+    }
+
+    template<typename Tchar, bool VisView>
+    typename scalar_node<Tchar, VisView>::string_t& scalar_node<Tchar, VisView>::operator[](size_t index) {
+        return m_lines.at(index);
+    }
+
+    template<typename Tchar, bool VisView>
+    const typename scalar_node<Tchar, VisView>::string_t& scalar_node<Tchar, VisView>::operator[](size_t index) const {
+        return m_lines.at(index);
+    }
+
 
     template<typename Tchar, bool VisView>
     typename scalar_node<Tchar, VisView>::iterator scalar_node<Tchar, VisView>::insert(const_iterator pos, string_t string) {
@@ -3334,7 +3630,7 @@ namespace dom {
         auto& scalar_node = m_current_node->as_scalar();
 
         for (auto it = begin_it; it != end_it; ++it) {
-            scalar_node.push_back(MINIYAML_NAMESPACE::impl::view_to_string(*it));
+            scalar_node.push_back(MINIYAML_NAMESPACE::impl::get_string_from_string_or_view(*it));
         }
 
         pop_stack();
@@ -3382,7 +3678,7 @@ namespace dom {
     template<typename Tchar>
     void reader<Tchar>::sax_handler::key(string_view_type key) {
         auto& object_node = m_current_node->as_object();
-        auto insert_result = object_node.insert(MINIYAML_NAMESPACE::impl::view_to_string(key));
+        auto insert_result = object_node.insert(MINIYAML_NAMESPACE::impl::get_string_from_string_or_view(key));
 
         auto* new_node = insert_result.first->second.get();
         push_stack(new_node);
