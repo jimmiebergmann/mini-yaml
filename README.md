@@ -16,7 +16,7 @@ list:
 ### .cpp
 Error checking is omitted, ~~see examples/quickstart_full.cpp for a real use case example~~.
 ```cpp
-#include "yaml/yaml2.hpp"
+#include "yaml/yaml.hpp"
 
 auto result = yaml::dom::read_document_from_file<char>("file.yml");
 if(!result) {
@@ -41,7 +41,7 @@ true
 ```
 ## Usage
 #### Download repo 
-Place [/yaml](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml) in your project's include directory and simply #include "[yaml/yaml2.hpp](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml/yaml2.hpp)".
+Place [/yaml](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml) in your project's include directory and simply #include "[yaml/yaml.hpp](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml/yaml.hpp)".
 
 #### Clone repo
 ```

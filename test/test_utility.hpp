@@ -28,7 +28,7 @@
 
 //#define MINIYAML_NO_STD_STRING_VIEW
 //#define MINIYAML_CUSTOM_NAMESPACE yaml2
-#include "../yaml/yaml2.hpp"
+#include "../yaml/yaml.hpp"
 
 #include <array>
 #include <algorithm>

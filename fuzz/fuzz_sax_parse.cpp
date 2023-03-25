@@ -1,4 +1,4 @@
-#include "yaml/yaml2.hpp"
+#include "yaml/yaml.hpp"
 
 struct test_sax_handler {
     void start_document() {}
