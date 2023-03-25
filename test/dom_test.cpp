@@ -1826,54 +1826,54 @@ TEST(dom_scalar_as, as_long_double)
     // Empty
     {
         scalar_node.at(0) = "";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 0.0L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 4.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), 0.0L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), 4.0L));
     }
     {
         scalar_node.at(0) = " ";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 0.0L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 4.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), 0.0L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), 4.0L));
     }
 
     // Ok tests
     {
         scalar_node.at(0) = "0";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 0.0L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 0.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), 0.0L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), 0.0L));
 
         scalar_node.at(0) = "+0";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), double{ 0.0L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0), double{ 0.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), 0.0L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0), 0.0L));
 
         scalar_node.at(0) = "-0";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 0.0L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 0.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), 0.0L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), 0.0L));
 
         scalar_node.at(0) = "512";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 512.0L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 512.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), 512.0L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), 512.0L));
 
         scalar_node.at(0) = "512.125";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 512.125L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 512.125L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), 512.125L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), 512.125L));
 
         scalar_node.at(0) = "+512.125";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 512.125L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 512.125L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), 512.125L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), 512.125L));
 
         scalar_node.at(0) = "-512.125";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ -512.125L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ -512.125L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), -512.125L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), -512.125L));
 
         scalar_node.at(0) = "1.79769e+307";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 1.79769e+307L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 1.79769e+307L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), 1.79769e+307L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), 1.79769e+307L));
     }
     
     // Out of range tests
     {
         scalar_node.at(0) = "1.18973e+4933";
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(), long double{ 0.0L }));
-        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), long double{ 4.0L }));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(), 0.0L));
+        EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), 4.0L));
     }
 }

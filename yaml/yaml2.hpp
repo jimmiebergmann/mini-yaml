@@ -35,6 +35,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cmath>
+#include <climits>
 #include <errno.h>
 
 #if defined(MINIYAML_CUSTOM_NAMESPACE)
