@@ -599,7 +599,7 @@ TEST(dom_read, ok_file_learnyaml)
 {
     using char_type = char;
 
-    auto read_result = yaml::dom::read_document_from_file<char_type>("../test/learnyaml.yaml");
+    auto read_result = yaml::dom::read_document_from_file<char_type>("../examples/learnyaml.yaml");
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
 
     auto root_node = std::move(read_result.root_node);

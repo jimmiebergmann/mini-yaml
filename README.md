@@ -14,7 +14,7 @@ list:
     floating point: 2.75
 ```
 ### .cpp
-Error checking is omitted, see quickstart_full.yml for a real use case example.
+Error checking is omitted, ~~see examples/quickstart_full.cpp for a real use case example~~.
 ```cpp
 #include "yaml/yaml2.hpp"
 

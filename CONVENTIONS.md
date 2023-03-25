@@ -1,6 +1,6 @@
 # Conventions
 
-List of conventions for mini-yaml.
+Coding and naming conventions for mini-yaml.
 
 ## Code
 
@@ -35,10 +35,10 @@ namespace my_namespace {
         void method_3();
         ...
         
-        my_class & operator =(const int &);
-        my_class & operator +=(const int &);
-        my_class operator +(const int &) const;
-        my_class operator -(const int &) const;
+        my_class & operator = (const int &);
+        my_class & operator += (const int &);
+        my_class operator + (const int &) const;
+        my_class operator - (const int &) const;
         ...
       
       protected:
@@ -58,11 +58,10 @@ namespace my_namespace {
     
 }
 
-// Inline implementations.
 namespace my_namespace {
 
-    template<typename T>
-    inline void my_class::method_3() {
+    template<typename Tvalue>
+    void my_class::method_3() {
         
     }
     
