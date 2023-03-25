@@ -18,14 +18,14 @@ Error checking is omitted, see quickstart_full.yml for a real use case example.
 ```cpp
 #include "yaml/yaml2.hpp"
 
-auto result = yaml::dom::read_document_from_file("file.yml");
+auto result = yaml::dom::read_document_from_file<char>("file.yml");
 if(!result) {
     return print_result(result);
 }
 
 auto& root = result.root_node;
-std::cout << root["scalar"].as_string() << "\n";
-std::cout << root["list"][0].as_string() << "\n";
+std::cout << root["scalar"].as<std::string>() << "\n";
+std::cout << root["list"][0].as<std::string>() << "\n";
 std::cout << root["list"][1]["boolean"].as<bool>() << "\n";
 std::cout << root["list"][1]["integer"].as<int>() << "\n";
 std::cout << root["list"][1]["floating point"].as<float>() << "\n";
@@ -71,7 +71,7 @@ Builds pass if all tests are successful and no memory leaks are found.
 | maps | :heavy_check_mark: |
 | sequences | :heavy_check_mark: |
 | unicode | :heavy_check_mark: |
-| scalar type conversions | :warning: |
+| scalar type conversions | :heavy_check_mark: |
 | tags (!!type) | :x: |
 | indentation indicator | :x: |
 | flow scalars | :x: |
