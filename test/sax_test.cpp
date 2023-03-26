@@ -675,6 +675,32 @@ TEST(sax_read, fail_object_unexpected_key_2)
     });
 }
 
+TEST(sax_read, fail_reached_stack_max_depth)
+{
+    const std::string input =
+        "key:\n"
+        "  key:\n"
+        "    key:\n"
+        "      key:\n"
+        "        key:\n"
+        "          key:\n"
+        "            key:\n"
+        "              key:\n"
+        "                key: value\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto reader_options = yaml::sax::reader_options{};
+        reader_options.max_depth = 9;
+
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read_document(input, handler, reader_options);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::reached_stack_max_depth);
+    });
+}
+
+// reached_stack_max_depth
 TEST(sax_read, fail_scalar_single_literal_expected_line_break_1)
 {
     const std::string input =
@@ -1689,7 +1715,7 @@ TEST(sax_read, ok_object_single_nested_objects)
     });
 }
 
-TEST(sax_read, ok_object_single_with_scalar__inline)
+TEST(sax_read, ok_object_single_with_scalar)
 {
     const std::string input =
         "key: hello world";
@@ -1715,6 +1741,41 @@ TEST(sax_read, ok_object_single_with_scalar__inline)
             EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
             ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
             EXPECT_EQ(handler.get_next_string(), "hello world");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
+    });
+}
+
+TEST(sax_read, ok_object_single_with_scalar_tab_separated)
+{
+    const std::string input =
+        "key:\thello world";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read_document(input, handler);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 8 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "hello world");
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 

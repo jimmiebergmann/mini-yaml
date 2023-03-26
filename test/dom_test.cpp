@@ -40,9 +40,9 @@ TEST(dom_read, ok_quickstart)
         "scalar: foo bar\n"
         "list:\n"
         " - hello world\n"
-        " - boolean : true\n"
-        "   integer : 123\n"
-        "   floating point : 2.75";
+        " - boolean: true\n"
+        "   integer: 123\n"
+        "   floating point: 2.75";
     
     auto read_result = yaml::dom::read_document(input);
     ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);

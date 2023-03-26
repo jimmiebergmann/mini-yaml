@@ -389,7 +389,8 @@ namespace sax {
         void register_line_indentation();
 
         void read_comment_until_newline();
-        void read_remaining_whitespaces();
+        void read_remaining_whitespaces(); // TODO REMOVE?
+        bool consume_whitespaces_until_newline();
         bool consume_only_whitespaces_until_newline();
         bool consume_only_whitespaces_until_newline_or_comment();
 
@@ -1288,22 +1289,6 @@ namespace sax {
                 *m_current_ptr == token_type::comment);
         };
 
-        auto read_line_indentation = [&]() {
-            while (m_current_ptr < m_end_ptr) {
-                const auto codepoint = *m_current_ptr;
-                if (codepoint == token_type::tab) {
-                    return false;
-                }
-                if (codepoint != token_type::space) {
-                    return true;
-                }
-
-                ++m_current_ptr;
-            }
-
-            return true;
-        };
-
         auto read_newline_indentation = [&]() {
             while (m_current_ptr < m_end_ptr) {
                 const auto codepoint = *m_current_ptr;
@@ -1435,15 +1420,16 @@ namespace sax {
                     }
                 }
                 else {
-                    if (!read_line_indentation()) {
-                        error(read_result_code::forbidden_tab_indentation);
-                        return m_current_result_code;
+                    if (consume_whitespaces_until_newline()) {
+                        continue;
                     }
                 }
 
                 if (m_stack.empty() || m_current_result_code != read_result_code::success || m_current_ptr >= m_end_ptr) {
                     break;
                 }
+
+                m_current_is_new_line = false;
 
                 auto& stack_item = m_stack.back();
                 auto state_function = stack_item.state_function;
@@ -1526,8 +1512,6 @@ namespace sax {
     // State execute functions.
     template<typename Tchar, typename Tsax_handler>
     void reader<Tchar, Tsax_handler>::execute_find_value() {
-        m_current_is_new_line = false;
-
         auto value_start_ptr = m_current_ptr;
         auto value_end_ptr = m_current_ptr;
 
@@ -1600,9 +1584,12 @@ namespace sax {
 
             const auto next_codepoint = m_current_ptr < m_end_ptr ? *m_current_ptr : token_type::eof;
             switch (next_codepoint) {
-                case token_type::eof:
+                case token_type::eof: {
+                    process_new_object();
+                } return true;
                 case token_type::space:
                 case token_type::tab: {
+                    ++m_current_ptr;
                     process_new_object();
                 } return true;
                 case token_type::carriage:
@@ -1921,9 +1908,11 @@ namespace sax {
                     case token_type::object: {
                         const auto next_codepoint = m_current_ptr < m_end_ptr ? *m_current_ptr : token_type::eof;
                         switch (next_codepoint) {
-                            case token_type::eof:
+                            case token_type::eof: return true;
                             case token_type::space:
-                            case token_type::tab: return true;
+                            case token_type::tab: {
+                                ++m_current_ptr;
+                            } return true;
                             case token_type::carriage:
                             case token_type::newline: {
                                 ++m_current_ptr;
@@ -2063,6 +2052,26 @@ namespace sax {
                 default: return;
             }
         }
+    }
+
+    template<typename Tchar, typename Tsax_handler>
+    bool reader<Tchar, Tsax_handler>::consume_whitespaces_until_newline() {
+        while (m_current_ptr < m_end_ptr) {
+            const auto codepoint = *m_current_ptr;
+            switch (codepoint) {
+                case token_type::space:
+                case token_type::tab: {
+                    ++m_current_ptr;
+                } break;
+                case token_type::carriage:
+                case token_type::newline: {
+                    ++m_current_ptr;
+                    register_newline();
+                } return true;
+                default: return false;
+            }
+        }
+        return true;
     }
 
     template<typename Tchar, typename Tsax_handler>
