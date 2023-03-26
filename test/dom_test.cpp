@@ -29,6 +29,11 @@
 // =====================================================================
 // Tests
 
+// [&]() -> object_node_t& { return node.as_object(); }()
+
+#define TEST_IGNORE_NODISCARD(statement) [&]() -> decltype(statement)& { return statement; }()
+#define ASSERT_NO_THROW_IGNORE_NODISCARD(statement) ASSERT_NO_THROW(TEST_IGNORE_NODISCARD(statement))
+#define EXPECT_ANY_THROW_IGNORE_NODISCARD(statement) EXPECT_ANY_THROW(TEST_IGNORE_NODISCARD(statement))
 TEST(dom_read, ok_quickstart)
 {
     const std::string input =
@@ -101,9 +106,10 @@ TEST(dom_create_node, ok_array)
     auto node = node_t::create_array();
 
     ASSERT_EQ(node.type(), yaml::dom::node_type::array);
-    EXPECT_ANY_THROW(node.as_object());
-    EXPECT_ANY_THROW(node.as_scalar());
-    ASSERT_NO_THROW(node.as_array());
+
+    EXPECT_ANY_THROW_IGNORE_NODISCARD(node.as_object());
+    EXPECT_ANY_THROW_IGNORE_NODISCARD(node.as_scalar());
+    ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_array());
     EXPECT_FALSE(node.is_null());
     EXPECT_FALSE(node.is_scalar());
     EXPECT_FALSE(node.is_object());
@@ -127,7 +133,7 @@ TEST(dom_create_node, ok_array)
             EXPECT_TRUE(array_node.contains(0));
             EXPECT_FALSE(array_node.contains(1));
 
-            ASSERT_NO_THROW(array_node.at(0));
+            ASSERT_NO_THROW_IGNORE_NODISCARD(array_node.at(0));
             auto& item = array_node.at(0);
             EXPECT_EQ(item.type(), yaml::dom::node_type::null);
         }
@@ -138,7 +144,7 @@ TEST(dom_create_node, ok_array)
             EXPECT_TRUE(array_node.contains(1));
             EXPECT_FALSE(array_node.contains(2));
 
-            ASSERT_NO_THROW(array_node.at(1));
+            ASSERT_NO_THROW_IGNORE_NODISCARD(array_node.at(1));
             auto& item = array_node.at(1);
             EXPECT_EQ(item.type(), yaml::dom::node_type::scalar);
         }
@@ -149,7 +155,7 @@ TEST(dom_create_node, ok_array)
             EXPECT_TRUE(array_node.contains(2));
             EXPECT_FALSE(array_node.contains(3));
 
-            ASSERT_NO_THROW(array_node.at(0));
+            ASSERT_NO_THROW_IGNORE_NODISCARD(array_node.at(0));
             auto& item = array_node.at(0);
             EXPECT_EQ(item.type(), yaml::dom::node_type::null);
         }
@@ -160,7 +166,7 @@ TEST(dom_create_node, ok_array)
             EXPECT_TRUE(array_node.contains(3));
             EXPECT_FALSE(array_node.contains(4));
 
-            ASSERT_NO_THROW(array_node.at(3));
+            ASSERT_NO_THROW_IGNORE_NODISCARD(array_node.at(3));
             auto& item = array_node.at(3);
             EXPECT_EQ(item.type(), yaml::dom::node_type::object);
         }
@@ -171,7 +177,7 @@ TEST(dom_create_node, ok_array)
             EXPECT_TRUE(array_node.contains(4));
             EXPECT_FALSE(array_node.contains(5));
 
-            ASSERT_NO_THROW(array_node.at(1));
+            ASSERT_NO_THROW_IGNORE_NODISCARD(array_node.at(1));
             auto& item = array_node.at(1);
             EXPECT_EQ(item.type(), yaml::dom::node_type::array);
         }
@@ -215,11 +221,11 @@ TEST(dom_create_node, ok_array)
         array_node.erase(it1, std::next(std::next(it1)));
         ASSERT_EQ(array_node.size(), size_t{ 2 });
 
-        ASSERT_NO_THROW(array_node.at(0));
+        ASSERT_NO_THROW_IGNORE_NODISCARD(array_node.at(0));
         auto& item1 = array_node.at(0);
         EXPECT_EQ(item1.type(), yaml::dom::node_type::scalar);
 
-        ASSERT_NO_THROW(array_node.at(1));
+        ASSERT_NO_THROW_IGNORE_NODISCARD(array_node.at(1));
         auto& item2 = array_node.at(1);
         EXPECT_EQ(item2.type(), yaml::dom::node_type::object);
 
@@ -238,9 +244,9 @@ TEST(dom_create_node, ok_null)
     auto node = yaml::dom::node<char_type>{};
 
     ASSERT_EQ(node.type(), yaml::dom::node_type::null);
-    EXPECT_ANY_THROW(node.as_scalar());
-    EXPECT_ANY_THROW(node.as_object());
-    EXPECT_ANY_THROW(node.as_array());
+    EXPECT_ANY_THROW_IGNORE_NODISCARD(node.as_scalar());
+    EXPECT_ANY_THROW_IGNORE_NODISCARD(node.as_object());
+    EXPECT_ANY_THROW_IGNORE_NODISCARD(node.as_array());
     EXPECT_TRUE(node.is_null());
     EXPECT_FALSE(node.is_scalar());
     EXPECT_FALSE(node.is_object());
@@ -276,9 +282,9 @@ TEST(dom_create_node, ok_object)
     auto node = yaml::dom::node<char_type>::create_object();
 
     ASSERT_EQ(node.type(), yaml::dom::node_type::object);
-    ASSERT_NO_THROW(node.as_object());
-    EXPECT_ANY_THROW(node.as_scalar());
-    EXPECT_ANY_THROW(node.as_array());
+    ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_object());
+    EXPECT_ANY_THROW_IGNORE_NODISCARD(node.as_scalar());
+    EXPECT_ANY_THROW_IGNORE_NODISCARD(node.as_array());
     EXPECT_FALSE(node.is_null());
     EXPECT_FALSE(node.is_scalar());
     EXPECT_TRUE(node.is_object());
@@ -402,9 +408,9 @@ TEST(dom_create_node, ok_scalar)
     auto node = yaml::dom::node<char_type>::create_scalar();
 
     ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-    ASSERT_NO_THROW(node.as_scalar());
-    EXPECT_ANY_THROW(node.as_object());
-    EXPECT_ANY_THROW(node.as_array());
+    ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
+    EXPECT_ANY_THROW_IGNORE_NODISCARD(node.as_object());
+    EXPECT_ANY_THROW_IGNORE_NODISCARD(node.as_array());
     EXPECT_FALSE(node.is_null());
     EXPECT_TRUE(node.is_scalar());
     EXPECT_FALSE(node.is_object());
@@ -491,7 +497,7 @@ TEST(dom_read, ok_object)
 
     auto node = std::move(read_result.root_node);
     ASSERT_EQ(node.type(), yaml::dom::node_type::object);
-    ASSERT_NO_THROW(node.as_object());
+    ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_object());
     auto& object_node = node.as_object();
 
     ASSERT_FALSE(object_node.empty());
@@ -516,7 +522,7 @@ TEST(dom_read, ok_null)
 
     auto node = std::move(read_result.root_node);
     ASSERT_EQ(node.type(), yaml::dom::node_type::object);
-    ASSERT_NO_THROW(node.as_object());
+    ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_object());
     auto& object_node = node.as_object();
 
     ASSERT_FALSE(object_node.empty());
@@ -549,7 +555,7 @@ TEST(dom_read, ok_scalar)
 
     auto node = std::move(read_result.root_node);
     ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-    ASSERT_NO_THROW(node.as_scalar());
+    ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
     auto& scalar_node = node.as_scalar();
 
     EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
@@ -576,7 +582,7 @@ TEST(dom_read, ok_scalar_with_gaps)
 
     auto node = std::move(read_result.root_node);
     ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-    ASSERT_NO_THROW(node.as_scalar());
+    ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
     auto& scalar_node = node.as_scalar();
 
     EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
@@ -604,7 +610,7 @@ TEST(dom_read, ok_file_learnyaml)
 
     auto root_node = std::move(read_result.root_node);
     ASSERT_EQ(root_node.type(), yaml::dom::node_type::object);
-    ASSERT_NO_THROW(root_node.as_object());
+    ASSERT_NO_THROW_IGNORE_NODISCARD(root_node.as_object());
     auto& root_object_node = root_node.as_object();
 
     ASSERT_EQ(root_object_node.size(), size_t{ 32 });
@@ -615,7 +621,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -627,7 +633,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -639,7 +645,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -651,7 +657,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -663,7 +669,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -675,7 +681,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -688,7 +694,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -714,7 +720,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -736,7 +742,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -748,7 +754,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -760,7 +766,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -772,7 +778,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -785,7 +791,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -798,7 +804,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
@@ -824,7 +830,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::folded);
@@ -847,7 +853,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
@@ -867,7 +873,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::folded);
@@ -886,7 +892,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
@@ -906,7 +912,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::folded);
@@ -927,7 +933,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::object);
-        ASSERT_NO_THROW(node.as_object());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_object());
         auto& object_node = node.as_object();
 
         EXPECT_EQ(object_node.size(), size_t{ 3 });
@@ -939,7 +945,7 @@ TEST(dom_read, ok_file_learnyaml)
 
             auto& node2 = *it2->second;
             ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
-            ASSERT_NO_THROW(node2.as_scalar());
+            ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node = node2.as_scalar();
 
             auto string = scalar_node.as<std::string>();
@@ -953,7 +959,7 @@ TEST(dom_read, ok_file_learnyaml)
 
             auto& node2 = *it2->second;
             ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
-            ASSERT_NO_THROW(node2.as_scalar());
+            ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node = node2.as_scalar();
 
             auto string = scalar_node.as<std::string>();
@@ -967,7 +973,7 @@ TEST(dom_read, ok_file_learnyaml)
 
             auto& node2 = *it2->second;
             ASSERT_EQ(node2.type(), yaml::dom::node_type::object);
-            ASSERT_NO_THROW(node2.as_object());
+            ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_object());
             auto& object_node2 = node2.as_object();
 
             EXPECT_EQ(object_node2.size(), size_t{ 1 });
@@ -979,7 +985,7 @@ TEST(dom_read, ok_file_learnyaml)
 
                 auto& node3 = *it3->second;
                 ASSERT_EQ(node3.type(), yaml::dom::node_type::scalar);
-                ASSERT_NO_THROW(node3.as_scalar());
+                ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_scalar());
                 auto& scalar_node2 = node3.as_scalar();
 
                 auto string2 = scalar_node2.as<std::string>();
@@ -995,7 +1001,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
@@ -1008,7 +1014,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::array);
-        ASSERT_NO_THROW(node.as_array());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_array());
         auto& array_node = node.as_array();
 
         ASSERT_EQ(array_node.size(), size_t{ 7 });
@@ -1016,7 +1022,7 @@ TEST(dom_read, ok_file_learnyaml)
             auto& node2 = array_node.at(0);
             ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
 
-            ASSERT_NO_THROW(node2.as_scalar());
+            ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node2 = node2.as_scalar();
 
             auto string = scalar_node2.as<std::string>();
@@ -1026,7 +1032,7 @@ TEST(dom_read, ok_file_learnyaml)
             auto& node2 = array_node.at(1);
             ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
 
-            ASSERT_NO_THROW(node2.as_scalar());
+            ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node2 = node2.as_scalar();
 
             auto string = scalar_node2.as<std::string>();
@@ -1036,7 +1042,7 @@ TEST(dom_read, ok_file_learnyaml)
             auto& node2 = array_node.at(2);
             ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
 
-            ASSERT_NO_THROW(node2.as_scalar());
+            ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node2 = node2.as_scalar();
 
             auto string = scalar_node2.as<std::string>();
@@ -1046,7 +1052,7 @@ TEST(dom_read, ok_file_learnyaml)
             auto& node2 = array_node.at(3);
             ASSERT_EQ(node2.type(), yaml::dom::node_type::scalar);
 
-            ASSERT_NO_THROW(node2.as_scalar());
+            ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node2 = node2.as_scalar();
 
             auto string = scalar_node2.as<std::string>();
@@ -1056,7 +1062,7 @@ TEST(dom_read, ok_file_learnyaml)
             auto& node2 = array_node.at(4);
             ASSERT_EQ(node2.type(), yaml::dom::node_type::object);
 
-            ASSERT_NO_THROW(node2.as_object());
+            ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_object());
             auto& object_node2 = node2.as_object();
 
             ASSERT_EQ(object_node2.size(), size_t{ 2 });
@@ -1064,7 +1070,7 @@ TEST(dom_read, ok_file_learnyaml)
                 auto& node3 = object_node2.at("key");
                 ASSERT_EQ(node3.type(), yaml::dom::node_type::scalar);
 
-                ASSERT_NO_THROW(node3.as_scalar());
+                ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_scalar());
                 auto& scalar_node3 = node3.as_scalar();
 
                 auto string = scalar_node3.as<std::string>();
@@ -1074,7 +1080,7 @@ TEST(dom_read, ok_file_learnyaml)
                 auto& node3 = object_node2.at("another_key");
                 ASSERT_EQ(node3.type(), yaml::dom::node_type::scalar);
 
-                ASSERT_NO_THROW(node3.as_scalar());
+                ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_scalar());
                 auto& scalar_node3 = node3.as_scalar();
 
                 auto string = scalar_node3.as<std::string>();
@@ -1085,7 +1091,7 @@ TEST(dom_read, ok_file_learnyaml)
             auto& node2 = array_node.at(5);
             ASSERT_EQ(node2.type(), yaml::dom::node_type::array);
 
-            ASSERT_NO_THROW(node2.as_array());
+            ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_array());
             auto& array_node2 = node2.as_array();
             
             ASSERT_EQ(array_node2.size(), size_t{ 2 });
@@ -1093,7 +1099,7 @@ TEST(dom_read, ok_file_learnyaml)
                 auto& node3 = array_node2.at(0);
                 ASSERT_EQ(node3.type(), yaml::dom::node_type::scalar);
 
-                ASSERT_NO_THROW(node3.as_scalar());
+                ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_scalar());
                 auto& scalar_node3 = node3.as_scalar();
 
                 auto string = scalar_node3.as<std::string>();
@@ -1103,7 +1109,7 @@ TEST(dom_read, ok_file_learnyaml)
                 auto& node3 = array_node2.at(1);
                 ASSERT_EQ(node3.type(), yaml::dom::node_type::scalar);
 
-                ASSERT_NO_THROW(node3.as_scalar());
+                ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_scalar());
                 auto& scalar_node3 = node3.as_scalar();
 
                 auto string = scalar_node3.as<std::string>();
@@ -1114,7 +1120,7 @@ TEST(dom_read, ok_file_learnyaml)
             auto& node2 = array_node.at(6);
             ASSERT_EQ(node2.type(), yaml::dom::node_type::array);
 
-            ASSERT_NO_THROW(node2.as_array());
+            ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_array());
             auto& array_node2 = node2.as_array();
 
             ASSERT_EQ(array_node2.size(), size_t{ 1 });
@@ -1122,7 +1128,7 @@ TEST(dom_read, ok_file_learnyaml)
                 auto& node3 = array_node2.at(0);
                 ASSERT_EQ(node3.type(), yaml::dom::node_type::array);
 
-                ASSERT_NO_THROW(node3.as_array());
+                ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_array());
                 auto& array_node3 = node3.as_array();
 
                 ASSERT_EQ(array_node3.size(), size_t{ 2 });
@@ -1130,7 +1136,7 @@ TEST(dom_read, ok_file_learnyaml)
                     auto& node4 = array_node3.at(0);
                     ASSERT_EQ(node4.type(), yaml::dom::node_type::scalar);
 
-                    ASSERT_NO_THROW(node4.as_scalar());
+                    ASSERT_NO_THROW_IGNORE_NODISCARD(node4.as_scalar());
                     auto& scalar_node4 = node4.as_scalar();
 
                     auto string = scalar_node4.as<std::string>();
@@ -1140,7 +1146,7 @@ TEST(dom_read, ok_file_learnyaml)
                     auto& node4 = array_node3.at(1);
                     ASSERT_EQ(node4.type(), yaml::dom::node_type::scalar);
 
-                    ASSERT_NO_THROW(node4.as_scalar());
+                    ASSERT_NO_THROW_IGNORE_NODISCARD(node4.as_scalar());
                     auto& scalar_node4 = node4.as_scalar();
 
                     auto string = scalar_node4.as<std::string>();
@@ -1157,7 +1163,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_STREQ(node.tag().c_str(), "bool");
@@ -1171,7 +1177,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_STREQ(node.tag().c_str(), "int");
@@ -1185,7 +1191,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_STREQ(node.tag().c_str(), "float");
@@ -1199,7 +1205,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_STREQ(node.tag().c_str(), "str");
@@ -1213,7 +1219,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
-        ASSERT_NO_THROW(node.as_scalar());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
         EXPECT_STREQ(node.tag().c_str(), "timestamp");
@@ -1237,7 +1243,7 @@ TEST(dom_read, ok_file_learnyaml)
 
         auto& node = *it->second;
         ASSERT_EQ(node.type(), yaml::dom::node_type::object);
-        ASSERT_NO_THROW(node.as_object());
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_object());
         auto& object_node = node.as_object();
 
         EXPECT_EQ(object_node.size(), size_t{ 3 });

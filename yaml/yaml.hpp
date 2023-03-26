@@ -461,7 +461,7 @@ namespace dom {
         ~node();
 
         node(node&&) noexcept;
-        node& operator = (node&&);
+        node& operator = (node&&) noexcept(false);
 
         node(const node&) = delete;
         node& operator = (const node&) = delete;
@@ -472,12 +472,12 @@ namespace dom {
         MINIYAML_NODISCARD bool is_object() const;
         MINIYAML_NODISCARD bool is_array() const;
 
-        scalar_node_t& as_scalar();
-        const scalar_node_t& as_scalar() const;
-        object_node_t& as_object();
-        const object_node_t& as_object() const;
-        array_node_t& as_array();
-        const array_node_t& as_array() const;
+        MINIYAML_NODISCARD scalar_node_t& as_scalar();
+        MINIYAML_NODISCARD const scalar_node_t& as_scalar() const;
+        MINIYAML_NODISCARD object_node_t& as_object();
+        MINIYAML_NODISCARD const object_node_t& as_object() const;
+        MINIYAML_NODISCARD array_node_t& as_array();
+        MINIYAML_NODISCARD const array_node_t& as_array() const;
 
         template<typename Tvalue>
         MINIYAML_NODISCARD Tvalue as(Tvalue default_value = Tvalue{}) const;
@@ -492,14 +492,14 @@ namespace dom {
         MINIYAML_NODISCARD bool contains(string_t key) const;
         MINIYAML_NODISCARD bool contains(size_t index) const;
 
-        node& at(string_t key);
-        const node& at(string_t key) const;
-        node& at(size_t index);
-        const node& at(size_t index) const;
+        MINIYAML_NODISCARD node& at(string_t key);
+        MINIYAML_NODISCARD const node& at(string_t key) const;
+        MINIYAML_NODISCARD node& at(size_t index);
+        MINIYAML_NODISCARD const node& at(size_t index) const;
 
-        node& operator[](string_t key);
-        node& operator[](size_t index);
-        const node& operator[](size_t index) const;
+        MINIYAML_NODISCARD node& operator[](string_t key);
+        MINIYAML_NODISCARD node& operator[](size_t index);
+        MINIYAML_NODISCARD const node& operator[](size_t index) const;
 
     private:
 
@@ -540,9 +540,11 @@ namespace dom {
         template<typename Tvalue> 
         MINIYAML_NODISCARD Tvalue as(Tvalue default_value = Tvalue{}) const;
 
+        MINIYAML_NODISCARD block_style_type& block_style();
         MINIYAML_NODISCARD block_style_type block_style() const;
         void block_style(block_style_type value);
 
+        MINIYAML_NODISCARD chomping_type& chomping();
         MINIYAML_NODISCARD chomping_type chomping() const;
         void chomping(chomping_type value);
 
@@ -562,11 +564,11 @@ namespace dom {
         MINIYAML_NODISCARD const_reverse_iterator rend() const;
         MINIYAML_NODISCARD const_reverse_iterator crend() const;
 
-        string_t& at(size_t index);
-        const string_t& at(size_t index) const;
+        MINIYAML_NODISCARD string_t& at(size_t index);
+        MINIYAML_NODISCARD const string_t& at(size_t index) const;
 
-        string_t& operator[](size_t index);
-        const string_t& operator[](size_t index) const;
+        MINIYAML_NODISCARD string_t& operator[](size_t index);
+        MINIYAML_NODISCARD const string_t& operator[](size_t index) const;
 
         iterator insert(const_iterator pos, string_t string);
         void push_back(string_t string);
@@ -577,8 +579,8 @@ namespace dom {
         iterator erase(const_iterator pos);
         iterator erase(const_iterator first, const_iterator last);
 
-        node_t& overlying_node();
-        const node_t& overlying_node() const;
+        MINIYAML_NODISCARD node_t& overlying_node();
+        MINIYAML_NODISCARD const node_t& overlying_node() const;
 
     private:
 
@@ -641,10 +643,10 @@ namespace dom {
         MINIYAML_NODISCARD iterator find(string_t key);
         MINIYAML_NODISCARD const_iterator find(string_t key) const;
 
-        node_t& at(string_t key);
-        const node_t& at(string_t key) const;
+        MINIYAML_NODISCARD node_t& at(string_t key);
+        MINIYAML_NODISCARD const node_t& at(string_t key) const;
 
-        node_t& operator [] (string_t key);
+        MINIYAML_NODISCARD node_t& operator [] (string_t key);
 
         insert_return_type insert(string_t key);
         insert_return_type insert(string_t key, node_t&& node);
@@ -655,8 +657,8 @@ namespace dom {
         iterator erase(const_iterator pos);
         iterator erase(const_iterator first, const_iterator last);
 
-        node_t& overlying_node();
-        const node_t& overlying_node() const;
+        MINIYAML_NODISCARD node_t& overlying_node();
+        MINIYAML_NODISCARD const node_t& overlying_node() const;
 
     private:
 
@@ -707,11 +709,11 @@ namespace dom {
         MINIYAML_NODISCARD const_reverse_iterator rend() const;
         MINIYAML_NODISCARD const_reverse_iterator crend() const;
 
-        node_t& at(size_t index);
-        const node_t& at(size_t index) const;
+        MINIYAML_NODISCARD node_t& at(size_t index);
+        MINIYAML_NODISCARD const node_t& at(size_t index) const;
 
-        node_t& operator[](size_t index);
-        const node_t& operator[](size_t index) const;
+        MINIYAML_NODISCARD node_t& operator[](size_t index);
+        MINIYAML_NODISCARD const node_t& operator[](size_t index) const;
 
         iterator insert(const_iterator pos);
         iterator insert(const_iterator pos, node_t&& node);
@@ -724,8 +726,8 @@ namespace dom {
         iterator erase(const_iterator pos);
         iterator erase(const_iterator first, const_iterator last);
 
-        node_t& overlying_node();
-        const node_t& overlying_node() const;
+        MINIYAML_NODISCARD node_t& overlying_node();
+        MINIYAML_NODISCARD const node_t& overlying_node() const;
 
     private:
 
@@ -2893,7 +2895,7 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    node<Tchar, VisView>& node<Tchar, VisView>::operator = (node&& rhs) {
+    node<Tchar, VisView>& node<Tchar, VisView>::operator = (node&& rhs) noexcept(false) {
         destroy_underlying_node();
         
         m_node_type = rhs.m_node_type;
@@ -3117,6 +3119,11 @@ namespace dom {
 
 
     template<typename Tchar, bool VisView>
+    block_style_type& scalar_node<Tchar, VisView>::block_style() {
+        return m_block_style;
+    }
+
+    template<typename Tchar, bool VisView>
     block_style_type scalar_node<Tchar, VisView>::block_style() const {
         return m_block_style;
     }
@@ -3124,6 +3131,11 @@ namespace dom {
     template<typename Tchar, bool VisView>
     void scalar_node<Tchar, VisView>::block_style(block_style_type value) {
         m_block_style = value;
+    }
+
+    template<typename Tchar, bool VisView>
+    chomping_type& scalar_node<Tchar, VisView>::chomping() {
+        return m_chomping;
     }
 
     template<typename Tchar, bool VisView>
