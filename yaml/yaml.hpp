@@ -607,6 +607,7 @@ namespace dom {
         using node_t = node<Tchar, VisView>;
         using node_ptr_t = std::unique_ptr<node_t>;
         using string_t = typename std::conditional<VisView, MINIYAML_NAMESPACE::basic_string_view<Tchar>, std::basic_string<Tchar>>::type;
+        using string_const_reference_t = typename std::conditional<VisView, string_t, const string_t&>::type;
         using map_t = std::map<string_t, node_ptr_t>;
         using iterator = typename map_t::iterator;
         using const_iterator = typename map_t::const_iterator;
@@ -625,7 +626,7 @@ namespace dom {
         MINIYAML_NODISCARD bool empty() const;
         MINIYAML_NODISCARD size_t size() const;
 
-        MINIYAML_NODISCARD bool contains(string_t key) const;
+        MINIYAML_NODISCARD bool contains(string_const_reference_t key) const;
 
         MINIYAML_NODISCARD iterator begin();
         MINIYAML_NODISCARD const_iterator begin() const;
@@ -640,18 +641,18 @@ namespace dom {
         MINIYAML_NODISCARD const_reverse_iterator rend() const;
         MINIYAML_NODISCARD const_reverse_iterator crend() const;
 
-        MINIYAML_NODISCARD iterator find(string_t key);
-        MINIYAML_NODISCARD const_iterator find(string_t key) const;
+        MINIYAML_NODISCARD iterator find(string_const_reference_t key);
+        MINIYAML_NODISCARD const_iterator find(string_const_reference_t key) const;
 
-        MINIYAML_NODISCARD node_t& at(string_t key);
-        MINIYAML_NODISCARD const node_t& at(string_t key) const;
+        MINIYAML_NODISCARD node_t& at(string_const_reference_t key);
+        MINIYAML_NODISCARD const node_t& at(string_const_reference_t key) const;
 
-        MINIYAML_NODISCARD node_t& operator [] (string_t key);
+        MINIYAML_NODISCARD node_t& operator [] (string_const_reference_t key);
 
-        insert_return_type insert(string_t key);
-        insert_return_type insert(string_t key, node_t&& node);
+        insert_return_type insert(string_const_reference_t key);
+        insert_return_type insert(string_const_reference_t key, node_t&& node);
 
-        size_t erase(string_t key);
+        size_t erase(string_const_reference_t key);
         iterator erase(iterator pos);
         iterator erase(iterator first, iterator last);
         iterator erase(const_iterator pos);
@@ -3301,7 +3302,7 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    bool object_node<Tchar, VisView>::contains(string_t key) const {
+    bool object_node<Tchar, VisView>::contains(string_const_reference_t key) const {
         return m_map.find(key) != m_map.end();
     }
 
@@ -3366,17 +3367,17 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    typename object_node<Tchar, VisView>::iterator object_node<Tchar, VisView>::find(string_t key) {
+    typename object_node<Tchar, VisView>::iterator object_node<Tchar, VisView>::find(string_const_reference_t key) {
         return m_map.find(key);
     }
 
     template<typename Tchar, bool VisView>
-    typename object_node<Tchar, VisView>::const_iterator object_node<Tchar, VisView>::find(string_t key) const {
+    typename object_node<Tchar, VisView>::const_iterator object_node<Tchar, VisView>::find(string_const_reference_t key) const {
         return m_map.find(key);
     }
 
     template<typename Tchar, bool VisView>
-    typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::at(string_t key) {
+    typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::at(string_const_reference_t key) {
         auto it = m_map.find(key);
         if (it == m_map.end()) {
             throw std::out_of_range("Provided node object key is unknown.");
@@ -3385,7 +3386,7 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    const typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::at(string_t key) const {
+    const typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::at(string_const_reference_t key) const {
         auto it = m_map.find(key);
         if (it == m_map.end()) {
             throw std::out_of_range("Provided node object key is unknown.");
@@ -3394,7 +3395,7 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::operator [] (string_t key) {
+    typename object_node<Tchar, VisView>::node_t& object_node<Tchar, VisView>::operator [] (string_const_reference_t key) {
         auto it = m_map.find(key);
         if (it != m_map.end()) {
             return *it->second;
@@ -3405,7 +3406,7 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    typename object_node<Tchar, VisView>::insert_return_type object_node<Tchar, VisView>::insert(string_t key) {
+    typename object_node<Tchar, VisView>::insert_return_type object_node<Tchar, VisView>::insert(string_const_reference_t key) {
         auto found_it = m_map.find(key);
         if (found_it != m_map.end()) {
             return { found_it, false };
@@ -3416,7 +3417,7 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    typename object_node<Tchar, VisView>::insert_return_type object_node<Tchar, VisView>::insert(string_t key, node_t&& node) {
+    typename object_node<Tchar, VisView>::insert_return_type object_node<Tchar, VisView>::insert(string_const_reference_t key, node_t&& node) {
         auto insert_result = insert(key);
         if (insert_result.second) {
             auto& new_node = *insert_result.first->second;
@@ -3426,7 +3427,7 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
-    size_t object_node<Tchar, VisView>::erase(string_t key) {
+    size_t object_node<Tchar, VisView>::erase(string_const_reference_t key) {
         return m_map.erase(key);
     }
 
