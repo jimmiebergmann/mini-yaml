@@ -61,22 +61,22 @@ Builds pass if all tests are successful and no memory leaks are found.
 :heavy_check_mark: Supported :warning: Partial :x: Unsupported
 
 |Feature | Support |
-| ------ | ------ |
+| ------ | ------- |
 | sax reader | :heavy_check_mark: |
 | dom reader | :heavy_check_mark: |
 | dom_view reader | :x: |
 | dom writer | :x: |
 | unicode | :heavy_check_mark: |
 | scalars | :heavy_check_mark: |
-| maps | :heavy_check_mark: |
-| sequences | :heavy_check_mark: |
-| unicode | :heavy_check_mark: |
-| scalar type conversions | :heavy_check_mark: |
-| tags (!!type) | :x: |
-| indentation indicator | :x: |
+| block scalars | :heavy_check_mark: |
 | flow scalars | :x: |
+| maps | :heavy_check_mark: |
 | flow maps | :x: |
+| sequences | :heavy_check_mark: |
 | flow sequences | :x: |
+| scalar type conversions | :heavy_check_mark: |
+| tags | :heavy_check_mark: |
+| indentation indicator | :x: |
 | sets | :x: |
 | anchors | :x: |
 | complex keys | :x: |

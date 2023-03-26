@@ -171,12 +171,12 @@ a_sequence:
 
 # YAML also has tags, which you can use to explicitly declare types.
 # Syntax: !![typeName] [value]
-###explicit_boolean: !!bool true
-###explicit_integer: !!int 42
-###explicit_float: !!float -42.24
-###explicit_string: !!str 0.5
-###explicit_datetime: !!timestamp 2022-11-17 12:34:56.78 +9
-###explicit_null: !!null null
+explicit_boolean: !!bool true
+explicit_integer: !!int 42
+explicit_float: !!float -42.24
+explicit_string: !!str 0.5
+explicit_datetime: !!timestamp 2022-11-17 12:34:56.78 +9
+explicit_null: !!null null
 
 # Some parsers implement language specific tags, like this one for Python's
 # complex number type.

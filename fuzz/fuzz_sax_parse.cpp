@@ -13,6 +13,7 @@ struct test_sax_handler {
     void index(size_t) {}
     void string(yaml::basic_string_view<uint8_t>) {}
     void key(yaml::basic_string_view<uint8_t>) {}
+    void tag(yaml::basic_string_view<uint8_t>) {}
     void comment(yaml::basic_string_view<uint8_t>) {}
 };
 

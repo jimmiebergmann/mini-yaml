@@ -607,7 +607,7 @@ TEST(dom_read, ok_file_learnyaml)
     ASSERT_NO_THROW(root_node.as_object());
     auto& root_object_node = root_node.as_object();
 
-    ASSERT_EQ(root_object_node.size(), size_t{ 26 });
+    ASSERT_EQ(root_object_node.size(), size_t{ 32 });
 
     {
         auto it = root_object_node.find("key");
@@ -1149,6 +1149,86 @@ TEST(dom_read, ok_file_learnyaml)
             }
         }
 
+    }
+
+    {
+        auto it = root_object_node.find("explicit_boolean");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        EXPECT_STREQ(node.tag().c_str(), "bool");
+
+        auto string = scalar_node.as<std::string>();
+        EXPECT_STREQ(string.c_str(), "true");
+    }
+    {
+        auto it = root_object_node.find("explicit_integer");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        EXPECT_STREQ(node.tag().c_str(), "int");
+
+        auto string = scalar_node.as<std::string>();
+        EXPECT_STREQ(string.c_str(), "42");
+    }
+    {
+        auto it = root_object_node.find("explicit_float");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        EXPECT_STREQ(node.tag().c_str(), "float");
+
+        auto string = scalar_node.as<std::string>();
+        EXPECT_STREQ(string.c_str(), "-42.24");
+    }
+    {
+        auto it = root_object_node.find("explicit_string");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        EXPECT_STREQ(node.tag().c_str(), "str");
+
+        auto string = scalar_node.as<std::string>();
+        EXPECT_STREQ(string.c_str(), "0.5");
+    }
+    {
+        auto it = root_object_node.find("explicit_datetime");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        EXPECT_STREQ(node.tag().c_str(), "timestamp");
+
+        auto string = scalar_node.as<std::string>();
+        EXPECT_STREQ(string.c_str(), "2022-11-17 12:34:56.78 +9");
+    }
+    {
+        auto it = root_object_node.find("explicit_null");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::null);
+
+        EXPECT_STREQ(node.tag().c_str(), "null");
     }
 
     {

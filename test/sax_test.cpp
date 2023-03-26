@@ -39,6 +39,7 @@ enum class test_sax_instruction {
     index,
     null,
     string,
+    tag,
     comment
 };
 
@@ -74,53 +75,39 @@ struct test_sax_handler {
 
     std::vector<test_sax_instruction> instructions = {};
 
-    size_t start_document_count = 0;
-    size_t end_document_count = 0;
-    size_t start_scalar_count = 0;
-    size_t end_scalar_count = 0;
-    size_t start_object_count = 0;
-    size_t end_object_count = 0;
-    size_t start_array_count = 0;
-    size_t end_array_count = 0;
-    size_t null_count = 0;
     std::vector<test_scalar_style> scalar_styles = {};
     std::vector<std::basic_string<TChar>> keys = {};
     std::vector<std::basic_string<TChar>> strings = {};
-    std::vector<std::basic_string<TChar>> comments = {};
     std::vector<size_t> indices = {};
-
+    std::vector<std::basic_string<TChar>> tags = {};
+    std::vector<std::basic_string<TChar>> comments = {};
+    
     test_sax_instruction* m_current_read_instruction = nullptr;
     test_scalar_style* m_current_read_scalar_styles = nullptr;
     std::basic_string<TChar>* m_current_read_string = nullptr;
     std::basic_string<TChar>* m_current_read_key = nullptr;
-    std::basic_string<TChar>* m_current_read_comment = nullptr;
     size_t* m_current_read_index = nullptr;
+    std::basic_string<TChar>* m_current_read_tag = nullptr;
+    std::basic_string<TChar>* m_current_read_comment = nullptr;
 
     void prepare_read() {
         m_current_read_instruction = instructions.data();
         m_current_read_scalar_styles = scalar_styles.data();
         m_current_read_string = strings.data();
         m_current_read_key = keys.data();
-        m_current_read_comment = comments.data();
         m_current_read_index = indices.data();
+        m_current_read_tag = tags.data();
+        m_current_read_comment = comments.data();
     }
 
     void reset() {
         instructions.clear();
-        start_document_count = 0;
-        end_document_count = 0;
-        start_scalar_count = 0;
-        end_scalar_count = 0;
-        start_object_count = 0;
-        end_object_count = 0;
-        start_array_count = 0;
-        end_array_count = 0;
-        null_count = 0;
         scalar_styles.clear();
         keys.clear();
         strings.clear();
-        comments.clear();
         indices.clear();
+        tags.clear();
+        comments.clear();    
     }
 
     test_sax_instruction get_next_instruction() {
@@ -151,14 +138,6 @@ struct test_sax_handler {
         return *current_key;
     }
 
-    std::basic_string<TChar> get_next_comment() {
-        auto* current_comment = m_current_read_comment++;
-        if (current_comment >= comments.data() + comments.size()) {
-            return {};
-        }
-        return *current_comment;
-    }
-
     size_t get_next_index() {
         auto* current_index = m_current_read_index++;
         if (current_index >= indices.data() + indices.size()) {
@@ -167,49 +146,57 @@ struct test_sax_handler {
         return *current_index;
     }
 
+    std::basic_string<TChar> get_next_comment() {
+        auto* current_comment = m_current_read_comment++;
+        if (current_comment >= comments.data() + comments.size()) {
+            return {};
+        }
+        return *current_comment;
+    }
+
+    std::basic_string<TChar> get_next_tag() {
+        auto* current_tag = m_current_read_tag++;
+        if (current_tag >= tags.data() + tags.size()) {
+            return {};
+        }
+        return *current_tag;
+    }
+
+
     void null() {
-        ++null_count;
         instructions.push_back(test_sax_instruction::null);
     }
 
     void start_document() {
-        ++start_document_count;
         instructions.push_back(test_sax_instruction::start_document);
     }
 
     void end_document() {
-        ++end_document_count;
         instructions.push_back(test_sax_instruction::end_document);
     }
 
     void start_scalar(yaml::block_style_type block_style, yaml::chomping_type chomping) {
-        ++start_scalar_count;
         instructions.push_back(test_sax_instruction::start_scalar);
         scalar_styles.emplace_back(block_style, chomping);
     }
 
     void end_scalar() {
-        ++end_scalar_count;
         instructions.push_back(test_sax_instruction::end_scalar);
     }
 
     void start_object() {
-        ++start_object_count;
         instructions.push_back(test_sax_instruction::start_object);
     }
 
     void end_object() {
-        ++end_object_count;
         instructions.push_back(test_sax_instruction::end_object);
     }
 
     void start_array() {
-        ++start_array_count;
         instructions.push_back(test_sax_instruction::start_array);
     }
 
     void end_array() {
-        ++end_array_count;
         instructions.push_back(test_sax_instruction::end_array);
     }
 
@@ -226,6 +213,11 @@ struct test_sax_handler {
     void index(size_t value) {
         indices.push_back(value);
         instructions.push_back(test_sax_instruction::index);
+    }
+
+    void tag(yaml::basic_string_view<TChar> value) {
+        tags.push_back(std::basic_string<TChar>{ value.data(), value.size() });
+        instructions.push_back(test_sax_instruction::tag);
     }
 
     void comment(yaml::basic_string_view<TChar> value) {
@@ -832,6 +824,59 @@ TEST(sax_read, fail_sequence_expected_sequence_2)
         EXPECT_EQ(handler.get_next_string(), "value");
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
 
+    });
+}
+
+TEST(sax_read, fail_tag_duplicate)
+{
+    const std::string input =
+        "!!str\n"
+        "!!str\n"
+        "wow 1\n"
+        "!!str\n"
+        "wow 2\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read_document(input, handler);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::tag_duplication);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 2 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+        EXPECT_EQ(handler.get_next_tag(), "str");
+    });
+}
+
+TEST(sax_read, fail_tag_nested_objects)
+{
+    const std::string input =
+        "key_1: !!map key_2: value\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read_document(input, handler);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::unexpected_key);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 4 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+        EXPECT_EQ(handler.get_next_key(), "key_1");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+        EXPECT_EQ(handler.get_next_tag(), "map");
     });
 }
 
@@ -2618,7 +2663,6 @@ TEST(sax_read, ok_sequence_nested)
     });
 }
 
-
 TEST(sax_read, ok_sequence_object_value)
 {
     const std::string input =
@@ -2668,6 +2712,150 @@ TEST(sax_read, ok_sequence_object_value)
 
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
 
+    });
+}
+
+TEST(sax_read, ok_tag_1_token_scalar)
+{
+    const std::string input =
+        "!str\n"
+        "wow 1\n"
+        "!!str\n"
+        "wow 2\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read_document(input, handler);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 8 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+        EXPECT_EQ(handler.get_next_tag(), "str");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "wow 1");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "!!str");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "wow 2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
+    });
+}
+
+TEST(sax_read, ok_tag_2_token_scalar)
+{
+    const std::string input =
+        "!!str\n"
+        "wow 1\n"
+        "!!str\n"
+        "wow 2\n";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read_document(input, handler);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 8 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+        EXPECT_EQ(handler.get_next_tag(), "str");
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+            EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "wow 1");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "!!str");
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+            EXPECT_EQ(handler.get_next_string(), "wow 2");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
+    });
+}
+
+TEST(sax_read, ok_tag_object)
+{
+    const std::string input =
+        "key_1: !!map\n"
+        "  key_1_1:\n"
+        "    !map\n"
+        "  key_1_2:\n" 
+        "    !!seq\n"
+        "    - !!str value";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        const auto read_result = yaml::sax::read_document(input, handler);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+
+        handler.prepare_read();
+        ASSERT_EQ(handler.instructions.size(), size_t{ 20 });
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+            EXPECT_EQ(handler.get_next_key(), "key_1");
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+            EXPECT_EQ(handler.get_next_tag(), "map");
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_object);
+
+                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+                EXPECT_EQ(handler.get_next_key(), "key_1_1");
+
+                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+                EXPECT_EQ(handler.get_next_tag(), "map");
+
+                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::null);
+
+                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+                EXPECT_EQ(handler.get_next_key(), "key_1_2");
+
+                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+                EXPECT_EQ(handler.get_next_tag(), "seq");
+
+                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_array);
+
+                    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::index);
+                    EXPECT_EQ(handler.get_next_index(), size_t{ 0 });
+
+                    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+                    EXPECT_EQ(handler.get_next_tag(), "str");
+
+                    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+                        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+                        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+                        EXPECT_EQ(handler.get_next_string(), "value");
+                    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_array);
+
+            ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_object);
+
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_document);
     });
 }
 
@@ -2780,7 +2968,7 @@ TEST(sax_read_documents, ok_file_learnyaml)
     EXPECT_TRUE(read_result);
 
     handler.prepare_read();
-    ASSERT_EQ(handler.instructions.size(), size_t{ 338 });
+    ASSERT_EQ(handler.instructions.size(), size_t{ 363 });
 
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_document);
 
@@ -3384,71 +3572,142 @@ TEST(sax_read_documents, ok_file_learnyaml)
                 ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
                 EXPECT_EQ(handler.get_next_comment(), "Syntax: !![typeName] [value]");
 
-                for (size_t i = 0; i < 6; i++) {
-                    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
-                    handler.get_next_comment();
-                }
-
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "Some parsers implement language specific tags, like this one for Python's");
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "complex number type.");
-
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
-                handler.get_next_comment();
-
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "We can also use yaml complex keys with language specific tags");
-
-                for (size_t i = 0; i < 2; i++) {
-                    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
-                    handler.get_next_comment();
-                }
-
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "Would be {(5, 7): 'Fifty Seven'} in Python");
-
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "###################");
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "EXTRA YAML TYPES #");
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "###################");
-
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "Strings and numbers aren't the only scalars that YAML can understand.");
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "ISO-formatted date and datetime literals are also parsed.");
-
-                for (size_t i = 0; i < 4; i++) {
-                    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
-                    handler.get_next_comment();
-                }
-
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "The !!binary tag indicates that a string is actually a base64-encoded");
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "representation of a binary blob.");
-
-                for (size_t i = 0; i < 5; i++) {
-                    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
-                    handler.get_next_comment();
-                }
-
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "YAML also has a set type, which looks like this:");
-
-                for (size_t i = 0; i < 5; i++) {
-                    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
-                    handler.get_next_comment();
-                }
-
-                ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
-                EXPECT_EQ(handler.get_next_comment(), "Sets are just maps with null values; the above is equivalent to:");
-
             ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_array);
         ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_array);
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_array);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "explicit_boolean");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+    EXPECT_EQ(handler.get_next_tag(), "bool");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "true");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "explicit_integer");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+    EXPECT_EQ(handler.get_next_tag(), "int");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "42");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "explicit_float");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+    EXPECT_EQ(handler.get_next_tag(), "float");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "-42.24");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "explicit_string");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+    EXPECT_EQ(handler.get_next_tag(), "str");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "0.5");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "explicit_datetime");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+    EXPECT_EQ(handler.get_next_tag(), "timestamp");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "2022-11-17 12:34:56.78 +9");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
+    EXPECT_EQ(handler.get_next_key(), "explicit_null");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::tag);
+    EXPECT_EQ(handler.get_next_tag(), "null");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::start_scalar);
+        EXPECT_EQ(handler.get_next_scalar_style(), test_scalar_style(yaml::block_style_type::none, yaml::chomping_type::strip));
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "null");
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::string);
+        EXPECT_EQ(handler.get_next_string(), "");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::end_scalar);
+
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Some parsers implement language specific tags, like this one for Python's");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "complex number type.");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+    handler.get_next_comment();
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "We can also use yaml complex keys with language specific tags");
+
+    for (size_t i = 0; i < 2; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Would be {(5, 7): 'Fifty Seven'} in Python");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "###################");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "EXTRA YAML TYPES #");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "###################");
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Strings and numbers aren't the only scalars that YAML can understand.");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "ISO-formatted date and datetime literals are also parsed.");
+
+    for (size_t i = 0; i < 4; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "The !!binary tag indicates that a string is actually a base64-encoded");
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "representation of a binary blob.");
+
+    for (size_t i = 0; i < 5; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "YAML also has a set type, which looks like this:");
+
+    for (size_t i = 0; i < 5; i++) {
+        ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment); // SKIP unsupported feature.
+        handler.get_next_comment();
+    }
+
+    ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::comment);
+    EXPECT_EQ(handler.get_next_comment(), "Sets are just maps with null values; the above is equivalent to:");
+
 
     ASSERT_EQ(handler.get_next_instruction(), test_sax_instruction::key);
     EXPECT_EQ(handler.get_next_key(), "set2");
