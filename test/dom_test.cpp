@@ -28,18 +28,12 @@
 
 // =====================================================================
 // Tests
-
-// [&]() -> object_node_t& { return node.as_object(); }()
-
-#define TEST_IGNORE_NODISCARD(statement) [&]() -> decltype(statement)& { return statement; }()
-#define ASSERT_NO_THROW_IGNORE_NODISCARD(statement) ASSERT_NO_THROW(TEST_IGNORE_NODISCARD(statement))
-#define EXPECT_ANY_THROW_IGNORE_NODISCARD(statement) EXPECT_ANY_THROW(TEST_IGNORE_NODISCARD(statement))
 TEST(dom_read, ok_quickstart)
 {
     const std::string input =
-        "scalar: foo bar\n"
+        "scalar: hello world\n"
         "list:\n"
-        " - hello world\n"
+        " - \"foo bar\"\n"
         " - boolean: true\n"
         "   integer: 123\n"
         "   floating point: 2.75";
@@ -57,8 +51,8 @@ TEST(dom_read, ok_quickstart)
         const auto int1 = root.as_object().at("list").as_array().at(1).as_object().at("integer").as_scalar().as<int>();
         const auto float1 = root.as_object().at("list").as_array().at(1).as_object().at("floating point").as_scalar().as<float>();
 
-        EXPECT_STREQ(str1.c_str(), "foo bar");
-        EXPECT_STREQ(str2.c_str(), "hello world");
+        EXPECT_STREQ(str1.c_str(), "hello world");
+        EXPECT_STREQ(str2.c_str(), "foo bar");
         EXPECT_TRUE(bool1);
         EXPECT_EQ(int1, int{ 123 });
         EXPECT_FLOAT_EQ(float1, float{ 2.75f });
@@ -70,8 +64,8 @@ TEST(dom_read, ok_quickstart)
         const auto int1 = root["list"][1]["integer"].as<int>();
         const auto float1 = root["list"][1]["floating point"].as<float>();
 
-        EXPECT_STREQ(str1.c_str(), "foo bar");
-        EXPECT_STREQ(str2.c_str(), "hello world");
+        EXPECT_STREQ(str1.c_str(), "hello world");
+        EXPECT_STREQ(str2.c_str(), "foo bar");      
         EXPECT_TRUE(bool1);
         EXPECT_EQ(int1, int{ 123 }); 
         EXPECT_FLOAT_EQ(float1, float{ 2.75f });
@@ -420,11 +414,11 @@ TEST(dom_create_node, ok_scalar)
     EXPECT_EQ(&scalar_node.overlying_node(), &node);
 
     // Block style tests.
-    EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
+    EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::none);
     EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
 
-    scalar_node.block_style(yaml::block_style_type::literal);
-    EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
+    scalar_node.style(yaml::scalar_style_type::literal);
+    EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::literal);
 
     scalar_node.chomping(yaml::chomping_type::keep);
     EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::keep);
@@ -478,7 +472,7 @@ TEST(dom_create_node, ok_scalar)
 
     // as_string() tests.
     {
-        scalar_node.block_style(yaml::block_style_type::none);
+        scalar_node.style(yaml::scalar_style_type::none);
         scalar_node.chomping(yaml::chomping_type::strip);
         EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "First line of scalar. Second line of scalar.");
     }
@@ -558,7 +552,7 @@ TEST(dom_read, ok_scalar)
     ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
     auto& scalar_node = node.as_scalar();
 
-    EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
+    EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::none);
     EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
 
     EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "This is a scalar with multiple lines.");
@@ -585,7 +579,7 @@ TEST(dom_read, ok_scalar_with_gaps)
     ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
     auto& scalar_node = node.as_scalar();
 
-    EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::none);
+    EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::none);
     EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
 
     EXPECT_EQ(scalar_node.size(), size_t{ 7 });
@@ -613,7 +607,7 @@ TEST(dom_read, ok_file_learnyaml)
     ASSERT_NO_THROW_IGNORE_NODISCARD(root_node.as_object());
     auto& root_object_node = root_node.as_object();
 
-    ASSERT_EQ(root_object_node.size(), size_t{ 32 });
+    ASSERT_EQ(root_object_node.size(), size_t{ 36 });
 
     {
         auto it = root_object_node.find("key");
@@ -782,7 +776,44 @@ TEST(dom_read, ok_file_learnyaml)
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
-        EXPECT_STREQ(string.c_str(), "\"yes\"");
+        EXPECT_STREQ(string.c_str(), "yes");
+    }
+
+    {
+        auto it = root_object_node.find("however");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as<std::string>();
+        EXPECT_STREQ(string.c_str(), "A string, enclosed in quotes.");
+    }
+    {
+        auto it = root_object_node.find("single quotes");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as<std::string>();
+        EXPECT_STREQ(string.c_str(), "have ''one'' escape pattern");
+    }
+    {
+        auto it = root_object_node.find("double quotes");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as<std::string>();
+        EXPECT_STREQ(string.c_str(), "have many: \\\", \\0, \\t, \\u263A, \\x0d\\x0a == \\r\\n, and more.");
     }
 
     {
@@ -799,6 +830,19 @@ TEST(dom_read, ok_file_learnyaml)
     }
 
     {
+        auto it = root_object_node.find("special_characters");
+        ASSERT_NE(it, root_object_node.end());
+
+        auto& node = *it->second;
+        ASSERT_EQ(node.type(), yaml::dom::node_type::scalar);
+        ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
+        auto& scalar_node = node.as_scalar();
+
+        auto string = scalar_node.as<std::string>();
+        EXPECT_STREQ(string.c_str(), "[ John ] & { Jane } - <Doe>");
+    }
+
+    {
         auto it = root_object_node.find("literal_block");
         ASSERT_NE(it, root_object_node.end());
 
@@ -807,7 +851,7 @@ TEST(dom_read, ok_file_learnyaml)
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
+        EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::literal);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::clip);
 
         auto string = scalar_node.as<std::string>();
@@ -833,7 +877,7 @@ TEST(dom_read, ok_file_learnyaml)
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::folded);
+        EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::folded);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::clip);
 
         auto string = scalar_node.as<std::string>();
@@ -856,7 +900,7 @@ TEST(dom_read, ok_file_learnyaml)
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
+        EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::literal);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
 
         auto string = scalar_node.as<std::string>();
@@ -876,7 +920,7 @@ TEST(dom_read, ok_file_learnyaml)
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::folded);
+        EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::folded);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
 
         auto string = scalar_node.as<std::string>();
@@ -895,7 +939,7 @@ TEST(dom_read, ok_file_learnyaml)
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::literal);
+        EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::literal);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::keep);
 
         auto string = scalar_node.as<std::string>();
@@ -915,7 +959,7 @@ TEST(dom_read, ok_file_learnyaml)
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        EXPECT_EQ(scalar_node.block_style(), yaml::block_style_type::folded);
+        EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::folded);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::keep);
 
         auto string = scalar_node.as<std::string>();
@@ -1961,6 +2005,79 @@ TEST(dom_scalar_as, as_long_double)
         scalar_node.at(0) = "1.18973e+4933";
         EXPECT_TRUE(is_near(scalar_node.as<long double>(), 0.0L));
         EXPECT_TRUE(is_near(scalar_node.as<long double>(4.0L), 4.0L));
+    }
+}
+
+TEST(dom_scalar_as, as_string)
+{
+    using char_type = char;
+    auto node = yaml::dom::node<char_type>::create_scalar();
+    auto& scalar_node = node.as_scalar();
+
+    scalar_node.push_back("");
+    scalar_node.push_back("");
+    scalar_node.push_back("first");
+    scalar_node.push_back("second");
+    scalar_node.push_back("");
+    scalar_node.push_back("third \\\"");
+    scalar_node.push_back("");
+    scalar_node.push_back("");
+    scalar_node.push_back("fourth \"");
+    scalar_node.push_back("fifth ''");
+    scalar_node.push_back("");
+    scalar_node.push_back("");
+
+    // Block style: None
+    {
+        // Clip
+        scalar_node.style(yaml::scalar_style_type::none);
+        scalar_node.chomping(yaml::chomping_type::clip);
+        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "first second\nthird \\\"\n\nfourth \" fifth ''");
+
+        // Keep
+        scalar_node.style(yaml::scalar_style_type::none);
+        scalar_node.chomping(yaml::chomping_type::keep);
+        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "first second\nthird \\\"\n\nfourth \" fifth ''");
+
+        // Strip
+        scalar_node.style(yaml::scalar_style_type::none);
+        scalar_node.chomping(yaml::chomping_type::strip);
+        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "first second\nthird \\\"\n\nfourth \" fifth ''");
+
+    }
+    // Block style: Literal
+    {
+        // Clip
+        scalar_node.style(yaml::scalar_style_type::literal);
+        scalar_node.chomping(yaml::chomping_type::clip);
+        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst\nsecond\n\nthird \\\"\n\n\nfourth \"\nfifth ''\n");
+
+        // Keep
+        scalar_node.style(yaml::scalar_style_type::literal);
+        scalar_node.chomping(yaml::chomping_type::keep);
+        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst\nsecond\n\nthird \\\"\n\n\nfourth \"\nfifth ''\n\n\n");
+
+        // Strip
+        scalar_node.style(yaml::scalar_style_type::literal);
+        scalar_node.chomping(yaml::chomping_type::strip);
+        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst\nsecond\n\nthird \\\"\n\n\nfourth \"\nfifth ''");
+    }
+    // Block style: Folded 
+    {
+        // Clip
+        scalar_node.style(yaml::scalar_style_type::folded);
+        scalar_node.chomping(yaml::chomping_type::clip);
+        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst second\nthird \\\"\n\nfourth \" fifth ''\n");
+        
+        // Keep
+        /*scalar_node.style(yaml::scalar_style_type::folded);
+        scalar_node.chomping(yaml::chomping_type::keep);
+        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst second\nthird\n\nfourth\n\n");*/
+
+        // Strip
+        scalar_node.style(yaml::scalar_style_type::folded);
+        scalar_node.chomping(yaml::chomping_type::strip);
+        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst second\nthird \\\"\n\nfourth \" fifth ''");
     }
 }
 

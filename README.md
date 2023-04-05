@@ -6,9 +6,9 @@ Single header YAML C++ >= 11 sax/dom reader.
 ## Quickstart
 ### file.yml
 ```yaml
-scalar: foo bar
+scalar: hello world
 list:
-  - hello world
+  - "foo bar"
   - boolean: true
     integer: 123
     floating point: 2.75
@@ -33,8 +33,8 @@ std::cout << root["list"][1]["floating point"].as<float>() << "\n";
 ```
 ### Output
 ```
-foo bar
 hello world
+foo bar
 true
 123
 2.75
@@ -46,7 +46,6 @@ Place [/yaml](https://github.com/jimmiebergmann/mini-yaml/blob/master/yaml) in y
 #### Clone repo
 ```
 git clone https://github.com/jimmiebergmann/mini-yaml.git
-
 ```
 
 ## Build status
@@ -60,7 +59,7 @@ Builds pass if all tests are successful and no memory leaks are found.
 ## Features
 :heavy_check_mark: Supported :warning: Partial :x: Unsupported
 
-|Feature | Support |
+|Feature | Support | Note |
 | ------ | ------- |
 | sax reader | :heavy_check_mark: |
 | dom reader | :heavy_check_mark: |
@@ -69,12 +68,12 @@ Builds pass if all tests are successful and no memory leaks are found.
 | unicode | :heavy_check_mark: |
 | scalars | :heavy_check_mark: |
 | block scalars | :heavy_check_mark: |
-| flow scalars | :x: |
+| flow scalars | :warning: | No single quote support. |
 | maps | :heavy_check_mark: |
 | flow maps | :x: |
 | sequences | :heavy_check_mark: |
 | flow sequences | :x: |
-| scalar type conversions | :heavy_check_mark: |
+| scalar type conversions | :warning: | No tests for flow scalars |
 | tags | :heavy_check_mark: |
 | indentation indicator | :x: |
 | sets | :x: |

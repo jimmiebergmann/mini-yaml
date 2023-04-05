@@ -34,6 +34,10 @@
 #include <algorithm>
 #include <iostream>
 
+#define TEST_IGNORE_NODISCARD(statement) [&]() -> decltype(statement)& { return statement; }()
+#define ASSERT_NO_THROW_IGNORE_NODISCARD(statement) ASSERT_NO_THROW(TEST_IGNORE_NODISCARD(statement))
+#define EXPECT_ANY_THROW_IGNORE_NODISCARD(statement) EXPECT_ANY_THROW(TEST_IGNORE_NODISCARD(statement))
+
 namespace mini_yaml_test {
 
 #if defined(__cpp_char8_t)

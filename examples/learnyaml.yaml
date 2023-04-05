@@ -40,15 +40,15 @@ not_enclosed: yes # evaluates to "not_enclosed": true
 enclosed: "yes"   # evaluates to "enclosed": yes
 
 # Notice that strings don't need to be quoted. However, they can be.
-###however: 'A string, enclosed in quotes.'
+however: 'A string, enclosed in quotes.'
 ###'Keys can be quoted too.': "Useful if you want to put a ':' in your key."
-###single quotes: 'have ''one'' escape pattern'
-###double quotes: "have many: \", \0, \t, \u263A, \x0d\x0a == \r\n, and more."
+single quotes: 'have ''one'' escape pattern'
+double quotes: "have many: \", \0, \t, \u263A, \x0d\x0a == \r\n, and more."
 # UTF-8/16/32 characters need to be encoded
 Superscript two: \u00B2
 
 # Special characters must be enclosed in single or double quotes
-###special_characters: "[ John ] & { Jane } - <Doe>"
+special_characters: "[ John ] & { Jane } - <Doe>"
 
 # Multiple-line strings can be written either as a 'literal block' (using |), 
 # or a 'folded block' (using '>').

@@ -145,8 +145,9 @@ namespace MINIYAML_NAMESPACE {
         expected_line_break,
         expected_key,
         expected_sequence,
+        unexpected_eof,
         unexpected_key,
-        unexpected_token,
+        unexpected_token,    
         tag_duplication,
     };
 
@@ -160,8 +161,9 @@ namespace MINIYAML_NAMESPACE {
         MINIYAML_INLINE_VARIABLE constexpr static T carriage = '\r';
         MINIYAML_INLINE_VARIABLE constexpr static T newline = '\n';
         MINIYAML_INLINE_VARIABLE constexpr static T comment = '#';
-        //MINIYAML_INLINE_VARIABLE constexpr static T quote = '\"';
-        //MINIYAML_INLINE_VARIABLE constexpr static T single_quote = '\'';
+        MINIYAML_INLINE_VARIABLE constexpr static T escape = '\\';
+        MINIYAML_INLINE_VARIABLE constexpr static T double_quote = '\"';
+        MINIYAML_INLINE_VARIABLE constexpr static T single_quote = '\'';
         MINIYAML_INLINE_VARIABLE constexpr static T object = ':';
         //MINIYAML_INLINE_VARIABLE constexpr static T flow_object_start = '{';
         //MINIYAML_INLINE_VARIABLE constexpr static T flow_object_end = '}';
@@ -176,10 +178,12 @@ namespace MINIYAML_NAMESPACE {
         MINIYAML_INLINE_VARIABLE constexpr static T tag = '!';
     };
 
-    enum class block_style_type {
-        none,       // ' '
-        literal,    // '>' Keep newlines.
-        folded,     // '|' Replace newlines with spaces.
+    enum class scalar_style_type {
+        none,           // ' '
+        literal,        // | Keep newlines.
+        folded,         // > Replace newlines with spaces.
+        double_quoted,  // ""
+        single_quoted   // ''
     };
 
     enum class chomping_type {
@@ -281,7 +285,7 @@ namespace sax {
 
     /** Helper base struct for SAX handler. */
     struct handler_base {
-        virtual void start_scalar(block_style_type, chomping_type) {}
+        virtual void start_scalar(scalar_style_type, chomping_type) {}
         virtual void end_scalar() {}
         virtual void start_object() {}
         virtual void end_object() {}
@@ -331,7 +335,6 @@ namespace sax {
         enum class stack_type {
             unknown,
             scalar,
-            scalar_block,
             object,
             sequence
         };
@@ -345,12 +348,17 @@ namespace sax {
             stack_item_t& operator = (stack_item_t&&) = default;
             stack_item_t& operator = (const stack_item_t&) = delete;
 
+            bool is_flow_value() const {
+                return flow_value_token != token_type::eof;
+            }
+
             state_function_t state_function = nullptr;
             stack_type type = stack_type::unknown;
             int64_t type_indention = 0;
             int64_t processed_lines = 0;
+            Tchar flow_value_token = token_type::eof;
             bool has_tag = false;
-        };  
+        };
 
         using stack_t = std::vector<stack_item_t>;
         using stack_iterator_t = typename stack_t::iterator;
@@ -384,24 +392,26 @@ namespace sax {
         void execute_read_scalar_block();
         void execute_read_key();
         void execute_read_sequence();
+        void execute_read_flow_scalar_quote();
 
         void register_newline();
         void register_line_indentation();
 
         void read_comment_until_newline();
-        void read_remaining_whitespaces(); // TODO REMOVE?
+        void consume_whitespaces_until_any();
         bool consume_whitespaces_until_newline();
         bool consume_only_whitespaces_until_newline();
         bool consume_only_whitespaces_until_newline_or_comment();
 
-        bool has_min_tokens_left(size_t count);
-        bool is_next_token(size_t increments, const value_type value);
-        bool is_prev_token_whitespace(int decrements = 1);
-        bool is_next_token_whitespace(int increments = 1);
+        bool has_min_tokens_left(size_t count) const;
+        bool is_next_token(size_t increments, const value_type value) const;
+        bool is_prev_token_whitespace(int decrements = 1) const;
+        bool is_next_token_whitespace(int increments = 1) const;
+        bool is_current_stack_flow_value() const;
 
         void signal_start_document();
         void signal_end_document();
-        void signal_start_scalar(block_style_type block_style, chomping_type comping);
+        void signal_start_scalar(scalar_style_type style, chomping_type chomping);
         void signal_end_scalar();
         void signal_start_object();
         void signal_end_object();
@@ -420,7 +430,7 @@ namespace sax {
         void pop_stack();
         void pop_stack_if_not_root();
         void pop_stack_from(stack_iterator_t it);
-        void signal_stack_item_pop(stack_item_t& stack_item);
+        void signal_stack_item_pop(const stack_item_t& stack_item);
 
     };
 
@@ -454,7 +464,7 @@ namespace dom {
         using array_node_t = array_node<Tchar, VisView>;
         using string_t = typename std::conditional<VisView, MINIYAML_NAMESPACE::basic_string_view<Tchar>, std::basic_string<Tchar>>::type;
 
-        static node create_scalar(block_style_type block_style = block_style_type::none, chomping_type chomping = chomping_type::strip);
+        static node create_scalar(scalar_style_type style = scalar_style_type::none, chomping_type chomping = chomping_type::strip);
         static node create_object();
         static node create_array();
 
@@ -531,7 +541,7 @@ namespace dom {
         using reverse_iterator = typename lines_t::reverse_iterator;
         using const_reverse_iterator = typename lines_t::const_reverse_iterator;
 
-        scalar_node(node_t& overlying_node, block_style_type block_style, chomping_type chomping);
+        scalar_node(node_t& overlying_node, scalar_style_type style, chomping_type chomping);
 
         scalar_node(const scalar_node&) = delete;
         scalar_node(scalar_node&&) = delete;
@@ -541,13 +551,13 @@ namespace dom {
         template<typename Tvalue> 
         MINIYAML_NODISCARD Tvalue as(Tvalue default_value = Tvalue{}) const;
 
-        MINIYAML_NODISCARD block_style_type& block_style();
-        MINIYAML_NODISCARD block_style_type block_style() const;
-        void block_style(block_style_type value);
+        MINIYAML_NODISCARD scalar_style_type& style();
+        MINIYAML_NODISCARD scalar_style_type style() const;
+        void style(scalar_style_type value);
 
         MINIYAML_NODISCARD chomping_type& chomping();
         MINIYAML_NODISCARD chomping_type chomping() const;
-        void chomping(chomping_type value);
+        void chomping(const chomping_type value);
 
         MINIYAML_NODISCARD bool empty() const;
         MINIYAML_NODISCARD size_t size() const;
@@ -593,7 +603,7 @@ namespace dom {
         MINIYAML_NODISCARD std::basic_string<Tchar> as_folded_string() const;
 
         lines_t m_lines;
-        block_style_type m_block_style;
+        scalar_style_type m_style;
         chomping_type m_chomping;
         node_t* m_overlying_node;
 
@@ -908,7 +918,7 @@ namespace dom {
 
             void start_document();
             void end_document();
-            void start_scalar(block_style_type, chomping_type);
+            void start_scalar(scalar_style_type, chomping_type);
             void end_scalar();
             void start_object();
             void end_object();
@@ -934,7 +944,7 @@ namespace dom {
             node_stack_t m_node_stack;
 
             string_view_list m_string_views;
-            block_style_type m_current_block_style;
+            scalar_style_type m_current_style;
             chomping_type m_current_chomping;
         };
 
@@ -1058,7 +1068,7 @@ namespace impl {
     }
     template<typename Tsax_handler>
     constexpr bool sax_handler_has_start_scalar() {
-        return requires(Tsax_handler value) { { value.start_scalar(block_style_type::none, chomping_type::strip) }; };
+        return requires(Tsax_handler value) { { value.start_scalar(scalar_style_type::none, chomping_type::strip) }; };
     }
     template<typename Tsax_handler>
     constexpr bool sax_handler_has_end_scalar() {
@@ -1384,18 +1394,18 @@ namespace sax {
             while (m_current_ptr < m_end_ptr) {
                 const auto codepoint = *(m_current_ptr++);
                 switch (codepoint) {
-                case token_type::space:
-                case token_type::tab: break;
-                case token_type::comment: {
-                    read_comment_until_newline();
-                } break;
-                case token_type::carriage:
-                case token_type::newline: {
-                    register_newline();
-                } return;
-                default: {
-                    error(read_result_code::unexpected_token);
-                } return;
+                    case token_type::space:
+                    case token_type::tab: break;
+                    case token_type::comment: {
+                        read_comment_until_newline();
+                    } break;
+                    case token_type::carriage:
+                    case token_type::newline: {
+                        register_newline();
+                    } return;
+                    default: {
+                        error(read_result_code::unexpected_token);
+                    } return;
                 }
             }
         };
@@ -1407,21 +1417,23 @@ namespace sax {
                     return m_current_result_code;
                 }
 
-                if (m_current_is_new_line) {
-                    if (!read_newline_indentation()) {
-                        error(read_result_code::forbidden_tab_indentation);
-                        return m_current_result_code;
-                    }
-                    if (!process_newline_indentation()) {
-                        if (m_current_result_code == read_result_code::success) {
-                            pop_stack_from(m_stack.begin());
+                if (!is_current_stack_flow_value()) {
+                    if (m_current_is_new_line) {
+                        if (!read_newline_indentation()) {
+                            error(read_result_code::forbidden_tab_indentation);
+                            return m_current_result_code;
                         }
-                        return m_current_result_code;
+                        if (!process_newline_indentation()) {
+                            if (m_current_result_code == read_result_code::success) {
+                                pop_stack_from(m_stack.begin());
+                            }
+                            return m_current_result_code;
+                        }
                     }
-                }
-                else {
-                    if (consume_whitespaces_until_newline()) {
-                        continue;
+                    else {
+                        if (consume_whitespaces_until_newline()) {
+                            continue;
+                        }
                     }
                 }
 
@@ -1524,13 +1536,13 @@ namespace sax {
             auto& stack_item = m_stack.back();
             stack_item.type = stack_type::scalar;
             stack_item.state_function = &reader::execute_read_scalar;
-            signal_start_scalar(block_style_type::none, chomping_type::strip);
+            signal_start_scalar(scalar_style_type::none, chomping_type::strip);
        
             const auto scalar_string_view = string_view_type{ value_start_ptr, scalar_length };
             signal_string(scalar_string_view);
         };
 
-        auto on_scalar_block_token = [&](const block_style_type block_type) {
+        auto on_scalar_block_token = [&](const scalar_style_type style) {
             auto chomping = chomping_type::clip;
             const auto next_codepoint = m_current_ptr < m_end_ptr ? *m_current_ptr : token_type::eof;
             switch (next_codepoint) {
@@ -1555,9 +1567,9 @@ namespace sax {
             }
 
             auto& stack_item = m_stack.back();
-            stack_item.type = stack_type::scalar_block;
+            stack_item.type = stack_type::scalar;
             stack_item.state_function = &reader::execute_read_scalar_block;
-            signal_start_scalar(block_type, chomping);
+            signal_start_scalar(style, chomping);
         };
 
         auto on_object_token = [&]() {
@@ -1655,7 +1667,7 @@ namespace sax {
                     switch (codepoint) {
                         case token_type::space:
                         case token_type::tab: { 
-                            read_remaining_whitespaces();
+                            consume_whitespaces_until_any();
                         } return true;
                         case token_type::carriage:
                         case token_type::newline: {
@@ -1680,6 +1692,68 @@ namespace sax {
             value_end_ptr = m_current_ptr;
 
             return process_result;
+        };
+
+        auto on_flow_scalar_token = [&](const Tchar quote_token) {
+            const auto scalar_style = quote_token == token_type::double_quote ? 
+                scalar_style_type::double_quoted : 
+                scalar_style_type::single_quoted;
+
+            auto& stack_item = m_stack.back();
+            stack_item.type = stack_type::scalar;
+            stack_item.state_function = &reader::execute_read_flow_scalar_quote;
+            stack_item.flow_value_token = quote_token;
+            signal_start_scalar(scalar_style, chomping_type::strip);
+
+            auto value_start_ptr = m_current_ptr;
+            auto value_end_ptr = m_current_ptr;
+         
+            auto process_string = [&]() {             
+                const auto scalar_length = static_cast<size_t>(value_end_ptr - value_start_ptr);
+                const auto scalar_string_view = string_view_type{ value_start_ptr, scalar_length };
+                signal_string(scalar_string_view);
+            };
+
+            auto prev_codepoint = token_type::eof;
+
+            while (m_current_ptr < m_end_ptr) {
+                const auto codepoint = *(m_current_ptr++);
+                switch (codepoint) {
+                    case token_type::carriage:
+                    case token_type::newline: {
+                        register_newline();
+                        process_string();
+                    } return;
+                    case token_type::double_quote: {
+                        if (quote_token != token_type::double_quote || prev_codepoint == token_type::escape) {
+                            break;
+                        }
+                        process_string();
+                        pop_stack();
+                        if (!is_current_stack_flow_value() && !consume_only_whitespaces_until_newline()) {
+                            error(read_result_code::unexpected_token);
+                        }
+                    } return;
+                    case token_type::single_quote: {
+                        if (quote_token != token_type::single_quote) {
+                            break;
+                        }
+                        if (is_next_token(0, token_type::single_quote)) {
+                            ++m_current_ptr;
+                            break;
+                        }
+                        process_string();
+                        pop_stack();
+                        if (!is_current_stack_flow_value() && !consume_only_whitespaces_until_newline()) {
+                            error(read_result_code::unexpected_token);
+                        }
+                    } return;
+                    default: break;
+                }
+
+                value_end_ptr = m_current_ptr;
+                prev_codepoint = codepoint;
+            }
         };
 
         auto parse_value_type = [&]() {
@@ -1715,16 +1789,22 @@ namespace sax {
                         }
                     } return first_codepoint_result_code::ok;
                     case token_type::folded_block: {
-                        on_scalar_block_token(block_style_type::folded);
+                        on_scalar_block_token(scalar_style_type::folded);
                     } return first_codepoint_result_code::exit;
                     case token_type::literal_block: {
-                        on_scalar_block_token(block_style_type::literal);
+                        on_scalar_block_token(scalar_style_type::literal);
                     } return first_codepoint_result_code::exit;
                     case token_type::tag: {
                         if (on_tag_token()) {
                             return first_codepoint_result_code::exit;
                         }
                     } return first_codepoint_result_code::repeat;
+                    case token_type::double_quote: {
+                        on_flow_scalar_token(token_type::double_quote);
+                    } return first_codepoint_result_code::exit;
+                    case token_type::single_quote: {
+                        on_flow_scalar_token(token_type::single_quote);
+                    } return first_codepoint_result_code::exit;
                     default: break;
                 }
 
@@ -1903,7 +1983,9 @@ namespace sax {
                     } break;
                     case token_type::carriage:
                     case token_type::newline: {
-                        register_newline();
+                        if (value_start_ptr != value_end_ptr) {
+                            error(read_result_code::expected_key);
+                        }
                     } return false;
                     case token_type::object: {
                         const auto next_codepoint = m_current_ptr < m_end_ptr ? *m_current_ptr : token_type::eof;
@@ -1991,6 +2073,66 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
+    void reader<Tchar, Tsax_handler>::execute_read_flow_scalar_quote() {
+        consume_whitespaces_until_any();
+
+        const auto quote_token = m_stack.back().flow_value_token;
+
+        auto prev_codepoint = token_type::eof;
+        auto value_start_ptr = m_current_ptr;
+        auto value_end_ptr = m_current_ptr;
+
+        auto process_string = [&]() {
+            const auto scalar_length = static_cast<size_t>(value_end_ptr - value_start_ptr);
+            const auto scalar_string_view = string_view_type{ value_start_ptr, scalar_length };
+            signal_string(scalar_string_view);
+        };
+
+        while (m_current_ptr < m_end_ptr) {
+            const auto codepoint = *(m_current_ptr++);
+            switch (codepoint) {
+                case token_type::space:
+                case token_type::tab: break;
+                case token_type::carriage:
+                case token_type::newline: {
+                    register_newline();
+                    process_string();
+                } return;
+                case token_type::double_quote: {
+                    if (quote_token != token_type::double_quote || prev_codepoint == token_type::escape) {
+                        value_end_ptr = m_current_ptr;
+                        break;
+                    }
+                    process_string();
+                    pop_stack();
+                    if (!is_current_stack_flow_value() && !consume_only_whitespaces_until_newline()) {
+                        error(read_result_code::unexpected_token);
+                    }
+                } return;
+                case token_type::single_quote: {
+                    if (quote_token != token_type::single_quote) {
+                        break;
+                    }
+                    if (is_next_token(0, token_type::single_quote)) {
+                        ++m_current_ptr;
+                        break;
+                    }
+                    process_string();
+                    pop_stack();
+                    if (!is_current_stack_flow_value() && !consume_only_whitespaces_until_newline()) {
+                        error(read_result_code::unexpected_token);
+                    }
+                } return;
+                default: {
+                    value_end_ptr = m_current_ptr;
+                } break;
+            }
+
+            prev_codepoint = codepoint;
+        }
+    }
+
+    template<typename Tchar, typename Tsax_handler>
     void reader<Tchar, Tsax_handler>::register_newline() {
         if (m_current_ptr > m_begin_ptr && *(m_current_ptr - 1) == token_type::carriage) { // DOS line break check.
             if (m_current_ptr < m_end_ptr && *m_current_ptr == token_type::newline) {
@@ -2013,7 +2155,7 @@ namespace sax {
 
     template<typename Tchar, typename Tsax_handler>
     void reader<Tchar, Tsax_handler>::read_comment_until_newline() {
-        read_remaining_whitespaces();
+        consume_whitespaces_until_any();
 
         auto comment_start_ptr = m_current_ptr;
         auto comment_end_ptr = m_current_ptr;
@@ -2043,7 +2185,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void reader<Tchar, Tsax_handler>::read_remaining_whitespaces() {
+    void reader<Tchar, Tsax_handler>::consume_whitespaces_until_any() {
         while (m_current_ptr < m_end_ptr) {
             const auto codepoint = *m_current_ptr;
             switch (codepoint) {
@@ -2107,12 +2249,12 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool reader<Tchar, Tsax_handler>::has_min_tokens_left(size_t count) {
+    bool reader<Tchar, Tsax_handler>::has_min_tokens_left(size_t count) const {
         return m_current_ptr + count < m_end_ptr;
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool reader<Tchar, Tsax_handler>::is_next_token(size_t increments, const value_type value) {
+    bool reader<Tchar, Tsax_handler>::is_next_token(size_t increments, const value_type value) const {
         if (m_current_ptr + increments >= m_end_ptr) {
             return true;
         }
@@ -2121,7 +2263,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool reader<Tchar, Tsax_handler>::is_prev_token_whitespace(int decrements) {
+    bool reader<Tchar, Tsax_handler>::is_prev_token_whitespace(int decrements) const {
         if (m_current_ptr - decrements < m_begin_ptr) {
             return true;
         }
@@ -2139,7 +2281,7 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    bool reader<Tchar, Tsax_handler>::is_next_token_whitespace(int increments) {
+    bool reader<Tchar, Tsax_handler>::is_next_token_whitespace(int increments) const {
         if (m_current_ptr + increments >= m_end_ptr) {
             return true;
         }
@@ -2155,7 +2297,11 @@ namespace sax {
 
         return false;
     }
-  
+
+    template<typename Tchar, typename Tsax_handler>
+    bool reader<Tchar, Tsax_handler>::is_current_stack_flow_value() const {
+        return !m_stack.empty() && m_stack.back().is_flow_value();
+    }
 
     template<typename Tchar, typename Tsax_handler>
     void reader<Tchar, Tsax_handler>::signal_start_document() {
@@ -2181,13 +2327,13 @@ namespace sax {
 
 
     template<typename Tchar, typename Tsax_handler>
-    void reader<Tchar, Tsax_handler>::signal_start_scalar(block_style_type block_style, chomping_type comping) {
+    void reader<Tchar, Tsax_handler>::signal_start_scalar(scalar_style_type style, chomping_type chomping) {
 #if MINIYAML_HAS_IF_CONSTEXPR
         if constexpr (impl::sax_handler_has_start_scalar<Tsax_handler>() == true) {
-            m_sax_handler.start_scalar(block_style, comping);
+            m_sax_handler.start_scalar(style, chomping);
         }
 #else
-        m_sax_handler.start_scalar(block_style, comping);
+        m_sax_handler.start_scalar(style, chomping);
 #endif
     }
 
@@ -2353,17 +2499,20 @@ namespace sax {
     void reader<Tchar, Tsax_handler>::pop_stack_from(stack_iterator_t it) {
         const auto rit_end = stack_reverse_iterator_t(it);
         for (auto rit = m_stack.rbegin(); rit != rit_end; ++rit) {
-            signal_stack_item_pop(*rit);
+            const auto& stack_item = *rit;
+            if (stack_item.is_flow_value() && m_current_ptr >= m_end_ptr) {
+                return error(read_result_code::unexpected_eof);
+            }
+            signal_stack_item_pop(stack_item);
         }
         m_stack.erase(it, m_stack.end());
     }
 
     template<typename Tchar, typename Tsax_handler>
-    void reader<Tchar, Tsax_handler>::signal_stack_item_pop(stack_item_t& stack_item) {
+    void reader<Tchar, Tsax_handler>::signal_stack_item_pop(const stack_item_t& stack_item) {
         switch (stack_item.type) {
             case stack_type::unknown: signal_null(); break;
-            case stack_type::scalar:
-            case stack_type::scalar_block: signal_end_scalar(); break;
+            case stack_type::scalar: signal_end_scalar(); break;
             case stack_type::object: signal_end_object(); break;
             case stack_type::sequence: signal_end_array(); break;
         }
@@ -2838,10 +2987,12 @@ namespace impl {
         static std::basic_string<Tchar> get(const scalar_node<Tchar, VisView>& scalar_node, const std::basic_string<Tchar> default_value) {
             static_assert(sizeof(Tchar) == 1, "Cannot convert scalar_node<T, TisView> when sizeof(Tchar) != 1.");
 
-            switch (scalar_node.block_style()) {
-                case block_style_type::none: return get_as_non_block_string(scalar_node, default_value);
-                case block_style_type::literal: return get_as_literal_string(scalar_node, default_value);
-                case block_style_type::folded: return get_as_folded_string(scalar_node, default_value);
+            switch (scalar_node.style()) {
+                case scalar_style_type::none: return get_as_non_block_string(scalar_node, default_value);
+                case scalar_style_type::literal: return get_as_literal_string(scalar_node, default_value);
+                case scalar_style_type::folded: return get_as_folded_string(scalar_node, default_value);
+                case scalar_style_type::double_quoted: return get_as_non_block_string(scalar_node, default_value);
+                case scalar_style_type::single_quoted: return get_as_non_block_string(scalar_node, default_value);
             }
 
             return default_value;
@@ -2857,10 +3008,10 @@ namespace dom {
 
     // DOM node implementations.
     template<typename Tchar, bool VisView>
-    node<Tchar, VisView> node<Tchar, VisView>::create_scalar(block_style_type block_style, chomping_type chomping) {
+    node<Tchar, VisView> node<Tchar, VisView>::create_scalar(scalar_style_type style, chomping_type chomping) {
         auto result = node{};
         result.m_node_type = node_type::scalar;
-        result.m_underlying_node.scalar = new scalar_node_t{ result, block_style, chomping };
+        result.m_underlying_node.scalar = new scalar_node_t{ result, style, chomping };
         return result;
     }
 
@@ -3114,9 +3265,9 @@ namespace dom {
     
     // DOM scalar node implementations.
     template<typename Tchar, bool VisView>
-    scalar_node<Tchar, VisView>::scalar_node(node_t& overlying_node, block_style_type block_style, chomping_type chomping) :
+    scalar_node<Tchar, VisView>::scalar_node(node_t& overlying_node, scalar_style_type style, chomping_type chomping) :
         m_lines{},
-        m_block_style(block_style),
+        m_style(style),
         m_chomping(chomping),
         m_overlying_node(&overlying_node)
     {}
@@ -3129,18 +3280,18 @@ namespace dom {
 
 
     template<typename Tchar, bool VisView>
-    block_style_type& scalar_node<Tchar, VisView>::block_style() {
-        return m_block_style;
+    scalar_style_type& scalar_node<Tchar, VisView>::style() {
+        return m_style;
     }
 
     template<typename Tchar, bool VisView>
-    block_style_type scalar_node<Tchar, VisView>::block_style() const {
-        return m_block_style;
+    scalar_style_type scalar_node<Tchar, VisView>::style() const {
+        return m_style;
     }
 
     template<typename Tchar, bool VisView>
-    void scalar_node<Tchar, VisView>::block_style(block_style_type value) {
-        m_block_style = value;
+    void scalar_node<Tchar, VisView>::style(scalar_style_type value) {
+        m_style = value;
     }
 
     template<typename Tchar, bool VisView>
@@ -3726,7 +3877,7 @@ namespace dom {
         m_current_node{ nullptr },
         m_node_stack{},
         m_string_views{},
-        m_current_block_style{ block_style_type::none },
+        m_current_style{ scalar_style_type::none },
         m_current_chomping{ chomping_type::strip }
     {}
 
@@ -3745,21 +3896,21 @@ namespace dom {
     {}
 
     template<typename Tchar>
-    void reader<Tchar>::sax_handler::start_scalar(block_style_type block_style, chomping_type chomping) {
+    void reader<Tchar>::sax_handler::start_scalar(scalar_style_type style, chomping_type chomping) {
         m_string_views.clear();
-        m_current_block_style = block_style;
+        m_current_style = style;
         m_current_chomping = chomping;
     }
 
     template<typename Tchar>
     void reader<Tchar>::sax_handler::end_scalar() {
         auto get_iterators = [&]() -> std::pair<string_view_list_iterator, string_view_list_iterator> {
-            if (m_current_block_style == block_style_type::none) {
+            if (m_current_style == scalar_style_type::none) {
                 auto begin_it = std::find_if(m_string_views.begin(), m_string_views.end(),
-                    [](const string_view_type& line) { return !line.empty(); });
+                    [](const string_view_type& line) { return !MINIYAML_NAMESPACE::impl::is_empty_or_whitespace(line); });
 
                 auto rend_it = std::find_if(m_string_views.rbegin(), m_string_views.rend(),
-                    [](const string_view_type& line) { return !line.empty(); });
+                    [](const string_view_type& line) { return !MINIYAML_NAMESPACE::impl::is_empty_or_whitespace(line); });
 
                 auto end_it = rend_it.base();
 
@@ -3785,7 +3936,7 @@ namespace dom {
         };
 
         auto line_count = std::distance(begin_it, end_it);
-        if (line_count == 1 && m_current_block_style == block_style_type::none) {
+        if (line_count == 1 && m_current_style == scalar_style_type::none) {
             auto single_line = *begin_it;
             if (check_null_token(single_line) || check_null_keyword(single_line)) {
                 pop_stack();
@@ -3793,7 +3944,7 @@ namespace dom {
             }
         }
         auto tag = std::move(m_current_node->tag());
-        *m_current_node = node_t::create_scalar(m_current_block_style, m_current_chomping);
+        *m_current_node = node_t::create_scalar(m_current_style, m_current_chomping);
         auto& scalar_node = m_current_node->as_scalar();
         m_current_node->tag(tag);
 
