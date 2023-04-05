@@ -1038,8 +1038,8 @@ namespace impl {
             return true;
         }
 
-        for (auto it = string.begin(); it != string.end(); ++it) {
-            const auto value = *it;
+        for (size_t i = 0; i < string.size(); i++) {
+            const auto value = string[i];
             if (value == token<value_type>::space || value == token<value_type>::tab) {
                 continue;
             }
