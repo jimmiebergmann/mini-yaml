@@ -801,7 +801,7 @@ TEST(dom_read, ok_file_learnyaml)
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
-        EXPECT_STREQ(string.c_str(), "have ''one'' escape pattern");
+        EXPECT_STREQ(string.c_str(), "have 'one' escape pattern");
     }
     {
         auto it = root_object_node.find("double quotes");
@@ -813,7 +813,7 @@ TEST(dom_read, ok_file_learnyaml)
         auto& scalar_node = node.as_scalar();
 
         auto string = scalar_node.as<std::string>();
-        EXPECT_STREQ(string.c_str(), "have many: \\\", \\0, \\t, \\u263A, \\x0d\\x0a == \\r\\n, and more.");
+        EXPECT_STREQ(string.c_str(), "have many: \", \0, \t, \\u263A, \\x0d\\x0a == \r\n, and more.");
     }
 
     {
@@ -2027,8 +2027,8 @@ TEST(dom_scalar_as, as_string)
     scalar_node.push_back("");
     scalar_node.push_back("");
 
-    // Block style: None
-    {
+    // Style: None
+   {
         // Clip
         scalar_node.style(yaml::scalar_style_type::none);
         scalar_node.chomping(yaml::chomping_type::clip);
@@ -2045,7 +2045,7 @@ TEST(dom_scalar_as, as_string)
         EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "first second\nthird \\\"\n\nfourth \" fifth ''");
 
     }
-    // Block style: Literal
+    // Style: Literal
     {
         // Clip
         scalar_node.style(yaml::scalar_style_type::literal);
@@ -2062,7 +2062,7 @@ TEST(dom_scalar_as, as_string)
         scalar_node.chomping(yaml::chomping_type::strip);
         EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst\nsecond\n\nthird \\\"\n\n\nfourth \"\nfifth ''");
     }
-    // Block style: Folded 
+    // Style: Folded 
     {
         // Clip
         scalar_node.style(yaml::scalar_style_type::folded);
@@ -2070,14 +2070,98 @@ TEST(dom_scalar_as, as_string)
         EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst second\nthird \\\"\n\nfourth \" fifth ''\n");
         
         // Keep
-        /*scalar_node.style(yaml::scalar_style_type::folded);
+        scalar_node.style(yaml::scalar_style_type::folded);
         scalar_node.chomping(yaml::chomping_type::keep);
-        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst second\nthird\n\nfourth\n\n");*/
+        EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst second\nthird \\\"\n\nfourth \" fifth ''\n\n\n");
 
         // Strip
         scalar_node.style(yaml::scalar_style_type::folded);
         scalar_node.chomping(yaml::chomping_type::strip);
         EXPECT_STREQ(scalar_node.as<std::string>().c_str(), "\n\nfirst second\nthird \\\"\n\nfourth \" fifth ''");
+    }
+    // Style: Double quoted
+    {
+        const auto double_quoted_string_0_newline = std::string{ "first second\nthird \"\n\nfourth \" fifth ''" };
+        const auto double_quoted_string_1_newline = std::string{ " first second\nthird \"\n\nfourth \" fifth '' " };
+        const auto double_quoted_string_2_newline = std::string{ "\nfirst second\nthird \"\n\nfourth \" fifth ''\n" };
+
+        {
+            scalar_node.style(yaml::scalar_style_type::double_quoted);
+            
+            scalar_node.pop_front();
+            scalar_node.pop_front();
+            scalar_node.pop_back();
+            scalar_node.pop_back();
+
+            scalar_node.chomping(yaml::chomping_type::clip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_0_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::keep);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_0_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::strip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_0_newline.c_str());
+
+            scalar_node.push_front("");
+            scalar_node.push_back("");
+
+            scalar_node.chomping(yaml::chomping_type::clip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_1_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::keep);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_1_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::strip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_1_newline.c_str());
+            
+            scalar_node.push_front("");
+            scalar_node.push_back("");
+
+            scalar_node.chomping(yaml::chomping_type::clip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_2_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::keep);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_2_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::strip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_2_newline.c_str());
+        }
+    }
+    // Style: Single quoted
+    {
+        const auto double_quoted_string_0_newline = std::string{ "first second\nthird \\\"\n\nfourth \" fifth '" };
+        const auto double_quoted_string_1_newline = std::string{ " first second\nthird \\\"\n\nfourth \" fifth ' " };
+        const auto double_quoted_string_2_newline = std::string{ "\nfirst second\nthird \\\"\n\nfourth \" fifth '\n" };
+
+        {
+            scalar_node.style(yaml::scalar_style_type::single_quoted);
+
+            scalar_node.pop_front();
+            scalar_node.pop_front();
+            scalar_node.pop_back();
+            scalar_node.pop_back();
+
+            scalar_node.chomping(yaml::chomping_type::clip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_0_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::keep);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_0_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::strip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_0_newline.c_str());
+
+            scalar_node.push_front("");
+            scalar_node.push_back("");
+
+            scalar_node.chomping(yaml::chomping_type::clip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_1_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::keep);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_1_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::strip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_1_newline.c_str());
+
+            scalar_node.push_front("");
+            scalar_node.push_back("");
+
+            scalar_node.chomping(yaml::chomping_type::clip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_2_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::keep);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_2_newline.c_str());
+            scalar_node.chomping(yaml::chomping_type::strip);
+            EXPECT_STREQ(scalar_node.as<std::string>().c_str(), double_quoted_string_2_newline.c_str());
+        }
     }
 }
 

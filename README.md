@@ -60,20 +60,20 @@ Builds pass if all tests are successful and no memory leaks are found.
 :white_check_mark: Supported :warning: Partial :x: Unsupported
 
 |Feature | Support | Note |
-| ------ | ------- |
+| ------ | ------- | ---- |
 | sax reader | :white_check_mark: |
 | dom reader | :white_check_mark: |
 | dom_view reader | :x: |
 | dom writer | :x: |
-| unicode | :white_check_mark: |
+| unicode | :warning: | No escape character support. |
 | scalars | :white_check_mark: |
 | block scalars | :white_check_mark: |
-| flow scalars | :warning: | Not fully tested yet |
+| flow scalars | :white_check_mark: |
 | maps | :white_check_mark: |
 | flow maps | :x: |
 | sequences | :white_check_mark: |
 | flow sequences | :x: |
-| scalar type conversions | :warning: | Not fully tested yet |
+| scalar type conversions | :white_check_mark: |
 | tags | :white_check_mark: |
 | indentation indicator | :x: |
 | sets | :x: |

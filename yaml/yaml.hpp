@@ -583,8 +583,10 @@ namespace dom {
 
         iterator insert(const_iterator pos, string_t string);
         void push_back(string_t string);
+        void push_front(string_t string);
 
         void pop_back();
+        void pop_front();
         iterator erase(iterator pos);
         iterator erase(iterator first, iterator last);
         iterator erase(const_iterator pos);
@@ -2643,6 +2645,18 @@ namespace impl {
     }
 
     template<typename Tchar, bool VisView>
+    void append_chomping(std::basic_string<Tchar>& string, const scalar_node<Tchar, VisView>& scalar_node, scalar_line_const_iterator<Tchar, VisView> first_empty_end_it) {
+        const auto chomping = scalar_node.chomping();
+        if (chomping == chomping_type::keep && first_empty_end_it != scalar_node.end()) {
+            auto post_newline_count = static_cast<size_t>(std::distance(first_empty_end_it, scalar_node.end()));
+            string.append(post_newline_count, '\n');
+        }
+        if (chomping != chomping_type::strip) {
+            string += '\n';
+        }
+    }
+
+    template<typename Tchar, bool VisView>
     static std::basic_string<Tchar> get_as_non_block_string(
         const scalar_node<Tchar, VisView>& scalar_node,
         const std::basic_string<Tchar> default_value)
@@ -2711,14 +2725,7 @@ namespace impl {
         }
         result += *prev_end_it;
 
-        const auto chomping = scalar_node.chomping();
-        if (chomping == chomping_type::keep && prev_end_it != scalar_node.end()) {
-            auto post_newline_count = static_cast<size_t>(std::distance(prev_end_it, scalar_node.end())) - size_t{ 1 };
-            result.append(post_newline_count, '\n');
-        }
-        if (chomping != chomping_type::strip) {
-            result += '\n';
-        }
+        append_chomping(result, scalar_node, end_it);
 
         return result;
     }
@@ -2756,16 +2763,121 @@ namespace impl {
             prev_line_has_value = !line.empty();
         }
 
-        const auto chomping = scalar_node.chomping();
-        if (chomping == chomping_type::keep) {
-            auto post_newline_count = static_cast<size_t>(std::distance(end_it, scalar_node.end()));
-            result.append(post_newline_count, '\n');
-        }
-        if (chomping != chomping_type::strip) {
-            result += '\n';
-        }
+        append_chomping(result, scalar_node, end_it);
 
         return result;
+    }
+
+    template<typename Tchar, bool VisView, typename TappendLineCallback>
+    static std::basic_string<Tchar> get_as_quoted_string(
+        const scalar_node<Tchar, VisView>& scalar,
+        TappendLineCallback appendLineCallback,
+        const std::basic_string<Tchar> default_value) 
+    {
+        auto it_pair = impl::get_non_empty_scalar_node_lines(scalar);
+        auto begin_empty_it = it_pair.first;
+        auto end_empty_it = it_pair.second;
+
+        if (begin_empty_it == end_empty_it) {
+            return default_value;
+        }
+
+        auto result = std::basic_string<Tchar>{};
+
+        auto append_start_end = [&](scalar_line_const_iterator<Tchar, VisView> begin, scalar_line_const_iterator<Tchar, VisView> end) {
+            auto count = static_cast<size_t>(std::distance(begin, end));
+            if (count > 0) {
+                if (count == 1) {
+                    result += " ";
+                }
+                else {
+                    result.append(count - 1, '\n');
+                }
+            }
+        };
+
+        append_start_end(scalar.begin(), begin_empty_it);
+
+        bool prev_has_value = false;
+        auto it = begin_empty_it;
+        while (it != end_empty_it) {
+            auto empty_end_it = std::find_if(it, end_empty_it,
+                [](const typename scalar_node<Tchar, VisView>::string_t& line) { return !MINIYAML_NAMESPACE::impl::is_empty_or_whitespace(line); });
+
+            auto empty_count = static_cast<size_t>(std::distance(it, empty_end_it));
+            it = empty_end_it;
+
+            if (empty_count > 0) {
+                prev_has_value = false;
+                result.append(empty_count, '\n');
+            }
+
+            if (it == end_empty_it) {
+                break;
+            }
+
+            if (prev_has_value) {
+                result += " ";
+            }
+
+            appendLineCallback(result, *it);
+            ++it;
+            prev_has_value = true;
+        }
+
+        append_start_end(end_empty_it, scalar.end());
+
+        return result;
+    }
+
+    template<typename Tchar, bool VisView>
+    static std::basic_string<Tchar> get_as_double_quoted_string(
+        const scalar_node<Tchar, VisView>& scalar,
+        const std::basic_string<Tchar> default_value)
+    {
+        auto append_line = [](std::basic_string<Tchar>& string, const typename scalar_node<Tchar, VisView>::string_t& line) {
+            using token_type = token<Tchar>;
+            const auto line_size = line.size();
+            for (size_t i = 0; i < line.size(); i++) {       
+                if (i + 1 >= line_size || line[i] != token_type::escape) {
+                    string += line[i];
+                    continue;
+                }
+                ++i;
+                switch (line[i]) {
+                    case '0': string += '\0'; break;
+                    case 'r': string += '\r'; break;
+                    case 'n': string += '\n'; break;
+                    case 't': string += '\t'; break;
+                    case '"': string += '\"'; break;
+                    case '\'': string += '\''; break;
+                    default: string += '\\' + line[i]; break;
+                }
+            }
+        };
+
+        return get_as_quoted_string(scalar, append_line, default_value);
+    }
+
+    template<typename Tchar, bool VisView>
+    static std::basic_string<Tchar> get_as_single_quoted_string(
+        const scalar_node<Tchar, VisView>& scalar,
+        const std::basic_string<Tchar> default_value)
+    {
+        auto append_line = [](std::basic_string<Tchar>& string, const typename scalar_node<Tchar, VisView>::string_t& line) {
+            using token_type = token<Tchar>;
+            const auto line_size = line.size();
+            for (size_t i = 0; i < line.size(); i++) {
+                if (i + 1 >= line_size || line[i] != token_type::single_quote || line[i + 1] != token_type::single_quote) {
+                    string += line[i];
+                    continue;
+                }
+                ++i;       
+                string += '\'';
+            }
+        };
+
+        return get_as_quoted_string(scalar, append_line, default_value);
     }
 
 
@@ -2991,8 +3103,8 @@ namespace impl {
                 case scalar_style_type::none: return get_as_non_block_string(scalar_node, default_value);
                 case scalar_style_type::literal: return get_as_literal_string(scalar_node, default_value);
                 case scalar_style_type::folded: return get_as_folded_string(scalar_node, default_value);
-                case scalar_style_type::double_quoted: return get_as_non_block_string(scalar_node, default_value);
-                case scalar_style_type::single_quoted: return get_as_non_block_string(scalar_node, default_value);
+                case scalar_style_type::double_quoted: return get_as_double_quoted_string(scalar_node, default_value);
+                case scalar_style_type::single_quoted: return get_as_single_quoted_string(scalar_node, default_value);
             }
 
             return default_value;
@@ -3411,8 +3523,18 @@ namespace dom {
     }
 
     template<typename Tchar, bool VisView>
+    void scalar_node<Tchar, VisView>::push_front(string_t string) {
+        m_lines.insert(m_lines.begin(), std::move(string));
+    }
+
+    template<typename Tchar, bool VisView>
     void scalar_node<Tchar, VisView>::pop_back() {
         m_lines.pop_back();
+    }
+
+    template<typename Tchar, bool VisView>
+    void scalar_node<Tchar, VisView>::pop_front() {
+        m_lines.erase(m_lines.begin());
     }
 
     template<typename Tchar, bool VisView>
