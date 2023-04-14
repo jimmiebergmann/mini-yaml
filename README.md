@@ -70,6 +70,7 @@ Builds pass if all tests are successful and no memory leaks are found.
 | block scalars | :white_check_mark: |
 | flow scalars | :white_check_mark: |
 | maps | :white_check_mark: |
+| ordered maps | :warning: | Supported, but no ordered map container is included. |
 | flow maps | :x: |
 | sequences | :white_check_mark: |
 | flow sequences | :x: |
