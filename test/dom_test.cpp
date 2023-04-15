@@ -1329,6 +1329,7 @@ TEST(dom_read, fail_unknown_file)
     auto read_result = yaml::dom::read_document_from_file<char_type>("../test/this_file_does_not_exist.some_extension");
     EXPECT_EQ(read_result.result_code, yaml::read_result_code::cannot_open_file);
     EXPECT_FALSE(read_result);
+    EXPECT_EQ(read_result.root_node.type(), yaml::dom::node_type::null);
 }
 
 TEST(dom_scalar_as, as_bool)

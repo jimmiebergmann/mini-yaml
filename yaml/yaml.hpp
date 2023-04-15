@@ -785,40 +785,50 @@ namespace dom {
     /** DOM reader results. */
     template<typename Tchar = char, typename Ttraits = default_node_traits<Tchar>>
     struct read_document_result {
+        using node_value = node<Tchar, Ttraits>;
+
         read_result_code result_code = read_result_code::success;
         basic_string_view<Tchar> remaining_input = {};
         int64_t current_line = 0;
         const Tchar* current_line_ptr = nullptr;
-        node<Tchar, Ttraits> root_node = {};
+        node_value root_node = {};
 
         operator bool() const;
     };
 
     template<typename Tchar = char, typename Ttraits = default_node_traits<Tchar>>
     struct read_document_file_result {
+        using node_value = node<Tchar, Ttraits>;
+
         read_result_code result_code = read_result_code::success;
         int64_t current_line = 0;
-        node<Tchar, Ttraits> root_node = {};
+        node_value root_node = {};
 
         operator bool() const;
     };
 
     template<typename Tchar = char, typename Ttraits = default_node_traits<Tchar>>
     struct read_documents_result {
+        using node_value = node<Tchar, Ttraits>;
+        using node_values = std::vector<node_value>;
+
         read_result_code result_code = read_result_code::success;
         basic_string_view<Tchar> remaining_input = {};
         int64_t current_line = 0;
         const Tchar* current_line_ptr = nullptr;
-        // ... Root nodes here.
+        node_values root_nodes = {};
 
         operator bool() const;
     };
 
     template<typename Tchar = char, typename Ttraits = default_node_traits<Tchar>>
     struct read_documents_file_result {
+        using node_value = node<Tchar, Ttraits>;
+        using node_values = std::vector<node_value>;
+
         read_result_code result_code = read_result_code::success;
         int64_t current_line = 0;
-        // ... Root nodes here.
+        node_values root_nodes = {};
 
         operator bool() const;
     };
@@ -905,7 +915,7 @@ namespace dom {
 
     private:
 
-    private:
+        using node_values = std::vector<node_value>;
 
         class sax_handler {
 
@@ -913,7 +923,7 @@ namespace dom {
 
             sax_handler();
 
-            void initialize(node_value* root_node);
+            void initialize();
 
             void start_document();
             void end_document();
@@ -930,8 +940,6 @@ namespace dom {
             void tag(string_view_type);
             void comment(string_view_type);
 
-        private:
-
             using node_stack_t = std::vector<node_value*>;
             using string_view_list = std::vector<string_view_type>;
             using string_view_list_iterator = typename string_view_list::iterator;
@@ -939,6 +947,7 @@ namespace dom {
             void push_stack(node_value* node);
             void pop_stack();
 
+            node_values m_documents;
             node_value* m_current_node;
             node_stack_t m_node_stack;
 
@@ -947,19 +956,16 @@ namespace dom {
             chomping_type m_current_chomping;
         };
 
+        using sax_handler_type = sax_handler;
         using sax_read_document_result_type = sax::read_document_result<Tchar>;
         using sax_read_document_file_result_type = sax::read_document_file_result<Tchar>;
         using sax_read_documents_result_type = sax::read_documents_result<Tchar>;
         using sax_read_documents_file_result_type = sax::read_documents_file_result<Tchar>;
 
-        using node_values = std::vector<node_value>;
-
-        static read_document_result_type create_read_document_result(sax_read_document_result_type sax_result, node_value& node);
-        static read_document_file_result_type create_read_document_file_result(sax_read_document_file_result_type sax_result, node_value& node);
-        static read_documents_result_type create_read_documents_result(sax_read_documents_result_type sax_result, node_values& nodes);
-        static read_documents_file_result_type create_read_documents_file_result(sax_read_documents_file_result_type sax_result, node_values& nodes);
-
-        using sax_handler_type = sax_handler;
+        static read_document_result_type create_read_document_result(sax_read_document_result_type sax_result, node_value&& node);
+        static read_document_file_result_type create_read_document_file_result(sax_read_document_file_result_type sax_result, node_value&& node);
+        static read_documents_result_type create_read_documents_result(sax_read_documents_result_type sax_result, node_values&& nodes);
+        static read_documents_file_result_type create_read_documents_file_result(sax_read_documents_file_result_type sax_result, node_values&& nodes);
 
         sax_handler_type m_sax_handler;
         sax::reader<Tchar, sax_handler_type> m_sax_reader;
@@ -3943,10 +3949,12 @@ namespace dom {
 
     template<typename Tchar, typename Ttraits>
     typename reader<Tchar, Ttraits>::read_document_result_type reader<Tchar, Ttraits>::read_document(const_pointer raw_input, size_type size) {
-        auto root_node = node_value{};
-        m_sax_handler.initialize(&root_node);
+        m_sax_handler.initialize();
         auto read_result = m_sax_reader.read_document(raw_input, size);
-        return create_read_document_result(read_result, root_node);
+
+        return m_sax_handler.m_documents.empty() ?
+            create_read_document_result(read_result, node_value{}) :
+            create_read_document_result(read_result, std::move(m_sax_handler.m_documents.front()));
     }
 
     template<typename Tchar, typename Ttraits>
@@ -3961,16 +3969,22 @@ namespace dom {
 
     template<typename Tchar, typename Ttraits>
     typename reader<Tchar, Ttraits>::read_document_file_result_type reader<Tchar, Ttraits>::read_document_from_file(const std::string& filename) {
-        auto root_node = node_value{};
-        m_sax_handler.initialize(&root_node);
+        m_sax_handler.initialize();
         auto read_result = m_sax_reader.read_document_from_file(filename);
-        return create_read_document_file_result(read_result, root_node);
+
+        return m_sax_handler.m_documents.empty() ?
+            create_read_document_file_result(read_result, node_value{}) :
+            create_read_document_file_result(read_result, std::move(m_sax_handler.m_documents.front()));
     }
 
     template<typename Tchar, typename Ttraits>
-    typename reader<Tchar, Ttraits>::read_documents_result_type reader<Tchar, Ttraits>::read_documents(const_pointer /*raw_input*/ , size_type /*size*/ ) {
-        // TODO
-        return {};
+    typename reader<Tchar, Ttraits>::read_documents_result_type reader<Tchar, Ttraits>::read_documents(const_pointer raw_input, size_type size) {
+        m_sax_handler.initialize();
+        auto read_result = m_sax_reader.read_documents(raw_input, size);
+
+        return m_sax_handler.m_documents.empty() ?
+            create_read_documents_result(read_result, {}) :
+            create_read_documents_result(read_result, std::move(m_sax_handler.m_documents));
     }
 
     template<typename Tchar, typename Ttraits>
@@ -3984,15 +3998,19 @@ namespace dom {
     }
 
     template<typename Tchar, typename Ttraits>
-    typename reader<Tchar, Ttraits>::read_documents_file_result_type reader<Tchar, Ttraits>::read_documents_from_file(const std::string& /*filename*/ ) {
-        // TODO
-        return {};
+    typename reader<Tchar, Ttraits>::read_documents_file_result_type reader<Tchar, Ttraits>::read_documents_from_file(const std::string& filename) {
+        m_sax_handler.initialize();
+        auto read_result = m_sax_reader.read_documents_from_file(filename);
+
+        return m_sax_handler.m_documents.empty() ?
+            create_read_documents_file_result(read_result, {}) :
+            create_read_documents_file_result(read_result, std::move(m_sax_handler.m_documents));
     }
 
     template<typename Tchar, typename Ttraits>
     typename reader<Tchar, Ttraits>::read_document_result_type reader<Tchar, Ttraits>::create_read_document_result(
         sax_read_document_result_type sax_result,
-        node_value& node
+        node_value&& node
     ) {
         auto result = read_document_result_type{}; 
         result.result_code = sax_result.result_code;
@@ -4006,7 +4024,7 @@ namespace dom {
     template<typename Tchar, typename Ttraits>
     typename reader<Tchar, Ttraits>::read_document_file_result_type reader<Tchar, Ttraits>::create_read_document_file_result(
         sax_read_document_file_result_type sax_result,
-        node_value& node)
+        node_value&& node)
     {
         auto result = read_document_file_result_type{};
         result.result_code = sax_result.result_code;
@@ -4018,25 +4036,34 @@ namespace dom {
     template<typename Tchar, typename Ttraits>
     typename reader<Tchar, Ttraits>::read_documents_result_type reader<Tchar, Ttraits>::create_read_documents_result(
         sax_read_documents_result_type sax_result,
-        node_values& nodes) 
+        node_values&& nodes) 
     {
-        // TODO
-        return {};
+        auto result = read_document_result_type{};
+        result.result_code = sax_result.result_code;
+        result.remaining_input = sax_result.remaining_input;
+        result.current_line = sax_result.current_line;
+        result.current_line_ptr = sax_result.current_line_ptr;
+        result.root_nodes = std::move(nodes);
+        return result;
     }
 
     template<typename Tchar, typename Ttraits>
     typename reader<Tchar, Ttraits>::read_documents_file_result_type reader<Tchar, Ttraits>::create_read_documents_file_result(
         sax_read_documents_file_result_type sax_result,
-        node_values& nodes) 
+        node_values&& nodes) 
     {
-        // TODO
-        return {};
+        auto result = read_document_file_result_type{};
+        result.result_code = sax_result.result_code;
+        result.current_line = sax_result.current_line;
+        result.root_nodes = std::move(nodes);
+        return result;
     }
 
 
     // DOM's sax handler implementations
     template<typename Tchar, typename Ttraits>
     reader<Tchar, Ttraits>::sax_handler::sax_handler() :
+        m_documents{},
         m_current_node{ nullptr },
         m_node_stack{},
         m_string_views{},
@@ -4045,14 +4072,23 @@ namespace dom {
     {}
 
     template<typename Tchar, typename Ttraits>
-    void reader<Tchar, Ttraits>::sax_handler::initialize(node_value* root_node) {
-        m_current_node = root_node;
-        m_node_stack.push_back(root_node);
+    void reader<Tchar, Ttraits>::sax_handler::initialize() {
+        m_documents.clear();
+        m_current_node = nullptr;
+        m_node_stack.clear();
+        m_string_views.clear();
     }
 
     template<typename Tchar, typename Ttraits>
     void reader<Tchar, Ttraits>::sax_handler::start_document()
-    {}
+    {
+        m_documents.emplace_back();
+
+        m_current_node = &m_documents.back();;
+
+        m_node_stack.clear();
+        m_node_stack.push_back(m_current_node);
+    }
 
     template<typename Tchar, typename Ttraits>
     void reader<Tchar, Ttraits>::sax_handler::end_document()
