@@ -847,7 +847,7 @@ TEST(sax_read, fail_object_unexpected_key_2)
     });
 }
 
-TEST(sax_read, fail_reached_stack_max_depth)
+TEST(sax_read, fail_reached_max_depth)
 {
     const std::string input =
         "key:\n"
@@ -868,11 +868,44 @@ TEST(sax_read, fail_reached_stack_max_depth)
 
         auto handler = test_sax_handler<char_type>{};
         const auto read_result = yaml::sax::read_document(input, handler, reader_options);
-        ASSERT_EQ(read_result.result_code, yaml::read_result_code::reached_stack_max_depth);
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::reached_max_depth);
     });
 }
 
-// reached_stack_max_depth
+TEST(sax_read, fail_reached_max_document_count)
+{
+    const std::string input =
+        "--- # test comment 1\n"
+        "key 1: value 1\n"
+        "key 2: value 2\n"
+        "--- # test comment 2\n"
+        "key 3: value 3\n"
+        "key 4: value 4\n"
+        "key 5: value 5\n"
+        "---\n"
+        "Not reached";
+
+    using char_type = typename decltype(input)::value_type;
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        auto reader_options = yaml::sax::reader_options{};
+        reader_options.max_document_count = 2;
+        const auto read_result = yaml::sax::read_documents(input, handler, reader_options);
+
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::reached_max_document_count);
+    });
+
+    run_sax_read_all_styles<char_type>(input, [](std::string input) {
+        auto handler = test_sax_handler<char_type>{};
+        auto reader_options = yaml::sax::reader_options{};
+        reader_options.max_document_count = 3;
+        const auto read_result = yaml::sax::read_documents(input, handler, reader_options);
+
+        ASSERT_EQ(read_result.result_code, yaml::read_result_code::success);
+    });
+}
+
 TEST(sax_read, fail_scalar_single_literal_expected_line_break_1)
 {
     const std::string input =

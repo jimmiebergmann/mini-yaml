@@ -138,7 +138,8 @@ namespace MINIYAML_NAMESPACE {
     enum class read_result_code {
         success,
         cannot_open_file,
-        reached_stack_max_depth,
+        reached_max_depth,
+        reached_max_document_count,
         not_implemented,
         forbidden_tab_indentation,
         bad_indentation,
@@ -227,6 +228,7 @@ namespace sax {
     /** SAX reader options. */
     struct reader_options {
         size_t max_depth = 128;
+        size_t max_document_count = 128;
         int64_t start_line_number = 0;
     };
         
@@ -1409,7 +1411,7 @@ namespace sax {
         auto process = [&]() {
             while (m_current_result_code == read_result_code::success && m_current_ptr < m_end_ptr && !m_stack.empty()) {
                 if (m_stack.size() > m_options.max_depth) {
-                    error(read_result_code::reached_stack_max_depth);
+                    error(read_result_code::reached_max_depth);
                     return m_current_result_code;
                 }
 
@@ -1463,13 +1465,21 @@ namespace sax {
     }
 
     template<typename Tchar, typename Tsax_handler>
-    read_result_code reader<Tchar, Tsax_handler>::process_documents() {
+    read_result_code reader<Tchar, Tsax_handler>::process_documents() {      
+        auto document_count = size_t{ 0 };
+
         do {
+            if (document_count >= m_options.max_document_count) {
+                return read_result_code::reached_max_document_count;
+            }
+
             // TODO: Fix current line number...
             const auto process_result = process_document();
             if (process_result != read_result_code::success) {
                 return process_result;
             }
+
+            ++document_count;
 
             if (m_current_ptr + 3 < m_end_ptr) {
                 if (m_current_ptr[0] == token_type::document_end &&
