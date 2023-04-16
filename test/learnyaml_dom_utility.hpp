@@ -45,7 +45,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "value");
     }
     {
@@ -57,7 +57,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "Another value goes here.");
     }
     {
@@ -69,7 +69,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "100");
     }
     {
@@ -81,7 +81,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "1e+12");
     }
     {
@@ -93,7 +93,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "0x123");
     }
     {
@@ -105,7 +105,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "0123");
     }
 
@@ -118,7 +118,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "true");
     }
     {
@@ -144,7 +144,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "value");
     }
 
@@ -166,7 +166,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "no");
     }
     {
@@ -178,7 +178,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "No");
     }
     {
@@ -190,7 +190,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "yes");
     }
     {
@@ -202,7 +202,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "yes");
     }
 
@@ -215,7 +215,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "A string, enclosed in quotes.");
     }
     {
@@ -227,7 +227,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "have 'one' escape pattern");
     }
     {
@@ -239,7 +239,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "have many: \", \0, \t, \\u263A, \\x0d\\x0a == \r\n, and more.");
     }
 
@@ -252,7 +252,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "\\u00B2");
     }
 
@@ -265,7 +265,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "[ John ] & { Jane } - <Doe>");
     }
 
@@ -281,7 +281,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::literal);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::clip);
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
 
         static const std::string compare_str =
             "This entire block of text will be the value of the 'literal_block' key,\n"
@@ -307,7 +307,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::folded);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::clip);
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
 
         static const std::string compare_str =
             "This entire block of text will be the value of 'folded_style', but this time, all newlines will be replaced with a single space.\n"
@@ -330,7 +330,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::literal);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
 
         static const std::string compare_str =
             "This entire block of text will be the value of the 'literal_block' key,\n"
@@ -350,7 +350,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::folded);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::strip);
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
 
         static const std::string compare_str =
             "This entire block of text will be the value of 'folded_style', but this time, all newlines will be replaced with a single space and  trailing blank line being stripped.";
@@ -369,7 +369,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::literal);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::keep);
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
 
         static const std::string compare_str =
             "This entire block of text will be the value of the 'literal_block' key,\n"
@@ -389,7 +389,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         EXPECT_EQ(scalar_node.style(), yaml::scalar_style_type::folded);
         EXPECT_EQ(scalar_node.chomping(), yaml::chomping_type::keep);
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
 
         static const std::string compare_str =
             "This entire block of text will be the value of 'folded_style', but this time, all newlines will be replaced with a single space and  trailing blank line being kept.\n"
@@ -419,7 +419,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
             ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node = node2.as_scalar();
 
-            auto string = scalar_node.as<std::string>();
+            auto string = scalar_node.template as<std::string>();
             EXPECT_STREQ(string.c_str(), "value");
         }
         {
@@ -433,7 +433,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
             ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node = node2.as_scalar();
 
-            auto string = scalar_node.as<std::string>();
+            auto string = scalar_node.template as<std::string>();
             EXPECT_STREQ(string.c_str(), "Another Value");
         }
         {
@@ -475,7 +475,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
         ASSERT_NO_THROW_IGNORE_NODISCARD(node.as_scalar());
         auto& scalar_node = node.as_scalar();
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "a float key");
     }
 
@@ -639,7 +639,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
 
         EXPECT_STREQ(node.tag().c_str(), "bool");
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "true");
     }
     {
@@ -653,7 +653,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
 
         EXPECT_STREQ(node.tag().c_str(), "int");
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "42");
     }
     {
@@ -667,7 +667,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
 
         EXPECT_STREQ(node.tag().c_str(), "float");
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "-42.24");
     }
     {
@@ -681,7 +681,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
 
         EXPECT_STREQ(node.tag().c_str(), "str");
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "0.5");
     }
     {
@@ -695,7 +695,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
 
         EXPECT_STREQ(node.tag().c_str(), "timestamp");
 
-        auto string = scalar_node.as<std::string>();
+        auto string = scalar_node.template as<std::string>();
         EXPECT_STREQ(string.c_str(), "2022-11-17 12:34:56.78 +9");
     }
     {
