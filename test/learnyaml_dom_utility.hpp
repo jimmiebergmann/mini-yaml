@@ -459,7 +459,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
                 ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_scalar());
                 auto& scalar_node2 = node3.as_scalar();
 
-                auto string2 = scalar_node2.as<std::string>();
+                auto string2 = scalar_node2.template as<std::string>();
                 EXPECT_STREQ(string2.c_str(), "hello");
             }
         }
@@ -496,7 +496,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
             ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node2 = node2.as_scalar();
 
-            auto string = scalar_node2.as<std::string>();
+            auto string = scalar_node2.template as<std::string>();
             EXPECT_STREQ(string.c_str(), "Item 1");
         }
         {
@@ -506,7 +506,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
             ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node2 = node2.as_scalar();
 
-            auto string = scalar_node2.as<std::string>();
+            auto string = scalar_node2.template as<std::string>();
             EXPECT_STREQ(string.c_str(), "Item 2");
         }
         {
@@ -516,7 +516,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
             ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node2 = node2.as_scalar();
 
-            auto string = scalar_node2.as<std::string>();
+            auto string = scalar_node2.template as<std::string>();
             EXPECT_STREQ(string.c_str(), "0.5");
         }
         {
@@ -526,7 +526,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
             ASSERT_NO_THROW_IGNORE_NODISCARD(node2.as_scalar());
             auto& scalar_node2 = node2.as_scalar();
 
-            auto string = scalar_node2.as<std::string>();
+            auto string = scalar_node2.template as<std::string>();
             EXPECT_STREQ(string.c_str(), "Item 4");
         }
         {
@@ -544,7 +544,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
                 ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_scalar());
                 auto& scalar_node3 = node3.as_scalar();
 
-                auto string = scalar_node3.as<std::string>();
+                auto string = scalar_node3.template as<std::string>();
                 EXPECT_STREQ(string.c_str(), "value");
             }
             {
@@ -554,7 +554,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
                 ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_scalar());
                 auto& scalar_node3 = node3.as_scalar();
 
-                auto string = scalar_node3.as<std::string>();
+                auto string = scalar_node3.template as<std::string>();
                 EXPECT_STREQ(string.c_str(), "another_value");
             }
         }
@@ -573,7 +573,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
                 ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_scalar());
                 auto& scalar_node3 = node3.as_scalar();
 
-                auto string = scalar_node3.as<std::string>();
+                auto string = scalar_node3.template as<std::string>();
                 EXPECT_STREQ(string.c_str(), "This is a sequence");
             }
             {
@@ -583,7 +583,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
                 ASSERT_NO_THROW_IGNORE_NODISCARD(node3.as_scalar());
                 auto& scalar_node3 = node3.as_scalar();
 
-                auto string = scalar_node3.as<std::string>();
+                auto string = scalar_node3.template as<std::string>();
                 EXPECT_STREQ(string.c_str(), "inside another sequence");
             }
         }
@@ -610,7 +610,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
                     ASSERT_NO_THROW_IGNORE_NODISCARD(node4.as_scalar());
                     auto& scalar_node4 = node4.as_scalar();
 
-                    auto string = scalar_node4.as<std::string>();
+                    auto string = scalar_node4.template as<std::string>();
                     EXPECT_STREQ(string.c_str(), "Nested sequence indicators");
                 }
                 {
@@ -620,7 +620,7 @@ void check_dom_learnyaml_tests(Tnode& root_node) {
                     ASSERT_NO_THROW_IGNORE_NODISCARD(node4.as_scalar());
                     auto& scalar_node4 = node4.as_scalar();
 
-                    auto string = scalar_node4.as<std::string>();
+                    auto string = scalar_node4.template as<std::string>();
                     EXPECT_STREQ(string.c_str(), "can be collapsed");
                 }
             }
