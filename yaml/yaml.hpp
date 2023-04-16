@@ -23,6 +23,9 @@
 *
 */
 
+#ifndef MINIYAML_HEADER_FILE
+#define MINIYAML_HEADER_FILE
+
 #include <memory>
 #include <array>
 #include <vector>
@@ -1293,6 +1296,9 @@ namespace sax {
 
     template<typename Tchar, typename Tsax_handler>
     read_result_code reader<Tchar, Tsax_handler>::process_document() {
+        if (m_options.max_document_count == 0) {
+            return read_result_code::reached_max_document_count;
+        }
 
         push_stack(&reader::execute_find_value);
 
@@ -4038,7 +4044,7 @@ namespace dom {
         sax_read_documents_result_type sax_result,
         node_values&& nodes) 
     {
-        auto result = read_document_result_type{};
+        auto result = read_documents_result_type{};
         result.result_code = sax_result.result_code;
         result.remaining_input = sax_result.remaining_input;
         result.current_line = sax_result.current_line;
@@ -4052,7 +4058,7 @@ namespace dom {
         sax_read_documents_file_result_type sax_result,
         node_values&& nodes) 
     {
-        auto result = read_document_file_result_type{};
+        auto result = read_documents_file_result_type{};
         result.result_code = sax_result.result_code;
         result.current_line = sax_result.current_line;
         result.root_nodes = std::move(nodes);
@@ -4320,3 +4326,5 @@ namespace dom {
     }
 
 } }
+
+#endif
