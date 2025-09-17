@@ -155,7 +155,7 @@ namespace Yaml
             return g_EmptyString;
         }
 
-        virtual bool SetData(const std::string & data)
+        virtual bool SetData(const std::string & /*data*/)
         {
             return false;
         }
@@ -175,7 +175,7 @@ namespace Yaml
             return nullptr;
         }
 
-        virtual Node * GetNode(const std::string & key)
+        virtual Node * GetNode(const std::string & /*key*/)
         {
             return nullptr;
         }
@@ -252,7 +252,7 @@ namespace Yaml
             m_Sequence.erase(index);
         }
 
-        virtual void Erase(const std::string & key)
+        virtual void Erase(const std::string & /*key*/)
         {
         }
 
@@ -278,7 +278,7 @@ namespace Yaml
             return g_EmptyString;
         }
 
-        virtual bool SetData(const std::string & data)
+        virtual bool SetData(const std::string & /*data*/)
         {
             return false;
         }
@@ -288,7 +288,7 @@ namespace Yaml
             return m_Map.size();
         }
 
-        virtual Node * GetNode(const size_t index)
+        virtual Node * GetNode(const size_t /*index*/)
         {
             return nullptr;
         }
@@ -305,7 +305,7 @@ namespace Yaml
             return it->second;
         }
 
-        virtual Node * Insert(const size_t index)
+        virtual Node * Insert(const size_t /*index*/)
         {
             return nullptr;
         }
@@ -320,7 +320,7 @@ namespace Yaml
             return nullptr;
         }
 
-        virtual void Erase(const size_t index)
+        virtual void Erase(const size_t /*index*/)
         {
         }
 
@@ -364,17 +364,17 @@ namespace Yaml
             return 0;
         }
 
-        virtual Node * GetNode(const size_t index)
+        virtual Node * GetNode(const size_t /*index*/)
         {
             return nullptr;
         }
 
-        virtual Node * GetNode(const std::string & key)
+        virtual Node * GetNode(const std::string & /*key*/)
         {
             return nullptr;
         }
 
-        virtual Node * Insert(const size_t index)
+        virtual Node * Insert(const size_t /*index*/)
         {
             return nullptr;
         }
@@ -389,11 +389,11 @@ namespace Yaml
             return nullptr;
         }
 
-        virtual void Erase(const size_t index)
+        virtual void Erase(const size_t /*index*/)
         {
         }
 
-        virtual void Erase(const std::string & key)
+        virtual void Erase(const std::string & /*key*/)
         {
         }
 
@@ -512,11 +512,11 @@ namespace Yaml
             m_Iterator = pSequenceImp->m_Sequence.end();
         }
 
-        virtual void InitBegin(MapImp * pMapImp)
+        virtual void InitBegin(MapImp * /*pMapImp*/)
         {
         }
 
-        virtual void InitEnd(MapImp * pMapImp)
+        virtual void InitEnd(MapImp * /*pMapImp*/)
         {
         }
 
@@ -539,11 +539,11 @@ namespace Yaml
             return Node::MapType;
         }
 
-        virtual void InitBegin(SequenceImp * pSequenceImp)
+        virtual void InitBegin(SequenceImp * /*pSequenceImp*/)
         {
         }
 
-        virtual void InitEnd(SequenceImp * pSequenceImp)
+        virtual void InitEnd(SequenceImp * /*pSequenceImp*/)
         {
         }
 
@@ -586,11 +586,11 @@ namespace Yaml
             m_Iterator = pSequenceImp->m_Sequence.end();
         }
 
-        virtual void InitBegin(MapImp * pMapImp)
+        virtual void InitBegin(MapImp * /*pMapImp*/)
         {
         }
 
-        virtual void InitEnd(MapImp * pMapImp)
+        virtual void InitEnd(MapImp * /*pMapImp*/)
         {
         }
 
@@ -613,11 +613,11 @@ namespace Yaml
             return Node::MapType;
         }
 
-        virtual void InitBegin(SequenceImp * pSequenceImp)
+        virtual void InitBegin(SequenceImp * /*pSequenceImp*/)
         {
         }
 
-        virtual void InitEnd(SequenceImp * pSequenceImp)
+        virtual void InitEnd(SequenceImp * /*pSequenceImp*/)
         {
         }
 
@@ -734,7 +734,7 @@ namespace Yaml
         return { g_EmptyString, g_NoneNode};
     }
 
-    Iterator & Iterator::operator ++ (int dummy)
+    Iterator & Iterator::operator ++ (int /*dummy*/)
     {
         switch(m_Type)
         {
@@ -750,7 +750,7 @@ namespace Yaml
         return *this;
     }
 
-    Iterator & Iterator::operator -- (int dummy)
+    Iterator & Iterator::operator -- (int /*dummy*/)
     {
         switch(m_Type)
         {
@@ -887,7 +887,7 @@ namespace Yaml
         return { g_EmptyString, g_NoneNode};
     }
 
-    ConstIterator & ConstIterator::operator ++ (int dummy)
+    ConstIterator & ConstIterator::operator ++ (int /*dummy*/)
     {
         switch(m_Type)
         {
@@ -903,7 +903,7 @@ namespace Yaml
         return *this;
     }
 
-    ConstIterator & ConstIterator::operator -- (int dummy)
+    ConstIterator & ConstIterator::operator -- (int /*dummy*/)
     {
         switch(m_Type)
         {
@@ -1376,7 +1376,7 @@ namespace Yaml
                 //Print();
                 ParseRoot(root);
             }
-            catch(Exception e)
+            catch(Exception& /*e*/)
             {
                 root.Clear();
                 throw;
@@ -1389,7 +1389,7 @@ namespace Yaml
         * @breif Copy constructor.
         *
         */
-        ParseImp(const ParseImp & copy)
+        ParseImp(const ParseImp & /*copy*/)
         {
 
         }
@@ -2251,7 +2251,7 @@ namespace Yaml
             pImp->Parse(root, stream);
             delete pImp;
         }
-        catch (const Exception e)
+        catch (const Exception & /*e*/)
         {
             delete pImp;
             throw;
