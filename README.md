@@ -2,6 +2,13 @@
 [![Build Status](https://travis-ci.org/jimmiebergmann/mini-yaml.svg?branch=master)](https://github.com/jimmiebergmann/mini-yaml#build-status)  
 Single header YAML 1.0 C++11 serializer/deserializer.
 
+## Changes comparing to upstream
+
+- Allow characters with code > 125 including tilde `~`
+- Allow `#` in quoted strings
+- Support inline arrays `[a, b, c, d, e, f]`
+- Allow empty quoted strings `""` in arrays
+
 ## Quickstart
 #### file.txt
 ```
