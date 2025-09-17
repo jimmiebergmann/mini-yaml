@@ -1454,10 +1454,12 @@ namespace Yaml
                     }
                 }
 
-                // Validate characters.
+                // Validate characters - allow printable ASCII including tilde (~) and extended characters
                 for (size_t i = 0; i < line.size(); i++)
                 {
-                    if (line[i] != '\t' && (line[i] < 32 || line[i] > 125))
+                    // Only reject actual problematic control characters (< 32), but allow tab, CR, LF
+                    // Allow all characters >= 32 (including tilde ~ which is 126)
+                    if (line[i] != '\t' && line[i] < 32 && line[i] != '\r' && line[i] != '\n')
                     {
                         throw ParsingException(ExceptionMessage(g_ErrorInvalidCharacter, lineNo, i + 1));
                     }
