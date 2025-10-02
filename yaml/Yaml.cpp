@@ -155,7 +155,7 @@ namespace Yaml
             return g_EmptyString;
         }
 
-        virtual bool SetData(const std::string & data)
+        virtual bool SetData(const std::string & /*data*/)
         {
             return false;
         }
@@ -175,7 +175,7 @@ namespace Yaml
             return nullptr;
         }
 
-        virtual Node * GetNode(const std::string & key)
+        virtual Node * GetNode(const std::string & /*key*/)
         {
             return nullptr;
         }
@@ -252,7 +252,7 @@ namespace Yaml
             m_Sequence.erase(index);
         }
 
-        virtual void Erase(const std::string & key)
+        virtual void Erase(const std::string & /*key*/)
         {
         }
 
@@ -278,7 +278,7 @@ namespace Yaml
             return g_EmptyString;
         }
 
-        virtual bool SetData(const std::string & data)
+        virtual bool SetData(const std::string & /*data*/)
         {
             return false;
         }
@@ -288,7 +288,7 @@ namespace Yaml
             return m_Map.size();
         }
 
-        virtual Node * GetNode(const size_t index)
+        virtual Node * GetNode(const size_t /*index*/)
         {
             return nullptr;
         }
@@ -305,7 +305,7 @@ namespace Yaml
             return it->second;
         }
 
-        virtual Node * Insert(const size_t index)
+        virtual Node * Insert(const size_t /*index*/)
         {
             return nullptr;
         }
@@ -320,7 +320,7 @@ namespace Yaml
             return nullptr;
         }
 
-        virtual void Erase(const size_t index)
+        virtual void Erase(const size_t /*index*/)
         {
         }
 
@@ -364,17 +364,17 @@ namespace Yaml
             return 0;
         }
 
-        virtual Node * GetNode(const size_t index)
+        virtual Node * GetNode(const size_t /*index*/)
         {
             return nullptr;
         }
 
-        virtual Node * GetNode(const std::string & key)
+        virtual Node * GetNode(const std::string & /*key*/)
         {
             return nullptr;
         }
 
-        virtual Node * Insert(const size_t index)
+        virtual Node * Insert(const size_t /*index*/)
         {
             return nullptr;
         }
@@ -389,11 +389,11 @@ namespace Yaml
             return nullptr;
         }
 
-        virtual void Erase(const size_t index)
+        virtual void Erase(const size_t /*index*/)
         {
         }
 
-        virtual void Erase(const std::string & key)
+        virtual void Erase(const std::string & /*key*/)
         {
         }
 
@@ -512,11 +512,11 @@ namespace Yaml
             m_Iterator = pSequenceImp->m_Sequence.end();
         }
 
-        virtual void InitBegin(MapImp * pMapImp)
+        virtual void InitBegin(MapImp * /*pMapImp*/)
         {
         }
 
-        virtual void InitEnd(MapImp * pMapImp)
+        virtual void InitEnd(MapImp * /*pMapImp*/)
         {
         }
 
@@ -539,11 +539,11 @@ namespace Yaml
             return Node::MapType;
         }
 
-        virtual void InitBegin(SequenceImp * pSequenceImp)
+        virtual void InitBegin(SequenceImp * /*pSequenceImp*/)
         {
         }
 
-        virtual void InitEnd(SequenceImp * pSequenceImp)
+        virtual void InitEnd(SequenceImp * /*pSequenceImp*/)
         {
         }
 
@@ -586,11 +586,11 @@ namespace Yaml
             m_Iterator = pSequenceImp->m_Sequence.end();
         }
 
-        virtual void InitBegin(MapImp * pMapImp)
+        virtual void InitBegin(MapImp * /*pMapImp*/)
         {
         }
 
-        virtual void InitEnd(MapImp * pMapImp)
+        virtual void InitEnd(MapImp * /*pMapImp*/)
         {
         }
 
@@ -613,11 +613,11 @@ namespace Yaml
             return Node::MapType;
         }
 
-        virtual void InitBegin(SequenceImp * pSequenceImp)
+        virtual void InitBegin(SequenceImp * /*pSequenceImp*/)
         {
         }
 
-        virtual void InitEnd(SequenceImp * pSequenceImp)
+        virtual void InitEnd(SequenceImp * /*pSequenceImp*/)
         {
         }
 
@@ -734,7 +734,7 @@ namespace Yaml
         return { g_EmptyString, g_NoneNode};
     }
 
-    Iterator & Iterator::operator ++ (int dummy)
+    Iterator & Iterator::operator ++ (int /*dummy*/)
     {
         switch(m_Type)
         {
@@ -750,7 +750,7 @@ namespace Yaml
         return *this;
     }
 
-    Iterator & Iterator::operator -- (int dummy)
+    Iterator & Iterator::operator -- (int /*dummy*/)
     {
         switch(m_Type)
         {
@@ -887,7 +887,7 @@ namespace Yaml
         return { g_EmptyString, g_NoneNode};
     }
 
-    ConstIterator & ConstIterator::operator ++ (int dummy)
+    ConstIterator & ConstIterator::operator ++ (int /*dummy*/)
     {
         switch(m_Type)
         {
@@ -903,7 +903,7 @@ namespace Yaml
         return *this;
     }
 
-    ConstIterator & ConstIterator::operator -- (int dummy)
+    ConstIterator & ConstIterator::operator -- (int /*dummy*/)
     {
         switch(m_Type)
         {
@@ -1376,7 +1376,7 @@ namespace Yaml
                 //Print();
                 ParseRoot(root);
             }
-            catch(Exception e)
+            catch(Exception& /*e*/)
             {
                 root.Clear();
                 throw;
@@ -1389,7 +1389,7 @@ namespace Yaml
         * @breif Copy constructor.
         *
         */
-        ParseImp(const ParseImp & copy)
+        ParseImp(const ParseImp & /*copy*/)
         {
 
         }
@@ -1454,10 +1454,12 @@ namespace Yaml
                     }
                 }
 
-                // Validate characters.
+                // Validate characters - allow printable ASCII including tilde (~) and extended characters
                 for (size_t i = 0; i < line.size(); i++)
                 {
-                    if (line[i] != '\t' && (line[i] < 32 || line[i] > 125))
+                    // Only reject actual problematic control characters (< 32), but allow tab, CR, LF
+                    // Allow all characters >= 32 (including tilde ~ which is 126)
+                    if (line[i] != '\t' && line[i] < 32 && line[i] != '\r' && line[i] != '\n')
                     {
                         throw ParsingException(ExceptionMessage(g_ErrorInvalidCharacter, lineNo, i + 1));
                     }
@@ -1875,6 +1877,81 @@ namespace Yaml
             }
         }
 
+        void ParseInlineArray(Node & node, const std::string & arrayData)
+        {
+            // Convert node to sequence type
+            node.Clear();
+
+            // The node will become a sequence when we add elements
+            // Parse inline array content
+            std::string arrayContent = arrayData.substr(1, arrayData.length() - 2); // Remove [ and ]
+
+            // Split by comma and create child nodes
+            std::vector<std::string> elements;
+            std::string current;
+            bool inQuotes = false;
+
+            for (size_t i = 0; i < arrayContent.length(); ++i)
+            {
+                char c = arrayContent[i];
+                if (c == '"' && (i == 0 || arrayContent[i-1] != '\\'))
+                {
+                    inQuotes = !inQuotes;
+                    current += c;
+                }
+                else if (c == ',' && !inQuotes)
+                {
+                    // Trim whitespace and remove quotes if present
+                    size_t start = current.find_first_not_of(" \t");
+                    size_t end = current.find_last_not_of(" \t");
+                    if (start != std::string::npos)
+                    {
+                        current = current.substr(start, end - start + 1);
+                        if (current.size() >= 2 && current.front() == '"' && current.back() == '"')
+                        {
+                            current = current.substr(1, current.length() - 2);
+                        }
+                    }
+                    else
+                    {
+                        current = {}; // Empty element
+                    }
+                    elements.push_back(current);
+                    current.clear();
+                }
+                else
+                {
+                    current += c;
+                }
+            }
+
+            // Add the last element
+            {
+                size_t start = current.find_first_not_of(" \t");
+                size_t end = current.find_last_not_of(" \t");
+                if (start != std::string::npos)
+                {
+                    current = current.substr(start, end - start + 1);
+                    if (current.size() >= 2 && current.front() == '"' && current.back() == '"')
+                    {
+                        current = current.substr(1, current.length() - 2);
+                    }
+                }
+                else
+                {
+                    current = {}; // Empty element
+                }
+                elements.push_back(current);
+            }
+
+            // Create child nodes for each element
+            for (const auto& element : elements)
+            {
+                Node & childNode = node.PushBack();
+                childNode = element; // This will make it a scalar node with the element value
+            }
+        }
+
         /**
         * @breif Process scalar node.
         *
@@ -1884,6 +1961,15 @@ namespace Yaml
             std::string data = "";
             ReaderLine * pFirstLine = *it;
             ReaderLine * pLine = *it;
+
+            // Check if this is an inline array format [item1, item2, item3]
+            if (pLine->Data.size() >= 2 && pLine->Data[0] == '[' && pLine->Data.back() == ']')
+            {
+                // Convert scalar node to sequence node and parse inline array
+                ParseInlineArray(node, pLine->Data);
+                ++it; // Move to next line
+                return;
+            }
 
             // Check if current line is a block scalar.
             unsigned char blockFlags = 0;
@@ -2251,7 +2337,7 @@ namespace Yaml
             pImp->Parse(root, stream);
             delete pImp;
         }
-        catch (const Exception e)
+        catch (const Exception & /*e*/)
         {
             delete pImp;
             throw;
@@ -2647,60 +2733,48 @@ namespace Yaml
             return true;
         }
 
-        char token = 0;
-        size_t searchPos = 0;
-        if(input[0] == '\"' || input[0] == '\'')
+        // If string doesn't start with a quote, it's valid (no quote validation needed)
+        // IMPORTANT: Don't validate YAML structures like arrays [..] or objects {..}
+        if(input[0] != '\"' && input[0] != '\'')
         {
-            if(input.size() == 1)
+            return true;
+        }
+
+        // String starts with a quote - find the matching closing quote
+        char openQuote = input[0];
+
+        // Look for the closing quote
+        for(size_t i = 1; i < input.size(); i++)
+        {
+            if(input[i] == openQuote)
             {
+                // Found a potential closing quote - check if it's escaped
+                if(i > 0 && input[i-1] == '\\')
+                {
+                    continue; // This quote is escaped, keep looking
+                }
+
+                // Found unescaped closing quote - check what follows it
+                if(i == input.size() - 1)
+                {
+                    return true; // Quote is at the end of string
+                }
+
+                // Check if valid characters follow the closing quote
+                char nextChar = input[i + 1];
+                if(nextChar == ' ' || nextChar == '\t' || nextChar == ',' || 
+                   nextChar == ']' || nextChar == '}' || nextChar == '\n' || nextChar == '\r')
+                {
+                    return true;
+                }
+
+                // Invalid character follows the closing quote
                 return false;
             }
-            token = input[0];
-            searchPos = 1;
         }
 
-        while(searchPos != std::string::npos && searchPos < input.size() - 1)
-        {
-            searchPos = input.find_first_of("\"'", searchPos + 1);
-            if(searchPos == std::string::npos)
-            {
-                break;
-            }
-
-            const char foundToken = input[searchPos];
-
-            if(input[searchPos] == '\"' || input[searchPos] == '\'')
-            {
-                if(token == 0 && input[searchPos-1] != '\\')
-                {
-                    return false;
-                }
-                //if(foundToken == token)
-                //{
-
-                    /*if(foundToken == token && searchPos == input.size() - 1 && input[searchPos-1] != '\\')
-                    {
-                        return true;
-                        if(searchPos == input.size() - 1)
-                        {
-                            return true;
-                        }
-                        return false;
-                    }
-                    else */
-                    if(foundToken == token && input[searchPos-1] != '\\')
-                    {
-                        if(searchPos == input.size() - 1)
-                        {
-                            return true;
-                        }
-                        return false;
-                    }
-                //}
-            }
-        }
-
-        return token == 0;
+        // No closing quote found
+        return false;
     }
 
     void CopyNode(const Node & from, Node & to)
