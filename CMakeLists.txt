@@ -9,8 +9,8 @@ function(createSourceGroups files rootPath)
 endfunction(createSourceGroups)
 
 
+cmake_minimum_required(VERSION 3.10)
 project (mini-yaml)
-cmake_minimum_required(VERSION 2.8.12)
 
 # Options.
 option(MINIYAML_ENABLE_COVERAGE "Enables coverage reporting." OFF)
